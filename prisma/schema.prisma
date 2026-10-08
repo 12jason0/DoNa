@@ -64,6 +64,7 @@ model User {
   signupUtmCampaign          String?                  @map("signup_utm_campaign") @db.VarChar(100)
   signupReferrer             String?                  @map("signup_referrer") @db.VarChar(255)
   signupLanding              String?                  @map("signup_landing") @db.VarChar(255)
+  signupSourceAnswer         String?                  @map("signup_source_answer") @db.VarChar(20)
   completedCourses           CompletedCourse[]
   completedEscapes           CompletedEscape[]
   activeCourse               ActiveCourse?

@@ -38,3 +38,20 @@ export function signupChannel(u: {
     if (u.signupLanding) return "직접 방문";
     return "기록 없음(앱·이전 가입)";
 }
+
+/** 가입 직후 질문 "두나 어디서 알게 됐어요?" 선택지 (skipped = 건너뛰기) */
+export const SIGNUP_SOURCE_ANSWERS = ["instagram", "search", "friend", "share_link", "other", "skipped"] as const;
+export type SignupSourceAnswer = (typeof SIGNUP_SOURCE_ANSWERS)[number];
+
+/** 관리자 화면 표시용 */
+export const SIGNUP_SOURCE_LABEL: Record<string, string> = {
+    instagram: "인스타그램",
+    search: "검색",
+    friend: "지인 추천",
+    share_link: "공유 링크",
+    other: "기타",
+    skipped: "건너뜀",
+};
+
+/** 가입 후 이 기간 안에만 묻는다 — 기존 사용자에게는 안 뜨게 */
+export const SIGNUP_SOURCE_ASK_WINDOW_MS = 24 * 60 * 60 * 1000;

@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { verifyAdminJwt } from "@/lib/auth";
 import { getExcludedStatsUserIds } from "@/lib/statsExclude";
-import { signupChannel } from "@/lib/signupAttribution";
+import { signupChannel, SIGNUP_SOURCE_LABEL } from "@/lib/signupAttribution";
 import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
             await Promise.all([
                 prisma.user.findMany({
                     where: { createdAt: { gte: since }, id: notExcluded },
-                    select: { signupUtmSource: true, signupReferrer: true, signupLanding: true },
+                    select: { signupUtmSource: true, signupReferrer: true, signupLanding: true, signupSourceAnswer: true },
                 }),
                 // 활동 사용자: 코스 보기·저장·시작 등 행동, 로그인, AI 추천 중 하나라도 한 사람
                 prisma.$queryRaw<Array<{ count: bigint }>>(Prisma.sql`
@@ -49,10 +49,15 @@ export async function GET(request: NextRequest) {
             ]);
 
         const byChannel = new Map<string, number>();
+        const byAnswer = new Map<string, number>();
         for (const u of signupRows) {
             const ch = signupChannel(u);
             byChannel.set(ch, (byChannel.get(ch) ?? 0) + 1);
+            const ans = u.signupSourceAnswer ? (SIGNUP_SOURCE_LABEL[u.signupSourceAnswer] ?? u.signupSourceAnswer) : "답 없음";
+            byAnswer.set(ans, (byAnswer.get(ans) ?? 0) + 1);
         }
+        const sorted = (m: Map<string, number>) =>
+            [...m].map(([channel, count]) => ({ channel, count })).sort((a, b) => b.count - a.count);
 
         return NextResponse.json({
             days,
@@ -64,7 +69,8 @@ export async function GET(request: NextRequest) {
             completions,
             memories,
             shares,
-            signupsByChannel: [...byChannel].map(([channel, count]) => ({ channel, count })).sort((a, b) => b.count - a.count),
+            signupsByChannel: sorted(byChannel),
+            signupsByAnswer: sorted(byAnswer),
         });
     } catch (error) {
         captureApiError(error);

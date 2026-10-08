@@ -6,11 +6,14 @@ import { Platform } from 'react-native';
 import { Tabs } from 'expo-router';
 import AppTabBar from '../../src/components/AppTabBar';
 import { usePushRegistration } from '../../src/hooks/usePushRegistration';
+import SignupSourcePrompt from '../../src/components/SignupSourcePrompt';
 
 export default function TabLayout() {
     usePushRegistration();
 
     return (
+        <>
+        <SignupSourcePrompt />
         <Tabs
             tabBar={(props) => <AppTabBar {...props} />}
             screenOptions={{
@@ -28,5 +31,6 @@ export default function TabLayout() {
             <Tabs.Screen name="ai" />
             <Tabs.Screen name="mypage" />
         </Tabs>
+        </>
     );
 }

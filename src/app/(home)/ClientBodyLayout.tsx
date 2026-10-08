@@ -4,6 +4,7 @@ import React from "react";
 import { usePathname } from "next/navigation";
 import LayoutContent from "@/components/LayoutContent";
 import RoutePrefetcher from "@/components/RoutePrefetcher";
+import SignupSourcePrompt from "@/components/SignupSourcePrompt";
 
 export default function ClientBodyLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -43,6 +44,7 @@ export default function ClientBodyLayout({ children }: { children: React.ReactNo
         <>
             <RoutePrefetcher />
             <LayoutContent>{children}</LayoutContent>
+            <SignupSourcePrompt />
         </>
     );
 }

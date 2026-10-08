@@ -12,7 +12,30 @@ type Metrics = {
     memories: number;
     shares: number;
     signupsByChannel: { channel: string; count: number }[];
+    signupsByAnswer: { channel: string; count: number }[];
 };
+
+function CountTable({ rows }: { rows: { channel: string; count: number }[] }) {
+    return (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <table className="w-full text-sm">
+                <tbody>
+                    {rows.length === 0 && (
+                        <tr>
+                            <td className="p-4 text-gray-500">가입자가 없어요</td>
+                        </tr>
+                    )}
+                    {rows.map((r) => (
+                        <tr key={r.channel} className="border-t border-gray-100 first:border-t-0">
+                            <td className="p-3">{r.channel}</td>
+                            <td className="p-3 text-right font-semibold">{r.count}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+}
 
 const CARDS: { key: keyof Metrics; label: string; hint?: string }[] = [
     { key: "signups", label: "가입자" },
@@ -72,25 +95,15 @@ export default function AdminMetricsPage() {
                     </div>
 
                     <h2 className="text-lg font-bold mb-3">유입 경로별 가입자</h2>
-                    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                        <table className="w-full text-sm">
-                            <tbody>
-                                {data.signupsByChannel.length === 0 && (
-                                    <tr>
-                                        <td className="p-4 text-gray-500">가입자가 없어요</td>
-                                    </tr>
-                                )}
-                                {data.signupsByChannel.map((r) => (
-                                    <tr key={r.channel} className="border-t border-gray-100 first:border-t-0">
-                                        <td className="p-3">{r.channel}</td>
-                                        <td className="p-3 text-right font-semibold">{r.count}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                    <CountTable rows={data.signupsByChannel} />
                     <p className="text-xs text-gray-400 mt-2">
                         처음 방문 기준. 앱에서 가입했거나 기록 기능 배포 전 가입자는 &apos;기록 없음&apos;으로 나와요. 테스트 계정 제외.
+                    </p>
+
+                    <h2 className="text-lg font-bold mb-3 mt-8">&quot;두나 어디서 알게 됐어요?&quot; 답</h2>
+                    <CountTable rows={data.signupsByAnswer ?? []} />
+                    <p className="text-xs text-gray-400 mt-2">
+                        가입 직후 한 번 묻는 질문. 질문 배포 전 가입자·아직 앱을 다시 안 연 사람은 &apos;답 없음&apos;.
                     </p>
                 </>
             )}
