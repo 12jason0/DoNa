@@ -128,8 +128,9 @@ function RootLayoutInner() {
             // RevenueCat 초기화 — 실패해도 결제 시점에 ensureRcConfigured()가 다시 시도한다
             await ensureRcConfigured();
 
-            // 카카오 SDK 초기화 (Android만)
-            if (Platform.OS === "android" && KAKAO_NATIVE_APP_KEY) {
+            // 카카오 SDK 초기화 — 로그인(Android)과 카톡 공유(양쪽)에 필요.
+            // iOS에서 초기화 없이 공유하면 SDK가 앱 키를 강제로 꺼내다 앱이 꺼진다.
+            if (KAKAO_NATIVE_APP_KEY) {
                 try {
                     await initializeKakaoSDK(KAKAO_NATIVE_APP_KEY);
                     kakaoSdkReady = true;

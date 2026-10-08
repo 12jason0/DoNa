@@ -29,6 +29,7 @@ import { useAuth } from "../../../src/hooks/useAuth";
 import { Colors } from "../../../src/constants/theme";
 import { resolveImageUrl } from "../../../src/lib/imageUrl";
 import { shareFeedTemplate } from "@react-native-kakao/share";
+import { kakaoSdkReady } from "../../_layout";
 import { paidCourseShareDescription } from "../../../../src/lib/courseShareDescription";
 import { useThemeColors } from "../../../src/hooks/useThemeColors";
 import { useLocale } from "../../../src/lib/useLocale";
@@ -370,6 +371,8 @@ export default function CourseDetailScreen() {
 
             // 1순위: 카카오톡 공유(피드 카드). 카톡 미설치(AppNotAvailable) 등 실패 시 기존 시스템 공유 시트
             try {
+                // SDK 초기화 전이면 카톡 공유를 건너뛰고 시스템 공유 시트로 (iOS에서 크래시 방지)
+                if (!kakaoSdkReady) throw new Error("kakao sdk not ready");
                 const isPaid = course.grade === "BASIC" || course.grade === "PREMIUM";
                 // 유료 코스는 장소 이름을 빼고 "지역 · 시간 · 장소 N곳"만 (웹 OG 설명과 동일)
                 const description =
