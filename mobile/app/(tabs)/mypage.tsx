@@ -193,6 +193,19 @@ type DateCoursePreviewRow = {
     isAI: boolean;
 };
 
+/** 완료 코스 — API 응답은 { courses, escapes } (배열·data로 읽어서 늘 비어 있던 문제) */
+async function fetchCompletions(): Promise<CompletedCourse[]> {
+    const d = await api.get<any>(endpoints.completions).catch(() => null);
+    const rows: any[] = Array.isArray(d?.courses) ? d.courses : [];
+    return rows
+        .filter((c) => c?.course)
+        .map((c) => ({
+            ...c,
+            course: { ...c.course, imageUrl: c.course.imageUrl || c.course.coursePlaces?.[0]?.place?.imageUrl || null },
+        }))
+        .sort((a, b) => String(b.completedAt).localeCompare(String(a.completedAt)));
+}
+
 function localDateKeyFromIso(iso: string): string {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return "";
@@ -860,10 +873,7 @@ function FootprintTab({
 
     const { data: completed = [], isLoading: loadingCompleted } = useQuery<CompletedCourse[]>({
         queryKey: ["users", "completions"],
-        queryFn: async () => {
-            const d = await api.get<any>(endpoints.completions).catch(() => []);
-            return Array.isArray(d) ? d : Array.isArray(d?.data) ? d.data : [];
-        },
+        queryFn: fetchCompletions,
         staleTime: 5 * 60 * 1000,
     });
 
@@ -916,7 +926,7 @@ function FootprintTab({
         const m: Record<string, CompletedCourse[]> = {};
         completed.forEach((c) => {
             if (!c?.completedAt) return;
-            const k = c.completedAt.split("T")[0];
+            const k = localDateKeyFromIso(c.completedAt); // 현지 날짜 (UTC로 자르면 밤 데이트가 전날로 감)
             if (!m[k]) m[k] = [];
             m[k].push(c);
         });
@@ -1132,6 +1142,7 @@ function FootprintTab({
                                                       return {
                                                           isAI: false,
                                                           course: {
+                                                              ...c,
                                                               id: cid,
                                                               title: c?.title,
                                                               description: (c as { description?: string | null })
@@ -1775,10 +1786,7 @@ function RecordsTab() {
 
     const { data: completed = [], isLoading: loadCompleted } = useQuery<CompletedCourse[]>({
         queryKey: ["users", "completions"],
-        queryFn: async () => {
-            const d = await api.get<any>(endpoints.completions).catch(() => []);
-            return Array.isArray(d) ? d : Array.isArray(d?.data) ? d.data : [];
-        },
+        queryFn: fetchCompletions,
         staleTime: 5 * 60 * 1000,
     });
 
@@ -1915,7 +1923,7 @@ function RecordsTab() {
                                     {completed.map((item) => (
                                         <CourseListCard
                                             key={item.id}
-                                            title={item.course?.title ?? ""}
+                                            title={item.course ? pickCourseTitle(item.course, locale) : ""}
                                             imageUrl={item.course?.imageUrl}
                                             grade={item.course?.grade}
                                             concept={item.course?.concept ?? null}
