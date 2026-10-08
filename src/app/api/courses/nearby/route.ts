@@ -121,7 +121,8 @@ export async function GET(request: NextRequest) {
     // 🟢 캐시에서 먼저 확인
     const cached = await defaultCache.get<any[]>(cacheKey);
     if (cached) {
-        return NextResponse.json(cached);
+        // 캐시는 등급별 공유 — 구매한 코스 잠금은 요청한 사용자 기준으로 다시 계산
+        return NextResponse.json(cached.map((c: any) => ({ ...c, isLocked: computeIsLocked(Number(c.id), c.grade ?? "FREE") })));
     }
 
     const courseSelect = {

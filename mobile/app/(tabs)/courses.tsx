@@ -64,10 +64,34 @@ const GRADE_META: Record<string, { bg: string; text: string }> = {
 };
 
 
+// 목록 쿼리 옵션 — 같은 키를 구독하는 곳은 모두 이걸 써야 한다.
+// 쿼리는 마지막에 붙은 구독자의 queryFn으로 다시 불러오므로, 빈 배열을 돌려주는 가짜 queryFn을
+// 두면 결제 후 invalidate 때 목록이 통째로 비었다.
+function coursesListOptions(activeConcept: string) {
+    return {
+        queryFn: async ({ pageParam = 0 }: { pageParam?: unknown }) => {
+            const params = new URLSearchParams();
+            params.set("limit", "20");
+            params.set("offset", String(pageParam as number));
+            if (activeConcept) params.set("concept", activeConcept);
+            const r = await api.get<Course[] | { data?: Course[]; courses?: Course[] }>(
+                `/api/courses?${params.toString()}`,
+            );
+            if (Array.isArray(r)) return r;
+            return (r as any)?.data ?? (r as any)?.courses ?? [];
+        },
+        initialPageParam: 0,
+        getNextPageParam: (lastPage: Course[], allPages: Course[][]) => {
+            if (!lastPage || lastPage.length < 20) return undefined;
+            return allPages.reduce((s, p) => s + p.length, 0);
+        },
+    };
+}
+
 // ─── 코스 개수 라벨 ──────────────────────────────────────────────────────────
 // 헤더(HeroSlider 포함)가 페이지 추가마다 리마운트되지 않도록, 개수 표시만 캐시를
 // 자체 구독하는 독립 컴포넌트로 분리한다. enabled:false 로 자체 페치는 하지 않고
-// 부모 useInfiniteQuery 가 채운 ["courses-list", activeConcept] 캐시만 구독한다.
+// 부모 useInfiniteQuery 가 채운 ["courses-list", activeConcept] 캐시만 구독한다 (옵션은 부모와 동일).
 const ListCountLabel = React.memo(function ListCountLabel({
     activeConcept,
     style,
@@ -79,9 +103,7 @@ const ListCountLabel = React.memo(function ListCountLabel({
 }) {
     const { data } = useInfiniteQuery<Course[]>({
         queryKey: ["courses-list", activeConcept],
-        queryFn: async () => [],
-        initialPageParam: 0,
-        getNextPageParam: () => undefined,
+        ...coursesListOptions(activeConcept),
         enabled: false,
     });
     const count = data?.pages.reduce((s, p) => s + (p?.length ?? 0), 0) ?? 0;
@@ -301,22 +323,7 @@ export default function CoursesScreen() {
         Course[]
     >({
         queryKey: ["courses-list", activeConcept],
-        queryFn: async ({ pageParam = 0 }) => {
-            const params = new URLSearchParams();
-            params.set("limit", "20");
-            params.set("offset", String(pageParam as number));
-            if (activeConcept) params.set("concept", activeConcept);
-            const r = await api.get<Course[] | { data?: Course[]; courses?: Course[] }>(
-                `/api/courses?${params.toString()}`,
-            );
-            if (Array.isArray(r)) return r;
-            return (r as any)?.data ?? (r as any)?.courses ?? [];
-        },
-        initialPageParam: 0,
-        getNextPageParam: (lastPage, allPages) => {
-            if (!lastPage || lastPage.length < 20) return undefined;
-            return allPages.reduce((s, p) => s + p.length, 0);
-        },
+        ...coursesListOptions(activeConcept),
     });
 
     const courses = useMemo(() => data?.pages.flat() ?? [], [data?.pages]);

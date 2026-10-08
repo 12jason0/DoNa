@@ -114,24 +114,24 @@ export async function GET(request: NextRequest) {
             _count: { select: { coursePlaces: true } },
         };
 
+        // 잠금은 요청한 사용자 기준. 캐시(Redis)는 등급별로 공유되므로 꺼낸 뒤에도 다시 계산한다
+        // (구매한 코스가 다른 사람 캐시의 잠금 상태로 나가거나, 남의 구매가 열려 보이지 않게)
+        const isLockedFor = (courseId: number | string, grade: string) => {
+            if (unlockedCourseIds.includes(Number(courseId)) || userTier === "PREMIUM") return false;
+            if (userTier === "BASIC") return grade === "PREMIUM";
+            // FREE 유저는 BASIC, PREMIUM 코스 모두 잠금
+            return grade === "BASIC" || grade === "PREMIUM";
+        };
+        const withLock = (list: any[]) => list.map((c) => ({ ...c, isLocked: isLockedFor(c.id, c.grade || "FREE") }));
+
         const formatCourse = (course: any) => {
             if (!course || !course.id) return null;
             const firstPlaceImage = Array.isArray(course?.coursePlaces)
                 ? course.coursePlaces.find((cp: any) => cp?.place?.imageUrl)?.place?.imageUrl
                 : undefined;
             const resolvedImageUrl = course.imageUrl || firstPlaceImage || "";
-            let isLocked = false;
             const courseGrade = course.grade || "FREE";
-            const hasUnlocked = unlockedCourseIds.includes(Number(course.id));
-
-            if (hasUnlocked || userTier === "PREMIUM") {
-                isLocked = false;
-            } else if (userTier === "BASIC") {
-                if (courseGrade === "PREMIUM") isLocked = true;
-            } else {
-                // FREE 유저는 BASIC, PREMIUM 코스 모두 잠금
-                if (courseGrade === "BASIC" || courseGrade === "PREMIUM") isLocked = true;
-            }
+            const isLocked = isLockedFor(course.id, courseGrade);
 
             return {
                 id: String(course.id),
@@ -196,7 +196,7 @@ export async function GET(request: NextRequest) {
                 cached = ordered.map(formatCourse).filter(Boolean);
                 if (!noCache) await defaultCache.set(cacheKey, cached);
             }
-            const finalData = cached!.slice(effectiveOffset, effectiveOffset + effectiveLimit);
+            const finalData = withLock(cached!.slice(effectiveOffset, effectiveOffset + effectiveLimit));
             return NextResponse.json({ data: finalData, isRecommendation: false });
         }
 
@@ -234,7 +234,7 @@ export async function GET(request: NextRequest) {
         if (!noCache) {
             const cached = await defaultCache.get<{ data: any[]; isRecommendation: boolean }>(cacheKey);
             if (cached) {
-                return NextResponse.json(cached);
+                return NextResponse.json({ ...cached, data: withLock(cached.data ?? []) });
             }
         }
 

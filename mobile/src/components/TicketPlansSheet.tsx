@@ -394,18 +394,20 @@ export default function TicketPlansSheet() {
             queryClient.invalidateQueries({ queryKey: ["profile"] });
             setLoading(false);
             dismiss();
-            // confirm 성공 후 invalidate → 서버 확정 데이터로 재동기화
+            // confirm 뒤 invalidate → 서버 확정 데이터로 재동기화.
+            // confirm이 실패해도(웹훅이 먼저 처리 등) 다시 불러온다 — 결제 전에 받은 데이터는 장소가 가려져 있다
             if (intentId) {
                 api.post("/api/payments/revenuecat/confirm", {
                     planId: selectedPlan.id, planType: "ticket",
                     transactionId, customerInfo, intentId, courseId,
-                }).then(() => {
+                }).catch(() => {}).finally(() => {
                     if (courseId != null) {
                         queryClient.invalidateQueries({ queryKey: ["course", String(courseId)] });
                     }
-                    // 코스 목록(히어로는 목록 첫 페이지에서 뽑음)도 갱신해 잠금 상태 반영
+                    // 코스 목록(히어로는 목록 첫 페이지에서 뽑음)·구매한 코스도 갱신해 잠금 상태 반영
                     queryClient.invalidateQueries({ queryKey: ["courses-list"] });
-                }).catch(() => {});
+                    queryClient.invalidateQueries({ queryKey: ["users", "unlocked-courses"] });
+                });
             }
             return;
         } else if (selectedPlan.type === "sub") {

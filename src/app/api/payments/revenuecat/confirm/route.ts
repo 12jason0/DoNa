@@ -90,6 +90,7 @@ export async function POST(request: NextRequest) {
                     data: [{ userId, courseId: unlockCourseId }],
                     skipDuplicates: true,
                 });
+                await (prisma as any).unlockIntent.update({ where: { id: intentId }, data: { status: "COMPLETED" } });
             }
 
             if (unlockCourseId != null) {
