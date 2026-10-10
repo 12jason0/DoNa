@@ -15,7 +15,7 @@ const DAY = 24 * 60 * 60 * 1000;
 const SOON_DAYS = 14;
 
 export const metadata: Metadata = {
-    title: "서울 팝업스토어·전시 모음 — 지금 진행 중, 곧 시작 | 두나(DoNa)",
+    title: "서울 팝업스토어·전시 모음 — 지금 진행 중, 곧 시작", // 뒤에 " | 두나 DoNa"는 레이아웃이 붙임
     description:
         "지금 서울에서 진행 중인 팝업스토어와 전시, 2주 안에 시작하는 곳을 기간과 함께 모았어요. 종료가 임박한 곳은 D-day로 표시하고, 함께 가기 좋은 데이트 코스도 연결해 드려요.",
     alternates: { canonical: PAGE_URL },
