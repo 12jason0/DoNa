@@ -35,6 +35,10 @@
     {
       "path": "/api/cron/place-status-check",
       "schedule": "0 0 * * 1"
+    },
+    {
+      "path": "/api/cron/popup-ending",
+      "schedule": "0 0 * * *"
     }
   ]
 }
