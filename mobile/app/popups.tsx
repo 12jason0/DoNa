@@ -1,5 +1,6 @@
 /**
- * 팝업·전시 모음 — 웹 (home)/popups/page.tsx 와 같은 화면 (목록은 /api/popups)
+ * 팝업·전시 모음 — 웹 (home)/popups/PopupsClient.tsx 와 같은 화면 (목록은 /api/popups)
+ * 문구는 번역 파일 popups.*, 장소·코스 이름·기간 표시는 웹과 같은 src/lib/popupFormat.ts
  * 진행 중 / 곧 시작(14일 이내), 종료 7일 이내 D-N 표시, 이 장소가 들어간 코스로 이동
  */
 import React, { useCallback, useEffect, useState } from "react";
@@ -12,19 +13,14 @@ import { Image } from "expo-image";
 import { useThemeColors } from "../src/hooks/useThemeColors";
 import { useLocale } from "../src/lib/useLocale";
 import { apiFetch } from "../src/lib/api";
+import { popupBadge, popupCourseTitle, popupName, popupPeriod, popupRegion, type PopupItem } from "../../src/lib/popupFormat";
 
-type PopupItem = {
-    id: number;
-    name: string;
-    imageUrl: string | null;
-    region: string;
-    period: string;
-    badge: string | null;
-    courses: { id: number; title: string }[];
-};
-type PopupList = { ongoing: PopupItem[]; upcoming: PopupItem[] };
+type PopupList = { ongoing: PopupItem[]; upcoming: PopupItem[]; todayYear: number };
 
-function PopupCard({ p, tc }: { p: PopupItem; tc: ReturnType<typeof useThemeColors> }) {
+function PopupCard({ p, tc, todayYear }: { p: PopupItem; tc: ReturnType<typeof useThemeColors>; todayYear: number }) {
+    const { t, locale } = useLocale();
+    const badge = popupBadge(p, t);
+    const region = popupRegion(p, locale);
     return (
         <View style={[styles.card, { backgroundColor: tc.card, borderColor: tc.border }]}>
             <View style={styles.cardTop}>
@@ -37,22 +33,22 @@ function PopupCard({ p, tc }: { p: PopupItem; tc: ReturnType<typeof useThemeColo
                 )}
                 <View style={styles.cardBody}>
                     <View style={styles.titleRow}>
-                        {p.badge ? (
+                        {badge ? (
                             <View style={[styles.badge, { backgroundColor: tc.isDark ? "rgba(127,29,29,0.4)" : "#fee2e2" }]}>
-                                <Text style={[styles.badgeText, { color: tc.isDark ? "#fca5a5" : "#dc2626" }]}>{p.badge}</Text>
+                                <Text style={[styles.badgeText, { color: tc.isDark ? "#fca5a5" : "#dc2626" }]}>{badge}</Text>
                             </View>
                         ) : null}
                         <Text style={[styles.name, { color: tc.text }]} numberOfLines={1}>
-                            {p.name}
+                            {popupName(p, locale)}
                         </Text>
                     </View>
-                    {p.region ? <Text style={[styles.region, { color: tc.textMuted }]}>{p.region}</Text> : null}
-                    <Text style={[styles.period, { color: tc.isDark ? "#99c08e" : "#5f8d57" }]}>{p.period}</Text>
+                    {region ? <Text style={[styles.region, { color: tc.textMuted }]}>{region}</Text> : null}
+                    <Text style={[styles.period, { color: tc.isDark ? "#99c08e" : "#5f8d57" }]}>{popupPeriod(p, t, todayYear)}</Text>
                 </View>
             </View>
             {p.courses.length > 0 ? (
                 <View style={[styles.courses, { borderTopColor: tc.border }]}>
-                    <Text style={[styles.coursesLabel, { color: tc.textMuted }]}>이 장소가 들어간 코스</Text>
+                    <Text style={[styles.coursesLabel, { color: tc.textMuted }]}>{t("popups.coursesWithPlace")}</Text>
                     <View style={styles.chips}>
                         {p.courses.map((c) => (
                             <Pressable
@@ -60,7 +56,7 @@ function PopupCard({ p, tc }: { p: PopupItem; tc: ReturnType<typeof useThemeColo
                                 onPress={() => router.push(`/courses/${c.id}` as any)}
                                 style={[styles.chip, { backgroundColor: tc.isDark ? "rgba(255,255,255,0.1)" : "#f3f4f6" }]}
                             >
-                                <Text style={[styles.chipText, { color: tc.isDark ? "#e5e7eb" : "#374151" }]}>{c.title}</Text>
+                                <Text style={[styles.chipText, { color: tc.isDark ? "#e5e7eb" : "#374151" }]}>{popupCourseTitle(c, locale)}</Text>
                             </Pressable>
                         ))}
                     </View>
@@ -106,7 +102,7 @@ export default function PopupsScreen() {
             ) : (
                 <View style={styles.list}>
                     {items.map((p) => (
-                        <PopupCard key={p.id} p={p} tc={tc} />
+                        <PopupCard key={p.id} p={p} tc={tc} todayYear={data!.todayYear} />
                     ))}
                 </View>
             )}
@@ -136,17 +132,17 @@ export default function PopupsScreen() {
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                 >
                     <View style={[styles.hero, { backgroundColor: tc.isDark ? "#16241a" : "#e9f6ee" }]}>
-                        <Text style={[styles.heroTitle, { color: tc.text }]}>팝업·전시 모음</Text>
-                        <Text style={[styles.heroSub, { color: tc.textMuted }]}>지금 진행 중인 곳과 2주 안에 시작하는 곳이에요.</Text>
+                        <Text style={[styles.heroTitle, { color: tc.text }]}>{t("popups.heroTitle")}</Text>
+                        <Text style={[styles.heroSub, { color: tc.textMuted }]}>{t("popups.heroSub")}</Text>
                     </View>
                     {error ? (
                         <Pressable onPress={load} style={styles.retry}>
-                            <Text style={[styles.empty, { color: tc.textMuted }]}>불러오지 못했어요. 눌러서 다시 시도</Text>
+                            <Text style={[styles.empty, { color: tc.textMuted }]}>{t("popups.loadFailed")}</Text>
                         </Pressable>
                     ) : (
                         <>
-                            {section("진행 중", data!.ongoing, "지금 진행 중인 팝업이 없어요")}
-                            {section("곧 시작", data!.upcoming, "2주 안에 시작하는 팝업이 없어요")}
+                            {section(t("popups.ongoing"), data!.ongoing, t("popups.emptyOngoing"))}
+                            {section(t("popups.upcoming"), data!.upcoming, t("popups.emptyUpcoming"))}
                         </>
                     )}
                 </ScrollView>
