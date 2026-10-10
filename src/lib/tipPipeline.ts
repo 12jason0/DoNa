@@ -130,13 +130,21 @@ export function countDistinctSources(sources: { id: number; source_type: string;
     return new Set(sources.map((s) => (s.author ? `${s.source_type.split("_")[0]}:${s.author}` : s.url ? `url:${s.url}` : `id:${s.id}`))).size;
 }
 
-/** 후보 / 확인 필요 판정 (AI가 아니라 코드가 정함) */
-export function judgeCandidate(distinctCount: number, latest: Date | null, conflict: boolean, now = Date.now()) {
+/** 검수 대기 상태: 후보 / 가게 공식 / 확인 필요 */
+export const PENDING_STATUSES = ["candidate", "official", "needs_check"];
+
+/**
+ * 후보 / 가게 공식 / 확인 필요 판정 (AI가 아니라 코드가 정함)
+ * ownerFact: 가게가 직접 밝힌 사실(메뉴·가격·이용시간·예약·휴무)이고 근거에 붙여넣은 공지·메뉴판이 있음 → 출처 1개로도 인정
+ */
+export function judgeCandidate(distinctCount: number, latest: Date | null, conflict: boolean, ownerFact = false, now = Date.now()) {
+    if (conflict) return "needs_check";
+    if (ownerFact) return "official";
     const recent = latest != null && now - latest.getTime() <= RECENT_MS;
-    return distinctCount >= MIN_SOURCES && recent && !conflict ? "candidate" : "needs_check";
+    return distinctCount >= MIN_SOURCES && recent ? "candidate" : "needs_check";
 }
 
-type AiTip = { category: string; content: string; source_ids: number[]; conflict?: boolean; owner_question?: string };
+type AiTip = { category: string; content: string; source_ids: number[]; conflict?: boolean; owner_fact?: boolean; owner_question?: string };
 
 /** 2단계: 모은 자료만 근거로 팁 후보 생성 → tip_candidates (아직 결정 안 한 후보는 교체) */
 export async function generateTipCandidates(placeId: number) {
@@ -144,7 +152,7 @@ export async function generateTipCandidates(placeId: number) {
     const sources = await prisma.tipSource.findMany({ where: { place_id: placeId }, orderBy: { id: "asc" } });
     if (sources.length === 0) {
         await prisma.place.update({ where: { id: placeId }, data: { tip_status: "recheck" } });
-        return { candidate: 0, needsCheck: 0, ownerQuestions: [] as string[] };
+        return { candidate: 0, official: 0, needsCheck: 0, ownerQuestions: [] as string[] };
     }
 
     const material = sources
@@ -165,12 +173,14 @@ export async function generateTipCandidates(placeId: number) {
   좋은 예: "주말 오후 2~4시는 대기 30분 이상, 오픈 직후 방문", "주차장 없음, 안국역 1번 출구에서 도보 5분"
 - 같은 내용은 하나로 합치고, 그 내용을 말한 자료 번호를 source_ids에 모두 넣으세요.
 - 자료끼리 내용이 다르면(예: 주차 된다 / 안 된다) conflict: true.
+- owner_text 자료는 가게가 직접 올린 공지·메뉴판입니다. 팁이 owner_text에 적힌 메뉴·가격·이용시간·예약·휴무 같은 사실이면 owner_fact: true.
+  평가·분위기·추천 문장이거나 owner_text가 근거가 아니면 owner_fact: false.
 - 각 팁마다 사장님께 사실 확인용으로 물을 짧은 질문을 owner_question에 쓰세요.
 - category는 다음 중 하나: ${TIP_CATEGORY_VALUES.join(", ")}
 - content는 한국어 한 문장, 60자 이내.
 
 다른 텍스트 없이 JSON만:
-{"tips":[{"category":"WAITING","content":"...","source_ids":[1,2],"conflict":false,"owner_question":"..."}]}
+{"tips":[{"category":"WAITING","content":"...","source_ids":[1,2],"conflict":false,"owner_fact":false,"owner_question":"..."}]}
 
 자료:
 ${material}`;
@@ -202,10 +212,12 @@ ${material}`;
         const latest = used.reduce<Date | null>((m, s) => (s.written_at && (!m || s.written_at > m) ? s.written_at : m), null);
         const count = countDistinctSources(used);
         const conflict = t.conflict === true;
+        // AI 표시만 믿지 않고, 근거에 붙여넣은 공지·메뉴판이 실제로 있어야 인정
+        const ownerFact = t.owner_fact === true && used.some((s) => s.source_type === "owner_text");
         rows.push({
             category: (TIP_CATEGORY_VALUES as readonly string[]).includes(t.category) ? (t.category as TipCategory) : "ETC",
             content: t.content.trim(),
-            status: judgeCandidate(count, latest, conflict),
+            status: judgeCandidate(count, latest, conflict, ownerFact),
             conflict,
             source_ids: used.map((s) => s.id),
             source_count: count,
@@ -215,13 +227,14 @@ ${material}`;
     }
 
     await prisma.$transaction([
-        prisma.tipCandidate.deleteMany({ where: { place_id: placeId, status: { in: ["candidate", "needs_check"] } } }),
+        prisma.tipCandidate.deleteMany({ where: { place_id: placeId, status: { in: PENDING_STATUSES } } }),
         prisma.tipCandidate.createMany({ data: rows.map(({ owner_question, ...r }) => ({ ...r, place_id: placeId })) }),
         prisma.place.update({ where: { id: placeId }, data: { tip_status: rows.length ? "review" : "recheck" } }),
     ]);
 
     return {
         candidate: rows.filter((r) => r.status === "candidate").length,
+        official: rows.filter((r) => r.status === "official").length,
         needsCheck: rows.filter((r) => r.status === "needs_check").length,
         ownerQuestions: rows.filter((r) => r.status === "needs_check" && r.owner_question).map((r) => r.owner_question).slice(0, 5),
     };
@@ -246,7 +259,7 @@ export async function runTipPipeline(placeId: number, chatId?: number) {
             : "";
         await sendTelegram(
             chatId,
-            `📝 "${place.name}" 팁 후보 ${r.candidate}개, 확인 필요 ${r.needsCheck}개\n(자료 ${collected.count}건${collected.google ? "" : ", 구글 장소 못 찾음"})\n\n검수: ${tipReviewUrl(placeId)}${questions}`
+            `📝 "${place.name}" 팁 후보 ${r.candidate}개, 가게 공식 ${r.official}개, 확인 필요 ${r.needsCheck}개\n(자료 ${collected.count}건${collected.google ? "" : ", 구글 장소 못 찾음"})\n\n검수: ${tipReviewUrl(placeId)}${questions}`
         );
         return r;
     } catch (e) {
@@ -320,6 +333,6 @@ export async function approveTip(placeId: number, tip: { category: string; conte
 
 /** 남은 후보가 없으면 완료 */
 export async function refreshTipStatus(placeId: number) {
-    const pending = await prisma.tipCandidate.count({ where: { place_id: placeId, status: { in: ["candidate", "needs_check"] } } });
+    const pending = await prisma.tipCandidate.count({ where: { place_id: placeId, status: { in: PENDING_STATUSES } } });
     if (pending === 0) await prisma.place.update({ where: { id: placeId }, data: { tip_status: "done" } });
 }

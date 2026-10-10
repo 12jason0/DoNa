@@ -11,6 +11,7 @@ type Row = {
     tip_status: string;
     updated_at: string;
     candidate: number;
+    official: number;
     needsCheck: number;
 };
 
@@ -65,7 +66,7 @@ export default function AdminTipsPage() {
                                     </td>
                                     <td className="p-3">{TIP_STATUS_LABEL[r.tip_status] ?? r.tip_status}</td>
                                     <td className="p-3 text-right">
-                                        후보 {r.candidate} · 확인 필요 {r.needsCheck}
+                                        후보 {r.candidate} · 가게 공식 {r.official} · 확인 필요 {r.needsCheck}
                                     </td>
                                 </tr>
                             ))}

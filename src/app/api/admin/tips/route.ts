@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { verifyAdminJwt } from "@/lib/auth";
+import { PENDING_STATUSES } from "@/lib/tipPipeline";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest) {
             address: true,
             tip_status: true,
             updated_at: true,
-            tip_candidates: { where: { status: { in: ["candidate", "needs_check"] } }, select: { status: true } },
+            tip_candidates: { where: { status: { in: PENDING_STATUSES } }, select: { status: true } },
         },
         orderBy: { updated_at: "desc" },
         take: 200,
@@ -27,6 +28,7 @@ export async function GET(req: NextRequest) {
         places.map(({ tip_candidates, ...p }) => ({
             ...p,
             candidate: tip_candidates.filter((c) => c.status === "candidate").length,
+            official: tip_candidates.filter((c) => c.status === "official").length,
             needsCheck: tip_candidates.filter((c) => c.status === "needs_check").length,
         }))
     );

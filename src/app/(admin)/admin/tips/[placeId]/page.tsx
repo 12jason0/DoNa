@@ -44,6 +44,11 @@ const SOURCE_LABEL: Record<string, string> = {
     kakao_cafe: "카카오 카페",
     owner_text: "가게 공지·메뉴판",
 };
+const STATUS_BADGE: Record<string, [string, string]> = {
+    candidate: ["후보", "bg-green-100 text-green-800"],
+    official: ["가게 공식", "bg-blue-100 text-blue-800"],
+    needs_check: ["확인 필요", "bg-amber-100 text-amber-800"],
+};
 const catLabel = (c: string) => (ko.tipCategory as Record<string, string>)[c] ?? c;
 const day = (d: string | null) => (d ? d.slice(0, 10) : "날짜 모름");
 
@@ -68,9 +73,7 @@ function CandidateCard({ c, courses, busy, onAct }: { c: Candidate; courses: Det
     return (
         <div className={`bg-white rounded-xl border p-4 ${c.status === "needs_check" ? "border-amber-300" : "border-gray-200"}`}>
             <div className="flex items-center gap-2 mb-2 text-xs">
-                <span className={`px-2 py-0.5 rounded-full font-semibold ${c.status === "needs_check" ? "bg-amber-100 text-amber-800" : "bg-green-100 text-green-800"}`}>
-                    {c.status === "needs_check" ? "확인 필요" : "후보"}
-                </span>
+                <span className={`px-2 py-0.5 rounded-full font-semibold ${STATUS_BADGE[c.status]?.[1] ?? ""}`}>{STATUS_BADGE[c.status]?.[0] ?? c.status}</span>
                 {c.conflict && <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-semibold">출처끼리 내용 다름</span>}
                 <span className="text-gray-500">
                     근거 {c.source_count}개 · 최근 {day(c.latest_source_at)} · #{c.source_ids.join(", #")}
@@ -161,7 +164,7 @@ export default function AdminTipDetailPage() {
 
     if (!data) return <div className="p-6">{notice || "불러오는 중..."}</div>;
 
-    const pending = data.tip_candidates.filter((c) => c.status === "candidate" || c.status === "needs_check");
+    const pending = data.tip_candidates.filter((c) => c.status in STATUS_BADGE);
 
     return (
         <div className="p-6">
@@ -177,7 +180,7 @@ export default function AdminTipDetailPage() {
                 </div>
                 <button
                     disabled={busy}
-                    onClick={() => act({ action: "recollect" }, (r) => `다시 모았어요. 후보 ${r.candidate}개, 확인 필요 ${r.needsCheck}개`)}
+                    onClick={() => act({ action: "recollect" }, (r) => `다시 모았어요. 후보 ${r.candidate}개, 가게 공식 ${r.official}개, 확인 필요 ${r.needsCheck}개`)}
                     className="px-4 py-2 rounded-lg bg-white border border-gray-200 text-sm font-semibold disabled:opacity-50"
                 >
                     {busy ? "처리 중..." : "자료 다시 모으기"}
@@ -241,7 +244,7 @@ export default function AdminTipDetailPage() {
                         <button
                             disabled={busy || !pasteText.trim()}
                             onClick={async () => {
-                                if (await act({ action: "paste", text: pasteText }, (r) => `다시 만들었어요. 후보 ${r.candidate}개, 확인 필요 ${r.needsCheck}개`))
+                                if (await act({ action: "paste", text: pasteText }, (r) => `다시 만들었어요. 후보 ${r.candidate}개, 가게 공식 ${r.official}개, 확인 필요 ${r.needsCheck}개`))
                                     setPasteText("");
                             }}
                             className="mt-2 px-3 py-1.5 rounded-lg bg-green-600 text-white text-sm font-semibold disabled:opacity-50"

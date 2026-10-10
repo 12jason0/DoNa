@@ -12,9 +12,11 @@ assert.equal(countDistinctSources([s(1, "naver_blog", "a"), s(2, "naver_blog", "
 // 다른 플랫폼 같은 이름은 별개, 작성자 없으면 링크 기준
 assert.equal(countDistinctSources([s(1, "naver_blog", "a"), s(2, "kakao_blog", "a"), s(3, "google_review", null, "x"), s(4, "google_review", null, "x")]), 3);
 
-assert.equal(judgeCandidate(3, recent, false, now), "candidate");
-assert.equal(judgeCandidate(2, recent, false, now), "needs_check"); // 출처 부족
-assert.equal(judgeCandidate(5, old, false, now), "needs_check"); // 6개월 지남
-assert.equal(judgeCandidate(5, null, false, now), "needs_check"); // 날짜 모름
-assert.equal(judgeCandidate(5, recent, true, now), "needs_check"); // 출처끼리 다름
+assert.equal(judgeCandidate(3, recent, false, false, now), "candidate");
+assert.equal(judgeCandidate(2, recent, false, false, now), "needs_check"); // 출처 부족
+assert.equal(judgeCandidate(5, old, false, false, now), "needs_check"); // 6개월 지남
+assert.equal(judgeCandidate(5, null, false, false, now), "needs_check"); // 날짜 모름
+assert.equal(judgeCandidate(5, recent, true, false, now), "needs_check"); // 출처끼리 다름
+assert.equal(judgeCandidate(1, old, false, true, now), "official"); // 가게 공지·메뉴판의 사실은 1개, 오래돼도 인정
+assert.equal(judgeCandidate(1, recent, true, true, now), "needs_check"); // 그래도 출처끼리 다르면 확인 필요
 console.log("ok");
