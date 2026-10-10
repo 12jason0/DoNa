@@ -21,7 +21,33 @@ type NewSource = {
 };
 
 const stripTags = (s: string) =>
-    s.replace(/<[^>]+>/g, "").replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;/g, "'").trim();
+    s
+        .replace(/<[^>]+>/g, "")
+        .replace(/&quot;/g, '"')
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+        .trim();
+
+const squash = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+
+/**
+ * 가게 이름 핵심 단어: "한림칼국수 공항점" → ["한림칼국수"], "4233 마음센터" → ["4233마음센터", "마음센터"]
+ * 지점명(…점)은 빼고, 붙여 쓴 전체 이름과 가장 긴 단어. 띄어쓰기·기호는 무시하고 비교.
+ */
+export function coreKeywords(name: string): string[] {
+    const words = name.split(/[\s()\[\]!?.,·]+/).filter(Boolean);
+    const main = words.length > 1 ? words.filter((w) => !/.점$/.test(w)) : words;
+    const longest = [...main].sort((a, b) => b.length - a.length)[0] ?? name;
+    return [...new Set([squash(main.join("")), squash(longest)])].filter((k) => k.length >= 2);
+}
+
+/** 제목·요약에 가게 이름 핵심 단어가 있는 글만 관련 있음 */
+export function isRelevant(keywords: string[], title: string | null, content: string | null) {
+    const text = squash(`${title ?? ""} ${content ?? ""}`);
+    return keywords.length === 0 || keywords.some((k) => text.includes(k));
+}
 
 /** "서울 종로구 율곡로 ..." → "종로구" (검색어 "가게명 + 지역"용) */
 function regionOf(address: string | null) {
@@ -111,18 +137,22 @@ export async function collectTipSources(placeId: number) {
         }
     }
     // 같은 링크는 1번만 (구글 리뷰는 링크가 장소 링크로 같아서 제외)
+    // 가게 이름이 없는 글은 relevant=false로 남김 (후보 근거에서 빠지고 화면엔 "관련 없음 N개"만, 통계용)
+    const keywords = coreKeywords(place.name);
     const seen = new Set<string>();
+    const rows = sources.map((s) => ({ ...s, relevant: true }));
     for (const s of [...naver, ...kakaoBlog, ...kakaoCafe]) {
         if (!s.url || seen.has(s.url) || !s.content) continue;
         seen.add(s.url);
-        sources.push(s);
+        rows.push({ ...s, relevant: isRelevant(keywords, s.title, s.content) });
     }
 
     await prisma.$transaction([
         prisma.tipSource.deleteMany({ where: { place_id: placeId, source_type: { not: "owner_text" } } }),
-        prisma.tipSource.createMany({ data: sources.map((s) => ({ ...s, place_id: placeId })) }),
+        prisma.tipSource.createMany({ data: rows.map((s) => ({ ...s, place_id: placeId })) }),
     ]);
-    return { google: !!google, count: sources.length };
+    const filtered = rows.filter((r) => !r.relevant).length;
+    return { google: !!google, count: rows.length - filtered, filtered };
 }
 
 /** 근거 개수: 같은 작성자(플랫폼+작성자)의 글은 1개로. 작성자 모르면 링크, 그것도 없으면 행 하나 */
@@ -149,7 +179,7 @@ type AiTip = { category: string; content: string; source_ids: number[]; conflict
 /** 2단계: 모은 자료만 근거로 팁 후보 생성 → tip_candidates (아직 결정 안 한 후보는 교체) */
 export async function generateTipCandidates(placeId: number) {
     const place = await prisma.place.findUniqueOrThrow({ where: { id: placeId }, select: { name: true, category: true } });
-    const sources = await prisma.tipSource.findMany({ where: { place_id: placeId }, orderBy: { id: "asc" } });
+    const sources = await prisma.tipSource.findMany({ where: { place_id: placeId, relevant: true }, orderBy: { id: "asc" } });
     if (sources.length === 0) {
         await prisma.place.update({ where: { id: placeId }, data: { tip_status: "recheck" } });
         return { candidate: 0, official: 0, needsCheck: 0, ownerQuestions: [] as string[] };
@@ -259,7 +289,7 @@ export async function runTipPipeline(placeId: number, chatId?: number) {
             : "";
         await sendTelegram(
             chatId,
-            `📝 "${place.name}" 팁 후보 ${r.candidate}개, 가게 공식 ${r.official}개, 확인 필요 ${r.needsCheck}개\n(자료 ${collected.count}건${collected.google ? "" : ", 구글 장소 못 찾음"})\n\n검수: ${tipReviewUrl(placeId)}${questions}`
+            `📝 "${place.name}" 팁 후보 ${r.candidate}개, 가게 공식 ${r.official}개, 확인 필요 ${r.needsCheck}개\n(자료 ${collected.count}건, 관련 없음 ${collected.filtered}건 제외${collected.google ? "" : ", 구글 장소 못 찾음"})\n\n검수: ${tipReviewUrl(placeId)}${questions}`
         );
         return r;
     } catch (e) {

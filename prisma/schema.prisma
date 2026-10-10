@@ -298,6 +298,7 @@ model TipSource {
   url          String?
   written_at   DateTime?
   collected_at DateTime  @default(now())
+  relevant     Boolean   @default(true) /// false: 제목·요약에 가게 이름이 없어 걸러진 글 (통계용으로만 보관)
   place        Place     @relation(fields: [place_id], references: [id], onDelete: Cascade)
 
   @@index([place_id])

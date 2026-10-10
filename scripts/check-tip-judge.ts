@@ -1,6 +1,6 @@
 // 팁 후보 판정 규칙 확인: npx tsx scripts/check-tip-judge.ts
 import assert from "node:assert";
-import { countDistinctSources, judgeCandidate } from "../src/lib/tipPipeline";
+import { coreKeywords, countDistinctSources, isRelevant, judgeCandidate } from "../src/lib/tipPipeline";
 
 const s = (id: number, source_type: string, author: string | null, url: string | null = `u${id}`) => ({ id, source_type, author, url });
 const now = Date.parse("2026-10-10");
@@ -19,4 +19,10 @@ assert.equal(judgeCandidate(5, null, false, false, now), "needs_check"); // 날�
 assert.equal(judgeCandidate(5, recent, true, false, now), "needs_check"); // 출처끼리 다름
 assert.equal(judgeCandidate(1, old, false, true, now), "official"); // 가게 공지·메뉴판의 사실은 1개, 오래돼도 인정
 assert.equal(judgeCandidate(1, recent, true, true, now), "needs_check"); // 그래도 출처끼리 다르면 확인 필요
+// 가게 이름 핵심 단어: 지점명 빼고, 띄어쓰기 무시
+const kw = coreKeywords("한림칼국수 공항점");
+assert.deepEqual(kw, ["한림칼국수"]);
+assert.ok(isRelevant(kw, "제주 한림 칼국수 후기", null));
+assert.ok(!isRelevant(kw, "전국 로또 판매점 주소록", "칼국수 맛집"));
+assert.ok(isRelevant(coreKeywords("4233 마음센터"), "안국 4233마음센터 다녀옴", null));
 console.log("ok");

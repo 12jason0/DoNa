@@ -14,6 +14,7 @@ type Source = {
     content: string | null;
     url: string | null;
     written_at: string | null;
+    relevant: boolean;
 };
 type Candidate = {
     id: number;
@@ -64,7 +65,26 @@ function CategorySelect({ value, onChange }: { value: string; onChange: (v: stri
     );
 }
 
-function CandidateCard({ c, courses, busy, onAct }: { c: Candidate; courses: Detail["courses"]; busy: boolean; onAct: (body: object) => void }) {
+function SourceCard({ s, citedBy }: { s: Source; citedBy?: number[] }) {
+    return (
+        <div className={`bg-white rounded-xl border p-3 text-sm ${citedBy ? "border-green-400" : "border-gray-200"}`}>
+            <div className="text-xs text-gray-500 mb-1">
+                #{s.id} · {SOURCE_LABEL[s.source_type] ?? s.source_type} · {day(s.written_at)}
+                {s.author ? ` · ${s.author}` : ""}
+                {citedBy && <span className="ml-1 px-1.5 rounded bg-green-100 text-green-800 font-semibold">후보 {citedBy.join(", ")}번 근거</span>}
+            </div>
+            {s.title && <div className="font-semibold">{s.title}</div>}
+            <div className="whitespace-pre-wrap text-gray-700">{s.content || "(30일 지나 내용 비움)"}</div>
+            {s.url && (
+                <a href={s.url} target="_blank" rel="noreferrer" className="text-xs text-green-700 hover:underline break-all">
+                    {s.url}
+                </a>
+            )}
+        </div>
+    );
+}
+
+function CandidateCard({ no, c, courses, busy, onAct }: { no: number; c: Candidate; courses: Detail["courses"]; busy: boolean; onAct: (body: object) => void }) {
     const [category, setCategory] = useState(c.category);
     const [content, setContent] = useState(c.content);
     const edited = category !== c.category || content !== c.content;
@@ -73,6 +93,7 @@ function CandidateCard({ c, courses, busy, onAct }: { c: Candidate; courses: Det
     return (
         <div className={`bg-white rounded-xl border p-4 ${c.status === "needs_check" ? "border-amber-300" : "border-gray-200"}`}>
             <div className="flex items-center gap-2 mb-2 text-xs">
+                <span className="font-bold text-gray-700">{no}번</span>
                 <span className={`px-2 py-0.5 rounded-full font-semibold ${STATUS_BADGE[c.status]?.[1] ?? ""}`}>{STATUS_BADGE[c.status]?.[0] ?? c.status}</span>
                 {c.conflict && <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-semibold">출처끼리 내용 다름</span>}
                 <span className="text-gray-500">
@@ -166,6 +187,19 @@ export default function AdminTipDetailPage() {
 
     const pending = data.tip_candidates.filter((c) => c.status in STATUS_BADGE);
 
+    // 근거 자료: 최신순, 아직 검수 안 한 후보가 인용한 글은 위로, 2년 넘은 글은 접어두기, 관련 없는 글은 개수만
+    const citedBy = new Map<number, number[]>();
+    pending.forEach((c, i) => c.source_ids.forEach((id) => citedBy.set(id, [...(citedBy.get(id) ?? []), i + 1])));
+    const relevant = data.tip_sources
+        .filter((s) => s.relevant)
+        .sort((a, b) => (b.written_at ?? "").localeCompare(a.written_at ?? ""));
+    const hiddenCount = data.tip_sources.length - relevant.length;
+    const twoYearsAgo = new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000).toISOString();
+    const cited = relevant.filter((s) => citedBy.has(s.id));
+    const rest = relevant.filter((s) => !citedBy.has(s.id));
+    const old = rest.filter((s) => s.written_at && s.written_at < twoYearsAgo);
+    const fresh = rest.filter((s) => !old.includes(s));
+
     return (
         <div className="p-6">
             <Link href="/admin/tips" className="text-sm text-gray-500 hover:underline">
@@ -190,30 +224,31 @@ export default function AdminTipDetailPage() {
 
             <div className="grid md:grid-cols-2 gap-6">
                 <section>
-                    <h2 className="font-bold mb-2">근거 자료 ({data.tip_sources.length})</h2>
+                    <h2 className="font-bold mb-2">
+                        근거 자료 ({relevant.length}){" "}
+                        {hiddenCount > 0 && <span className="text-xs font-normal text-gray-400">· 관련 없음 {hiddenCount}개</span>}
+                    </h2>
                     <div className="space-y-2 max-h-[80vh] overflow-y-auto pr-1">
-                        {data.tip_sources.map((s) => (
-                            <div key={s.id} className="bg-white rounded-xl border border-gray-200 p-3 text-sm">
-                                <div className="text-xs text-gray-500 mb-1">
-                                    #{s.id} · {SOURCE_LABEL[s.source_type] ?? s.source_type} · {day(s.written_at)}
-                                    {s.author ? ` · ${s.author}` : ""}
-                                </div>
-                                {s.title && <div className="font-semibold">{s.title}</div>}
-                                <div className="whitespace-pre-wrap text-gray-700">{s.content || "(30일 지나 내용 비움)"}</div>
-                                {s.url && (
-                                    <a href={s.url} target="_blank" rel="noreferrer" className="text-xs text-green-700 hover:underline break-all">
-                                        {s.url}
-                                    </a>
-                                )}
-                            </div>
+                        {[...cited, ...fresh].map((s) => (
+                            <SourceCard key={s.id} s={s} citedBy={citedBy.get(s.id)} />
                         ))}
+                        {old.length > 0 && (
+                            <details className="text-sm">
+                                <summary className="cursor-pointer text-gray-500 py-2">2년 넘은 글 {old.length}개</summary>
+                                <div className="space-y-2">
+                                    {old.map((s) => (
+                                        <SourceCard key={s.id} s={s} />
+                                    ))}
+                                </div>
+                            </details>
+                        )}
                     </div>
                 </section>
 
                 <section className="space-y-3">
                     <h2 className="font-bold">후보 ({pending.length})</h2>
-                    {pending.map((c) => (
-                        <CandidateCard key={`${c.id}-${c.content}`} c={c} courses={data.courses} busy={busy} onAct={(b) => act(b)} />
+                    {pending.map((c, i) => (
+                        <CandidateCard key={`${c.id}-${c.content}`} no={i + 1} c={c} courses={data.courses} busy={busy} onAct={(b) => act(b)} />
                     ))}
 
                     <div className="bg-white rounded-xl border border-gray-200 p-4">
