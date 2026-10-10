@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readPeriodInput } from "@/lib/placePeriod";
+import { translateAddress } from "@/lib/placeAutofill";
 import { checkCategory, checkOpeningHours, normalizeOpeningHours } from "@/lib/contentRules";
 import { normalizeCostRange } from "@/lib/costRange";
 import prisma from "@/lib/db";
@@ -323,6 +324,17 @@ export async function POST(request: NextRequest) {
                 tags: true,
             },
         });
+
+        // 주소 다국어 칸이 비어 있으면 자동 번역으로 채움 (자동채우기를 안 누르고 저장한 경우)
+        if (address && (!address_en || !address_ja || !address_zh)) {
+            const tr = await translateAddress(address);
+            if (tr) {
+                await prisma.place.update({
+                    where: { id: created.id },
+                    data: { address_en: address_en || tr.address_en, address_ja: address_ja || tr.address_ja, address_zh: address_zh || tr.address_zh },
+                });
+            }
+        }
 
         if (closedDaysList.length > 0) {
             await (prisma as any).placeClosedDay.createMany({

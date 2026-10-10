@@ -67,6 +67,37 @@ export interface PlaceAutofillResult {
     google_place_id: string;
 }
 
+/** 주소 다국어 (자동채우기와 같은 haiku). 실패하면 null */
+export async function translateAddress(address: string): Promise<{ address_en: string; address_ja: string; address_zh: string } | null> {
+    if (!process.env.ANTHROPIC_API_KEY || !address.trim()) return null;
+    try {
+        const message = await new Anthropic().messages.create(
+            {
+                model: "claude-haiku-4-5-20251001",
+                max_tokens: 500,
+                messages: [
+                    {
+                        role: "user",
+                        content: [
+                            "다음 한국 주소를 옮기세요.",
+                            `주소: ${address}`,
+                            'JSON만 응답: {"address_en": "로마자 표기 영문 주소", "address_ja": "일본어 주소", "address_zh": "중국어(간체) 주소"}',
+                        ].join("\n"),
+                    },
+                ],
+            },
+            { timeout: 30_000 }
+        );
+        const text = message.content[0].type === "text" ? message.content[0].text : "";
+        const json = text.match(/\{[\s\S]*\}/);
+        const r = json ? JSON.parse(json[0]) : null;
+        return r?.address_en && r?.address_ja && r?.address_zh ? r : null;
+    } catch (e) {
+        console.error("주소 번역 실패:", e);
+        return null;
+    }
+}
+
 function isNameMatch(input: string, result: string): boolean {
     const norm = (s: string) => s.replace(/\s/g, "").toLowerCase();
     const a = norm(input);

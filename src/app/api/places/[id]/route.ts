@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { readPeriodInput } from "@/lib/placePeriod";
 import { checkCategory, checkOpeningHours, normalizeOpeningHours } from "@/lib/contentRules";
 import { normalizeCostRange } from "@/lib/costRange";
+import { translateAddress } from "@/lib/placeAutofill";
 import prisma from "@/lib/db";
 import { resolveUserId, verifyAdminJwt } from "@/lib/auth";
 import { captureApiError } from "@/lib/sentry";
@@ -167,6 +168,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
             if (ruleError) return NextResponse.json({ error: ruleError }, { status: 400 });
         }
 
+        const prevAddr =
+            address !== undefined
+                ? await prisma.place.findUnique({ where: { id: placeId }, select: { address: true, address_en: true, address_ja: true, address_zh: true } })
+                : null;
+
         const updated = await (prisma as any).place.update({
             where: { id: placeId },
             data: {
@@ -209,6 +215,24 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
                 tags: true,
             },
         });
+
+        // 주소 다국어 자동 채우기: 주소가 바뀌었는데 번역 칸은 그대로면 다시 번역, 번역 칸이 비었으면 채움
+        // (관리자 화면이 번역 전에 열려 있던 경우 빈 칸으로 덮어써도 여기서 다시 채워짐)
+        if (prevAddr && typeof address === "string" && address.trim()) {
+            const cols = ["address_en", "address_ja", "address_zh"] as const;
+            const sent = { address_en, address_ja, address_zh } as Record<(typeof cols)[number], unknown>;
+            const untouched = cols.every((c) => sent[c] === undefined || (sent[c] || null) === (prevAddr[c] || null));
+            const now = Object.fromEntries(cols.map((c) => [c, sent[c] !== undefined ? sent[c] : prevAddr[c]])) as Record<(typeof cols)[number], unknown>;
+            const retranslateAll = address !== prevAddr.address && untouched;
+            const empty = cols.filter((c) => !String(now[c] ?? "").trim());
+            if (retranslateAll || empty.length) {
+                const tr = await translateAddress(address);
+                if (tr) {
+                    const fill = Object.fromEntries((retranslateAll ? cols : empty).map((c) => [c, tr[c]]));
+                    await prisma.place.update({ where: { id: placeId }, data: fill });
+                }
+            }
+        }
 
         if (rawClosedDays !== undefined) {
             await (prisma as any).placeClosedDay.deleteMany({ where: { place_id: placeId } });
