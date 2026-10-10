@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ymd } from "@/lib/placePeriod";
+import { isExpiredOption, ymd } from "@/lib/placePeriod";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
 import { getMergedTipsFromRow } from "@/types/tip";
@@ -141,7 +141,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             return NextResponse.json({ error: "Course not found" }, { status: 404 });
         }
 
-        const coursePlacesArray = Array.isArray(course.coursePlaces) ? course.coursePlaces : [];
+        // 선택형 구간에서 종료된 팝업 선택지는 숨김 (고정 장소가 끝난 코스는 목록에서 이미 빠짐)
+        const coursePlacesArray = (Array.isArray(course.coursePlaces) ? course.coursePlaces : []).filter((cp: any) => !isExpiredOption(cp));
 
         // 🟢 [Debug]: Prisma 쿼리 결과 확인
         if (process.env.NODE_ENV === "development") {

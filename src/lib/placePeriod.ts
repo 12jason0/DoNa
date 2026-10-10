@@ -8,9 +8,23 @@ export function kstToday(now = new Date()): Date {
     return new Date(Date.UTC(k.getUTCFullYear(), k.getUTCMonth(), k.getUTCDate()));
 }
 
-/** 코스 where 조건: 종료일 지난 장소가 하나라도 있는 코스 제외 */
+/**
+ * 코스 where 조건: 종료일 지난 "고정" 장소(segment 없음)가 있는 코스 제외.
+ * 선택형 선택지(segment 있음)가 끝난 경우는 코스를 유지하고 상세에서 그 선택지만 숨김(isExpiredOption).
+ * ponytail: 한 선택 구간의 선택지가 전부 끝난 코스는 목록에 남음. 생기면 SQL 조건으로 확장
+ */
 export function notExpiredCourseWhere(now = new Date()) {
-    return { coursePlaces: { none: { place: { end_date: { lt: kstToday(now) } } } } };
+    return { coursePlaces: { none: { segment: null, place: { end_date: { lt: kstToday(now) } } } } };
+}
+
+/** 장소가 종료됐는지 (종료일 당일까지는 진행 중) */
+export function isEnded(endDate: Date | null | undefined, now = new Date()) {
+    return !!endDate && endDate < kstToday(now);
+}
+
+/** 코스 상세에서 숨길 선택지: 선택형 구간(segment)에 있고 종료된 장소 */
+export function isExpiredOption(cp: { segment?: string | null; place?: { end_date?: Date | null } | null }, now = new Date()) {
+    return !!cp.segment && isEnded(cp.place?.end_date, now);
 }
 
 /**
