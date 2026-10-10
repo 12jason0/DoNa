@@ -44,10 +44,29 @@ export function coreKeywords(name: string): string[] {
     return [...new Set([squash(main.join("")), squash(longest)])].filter((k) => k.length >= 2);
 }
 
-/** 제목·요약에 가게 이름 핵심 단어가 있는 글만 관련 있음 */
-export function isRelevant(keywords: string[], title: string | null, content: string | null) {
+/** 저장된 이름의 지점명: "한림칼국수 공항점" → "공항점" (없으면 null) */
+export function branchOf(name: string): string | null {
+    const words = name.split(/[\s()\[\]!?.,·]+/).filter(Boolean);
+    const b = words.length > 1 ? words.find((w) => /.점$/.test(w)) : undefined;
+    return b ? squash(b) : null;
+}
+
+/**
+ * 제목·요약에 가게 이름 핵심 단어가 있는 글만 관련 있음.
+ * 지점이 있는 장소면, 브랜드 바로 뒤에 다른 지점명("한림칼국수 함덕점")이 적혀 있고 우리 지점은 언급이 없는 글은 관련 없음.
+ * 지점 언급이 없는 글은 그대로 관련 있음.
+ */
+export function isRelevant(keywords: string[], title: string | null, content: string | null, branch: string | null = null) {
     const text = squash(`${title ?? ""} ${content ?? ""}`);
-    return keywords.length === 0 || keywords.some((k) => text.includes(k));
+    if (keywords.length === 0) return true;
+    if (!keywords.some((k) => text.includes(k))) return false;
+    if (!branch || text.includes(branch)) return true;
+    const brand = keywords[0];
+    // ponytail: 브랜드 바로 뒤 "…점"만 지점으로 봄. "함덕 맛집 한림칼국수"처럼 지점명 없이 지역만 쓴 글은 못 거름
+    const others = [...text.matchAll(new RegExp(`${brand}([\\p{L}\\p{N}]{1,8}?점)(?![심수원포])`, "gu"))]
+        .map((m) => m[1])
+        .filter((b) => !b.includes(branch) && !branch.includes(b));
+    return others.length === 0;
 }
 
 /** "서울 종로구 율곡로 ..." → "종로구" (검색어 "가게명 + 지역"용) */
@@ -142,12 +161,13 @@ export async function collectTipSources(placeId: number) {
     // 같은 링크는 1번만 (구글 리뷰는 링크가 장소 링크로 같아서 제외)
     // 가게 이름이 없는 글은 relevant=false로 남김 (후보 근거에서 빠지고 화면엔 "관련 없음 N개"만, 통계용)
     const keywords = coreKeywords(place.name);
+    const branch = branchOf(place.name);
     const seen = new Set<string>();
     const rows = sources.map((s) => ({ ...s, relevant: true }));
     for (const s of [...naver, ...kakaoBlog, ...kakaoCafe]) {
         if (!s.url || seen.has(s.url) || !s.content) continue;
         seen.add(s.url);
-        rows.push({ ...s, relevant: isRelevant(keywords, s.title, s.content) });
+        rows.push({ ...s, relevant: isRelevant(keywords, s.title, s.content, branch) });
     }
 
     await prisma.$transaction([

@@ -1,6 +1,6 @@
 // 팁 후보 판정 규칙 확인: npx tsx scripts/check-tip-judge.ts
 import assert from "node:assert";
-import { coreKeywords, countDistinctSources, isRelevant, judgeCandidate } from "../src/lib/tipPipeline";
+import { branchOf, coreKeywords, countDistinctSources, isRelevant, judgeCandidate } from "../src/lib/tipPipeline";
 
 const s = (id: number, source_type: string, author: string | null, url: string | null = `u${id}`) => ({ id, source_type, author, url });
 const now = Date.parse("2026-10-10");
@@ -25,4 +25,14 @@ assert.deepEqual(kw, ["한림칼국수"]);
 assert.ok(isRelevant(kw, "제주 한림 칼국수 후기", null));
 assert.ok(!isRelevant(kw, "전국 로또 판매점 주소록", "칼국수 맛집"));
 assert.ok(isRelevant(coreKeywords("4233 마음센터"), "안국 4233마음센터 다녀옴", null));
+// 지점: 다른 지점이 브랜드 바로 뒤에 적힌 글만 관련 없음
+const br = branchOf("한림칼국수 공항점");
+assert.equal(br, "공항점");
+assert.equal(branchOf("4233 마음센터"), null);
+assert.ok(!isRelevant(kw, "제주도 여행 4일차", "한림칼국수 함덕점으로 갔다", br));
+assert.ok(!isRelevant(kw, "한림칼국수 제주본점 보말칼국수", null, br));
+assert.ok(isRelevant(kw, "한림 칼국수 제주공항점 후기", null, br)); // 우리 지점
+assert.ok(isRelevant(kw, "본점 또는 표선점, 한림칼국수 제주공항점", null, br)); // 우리 지점도 언급
+assert.ok(isRelevant(kw, "한림칼국수 다녀왔어요", "점심으로 딱", br)); // 지점 언급 없음
+assert.ok(isRelevant(kw, "한림칼국수점심 메뉴", null, br)); // "점심"은 지점 아님
 console.log("ok");
