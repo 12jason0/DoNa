@@ -26,13 +26,23 @@ async function downloadTelegramPhoto(fileId: string): Promise<Buffer> {
     return Buffer.from(await imgRes.arrayBuffer());
 }
 
-function parseCaption(caption: string): { placeName: string; neighborhood: string | null; category: string | null } {
-    const parts = caption.split("|").map((s) => s.trim());
+/** "이름 | 지역 | 카테고리", "이름, 지역", "이름 지역" 모두 받음. 구분자가 없으면 문장 전체가 검색어 */
+function parseCaption(caption: string): { placeName: string; neighborhood: string | null; category: string | null; hasSeparator: boolean } {
+    const parts = caption.split(/[|,]/).map((s) => s.trim());
     return {
         placeName: parts[0] || "",
         neighborhood: parts[1] || null,
         category: parts[2] || null,
+        hasSeparator: parts.length > 1,
     };
+}
+
+/** 카카오 키워드 검색. 결과 없으면 마지막 단어를 빼고 한 번 더 */
+async function searchKakaoWithFallback(query: string): Promise<KakaoPlace[]> {
+    const found = await kakaoKeywordSearch(query, 5);
+    const words = query.split(/\s+/);
+    if (found.length > 0 || words.length < 2) return found;
+    return kakaoKeywordSearch(words.slice(0, -1).join(" "), 5);
 }
 
 async function extractGpsFromBuffer(buffer: Buffer): Promise<{ latitude: number; longitude: number } | null> {
@@ -71,11 +81,15 @@ type Pending = {
     fileId: string;
     isDocument: boolean;
     candidates: KakaoPlace[];
+    hasSeparator: boolean;
 };
 const pendingKey = (chatId: number) => `tg:place-pending:${chatId}`;
 
 /** "맞아요"를 누른 뒤: 기존 저장 흐름 그대로 (주소·좌표는 고른 카카오 장소로 확정) → 저장된 장소 id */
-async function savePlace(chatId: number, { placeName, neighborhood, category, fileId, isDocument }: Pending, picked: KakaoPlace): Promise<number> {
+async function savePlace(chatId: number, pending: Pending, picked: KakaoPlace): Promise<number> {
+    const { neighborhood, category, fileId, isDocument } = pending;
+    // 구분자 없이 "이름 지역"으로 보냈으면 문장 전체가 이름이 되므로 고른 카카오 장소 이름을 씀
+    const placeName = pending.hasSeparator ? pending.placeName : picked.place_name;
     const categoryMsg = category ? ` (${category})` : "";
     const neighborhoodMsg = neighborhood ? ` / ${neighborhood}` : "";
     await sendTelegram(chatId, `📍 "${placeName}"${neighborhoodMsg}${categoryMsg} 저장 중...`);
@@ -198,7 +212,7 @@ export async function POST(request: NextRequest) {
 
         // /start 커맨드
         if (text === "/start") {
-            await sendTelegram(chatId, "안녕하세요!\n\n📎 사진을 파일로 보내면 GPS 자동 인식\n\n형식: 장소이름 | 지역 | 카테고리\n예시: 봉땅 | 홍대 | 카페\n\n카테고리: 카페 / 음식점 / 주점 / 소품샵 / 실내명소 / 야외명소 / 이색데이트 / 액티비티 / 사진관 / 인생네컷 / 향수 / 야경 / 식물원 / 시장 / 쇼핑");
+            await sendTelegram(chatId, "안녕하세요!\n\n📎 사진을 파일로 보내면 GPS 자동 인식\n\n형식: 장소이름 | 지역 | 카테고리 (| 대신 , 도 되고, 그냥 \"봉땅 홍대\"처럼 써도 돼요)\n예시: 봉땅 | 홍대 | 카페\n\n카테고리: 카페 / 음식점 / 주점 / 소품샵 / 실내명소 / 야외명소 / 이색데이트 / 액티비티 / 사진관 / 인생네컷 / 향수 / 야경 / 식물원 / 시장 / 쇼핑");
             return NextResponse.json({ ok: true });
         }
 
@@ -209,11 +223,11 @@ export async function POST(request: NextRequest) {
         if (isPhoto || isDocument) {
             const rawCaption = caption.trim();
             if (!rawCaption) {
-                await sendTelegram(chatId, "캡션에 장소 이름을 입력해주세요.\n형식: 장소이름 | 카테고리\n예시: 봉땅 | 카페");
+                await sendTelegram(chatId, "캡션에 장소 이름을 입력해주세요.\n예시: 봉땅 | 홍대  /  봉땅, 홍대  /  봉땅 홍대");
                 return NextResponse.json({ ok: true });
             }
 
-            const { placeName, neighborhood, category } = parseCaption(rawCaption);
+            const { placeName, neighborhood, category, hasSeparator } = parseCaption(rawCaption);
             if (!placeName) {
                 await sendTelegram(chatId, "장소 이름을 확인해주세요.");
                 return NextResponse.json({ ok: true });
@@ -223,13 +237,13 @@ export async function POST(request: NextRequest) {
                 ? message.document.file_id
                 : message.photo[message.photo.length - 1].file_id;
 
-            // 카카오 로컬로 "여기 맞아요?" 되묻기. 고를 때까지 1시간 보관
-            const found = await kakaoKeywordSearch(neighborhood ? `${placeName} ${neighborhood}` : placeName, 5);
+            // 카카오 로컬로 "여기 맞아요?" 되묻기 (어떤 형식이든 저장 전 항상). 고를 때까지 1시간 보관
+            const found = await searchKakaoWithFallback(neighborhood ? `${placeName} ${neighborhood}` : placeName);
             if (found.length === 0) {
-                await sendTelegram(chatId, `🔍 카카오에서 "${placeName}"${neighborhood ? ` (${neighborhood})` : ""}을(를) 못 찾았어요.\n이름이나 지역을 바꿔서 다시 보내주세요.`);
+                await sendTelegram(chatId, "🔍 못 찾았어요. 이름을 다시 보내주세요.");
                 return NextResponse.json({ ok: true });
             }
-            const pending: Pending = { placeName, neighborhood, category, fileId, isDocument, candidates: found };
+            const pending: Pending = { placeName, neighborhood, category, fileId, isDocument, candidates: found, hasSeparator };
             await defaultCache.set(pendingKey(chatId), pending, 60 * 60 * 1000);
 
             const line = (p: KakaoPlace) => `${p.place_name}\n   ${p.road_address_name || p.address_name}`;
