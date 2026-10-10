@@ -273,13 +273,84 @@ model Place {
   google_place_id      String?          @map("google_place_id") @db.VarChar(500)
   place_status         String?          @default("OPERATIONAL") @map("place_status") @db.VarChar(50)
   status_checked_at    DateTime?        @map("status_checked_at")
+  tip_status           String?          @map("tip_status") @db.VarChar(20)
   coursePlaces         CoursePlace[]
   closed_days          PlaceClosedDay[]
+  tip_sources          TipSource[]
+  tip_candidates       TipCandidate[]
+  place_tips           PlaceTip[]
+  tip_work_logs        TipWorkLog[]
 
   @@index([name])
   @@index([address])
   @@index([latitude, longitude])
   @@map("places")
+}
+
+/// 팁 파이프라인: 공식 API로 모은 근거 자료
+model TipSource {
+  id           Int       @id @default(autoincrement())
+  place_id     Int
+  source_type  String    @db.VarChar(20) /// google_info / google_review / naver_blog / kakao_blog / kakao_cafe / owner_text
+  author       String?   @db.VarChar(200)
+  title        String?
+  content      String?
+  url          String?
+  written_at   DateTime?
+  collected_at DateTime  @default(now())
+  place        Place     @relation(fields: [place_id], references: [id], onDelete: Cascade)
+
+  @@index([place_id])
+  @@map("tip_sources")
+}
+
+/// 팁 파이프라인: AI가 근거로 만든 팁 후보
+model TipCandidate {
+  id               Int       @id @default(autoincrement())
+  place_id         Int
+  category         String    @db.VarChar(30)
+  content          String
+  status           String    @db.VarChar(20) /// candidate / needs_check / approved / rejected
+  conflict         Boolean   @default(false)
+  source_ids       Int[]
+  source_count     Int       @default(0)
+  latest_source_at DateTime?
+  created_at       DateTime  @default(now())
+  decided_at       DateTime?
+  place            Place     @relation(fields: [place_id], references: [id], onDelete: Cascade)
+
+  @@index([place_id])
+  @@map("tip_candidates")
+}
+
+/// 팁 파이프라인: 승인된 장소 단위 팁 (4개 언어)
+model PlaceTip {
+  id           Int      @id @default(autoincrement())
+  place_id     Int
+  category     String   @db.VarChar(30)
+  content      String
+  content_en   String?
+  content_ja   String?
+  content_zh   String?
+  candidate_id Int?
+  approved_at  DateTime @default(now())
+  place        Place    @relation(fields: [place_id], references: [id], onDelete: Cascade)
+
+  @@index([place_id])
+  @@map("place_tips")
+}
+
+/// 팁 파이프라인: 검수 작업 시간 (상세 연 시각 ~ 마지막 승인)
+model TipWorkLog {
+  id               Int       @id @default(autoincrement())
+  place_id         Int
+  opened_at        DateTime  @default(now())
+  last_approved_at DateTime?
+  approved_count   Int       @default(0)
+  place            Place     @relation(fields: [place_id], references: [id], onDelete: Cascade)
+
+  @@index([place_id])
+  @@map("tip_work_logs")
 }
 
 model CoursePlace {

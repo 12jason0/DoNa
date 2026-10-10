@@ -42,6 +42,12 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: "GOOGLE_PLACES_API_KEY 없음" }, { status: 500 });
         }
 
+        // 구글 약관: Places 내용은 장기 보관 불가 → 30일 지난 구글 자료는 내용만 비우고 링크·날짜 유지
+        await prisma.tipSource.updateMany({
+            where: { source_type: { in: ["google_review", "google_info"] }, collected_at: { lt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }, content: { not: null } },
+            data: { content: null, author: null },
+        });
+
         const places = await (prisma as any).place.findMany({
             where: { google_place_id: { not: null } },
             select: { id: true, name: true, address: true, google_place_id: true, place_status: true },

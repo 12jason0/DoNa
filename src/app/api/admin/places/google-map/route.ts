@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { verifyAdminJwt } from "@/lib/auth";
 import { captureApiError } from "@/lib/sentry";
+import { findGooglePlace } from "@/lib/googlePlaces";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -12,28 +13,6 @@ const DELAY_MS = 150;
 
 function sleep(ms: number) {
     return new Promise((r) => setTimeout(r, ms));
-}
-
-interface PlaceResult {
-    place_id: string;
-    lat: number | null;
-    lng: number | null;
-}
-
-async function findGooglePlace(name: string, address: string): Promise<PlaceResult | null> {
-    const query = encodeURIComponent(`${name} ${address}`.trim());
-    // locationbias: 한국 중심(서울) 반경 300km
-    const url = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${query}&inputtype=textquery&fields=place_id,geometry&locationbias=circle:300000@37.5665,126.9780&key=${GOOGLE_API_KEY}`;
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const data = await res.json();
-    const candidate = data.candidates?.[0];
-    if (!candidate?.place_id) return null;
-    return {
-        place_id: candidate.place_id,
-        lat: candidate.geometry?.location?.lat ?? null,
-        lng: candidate.geometry?.location?.lng ?? null,
-    };
 }
 
 export async function POST(req: NextRequest) {

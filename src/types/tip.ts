@@ -43,6 +43,14 @@ export const TIP_CATEGORY_VALUES: readonly TipCategory[] = [
     "ETC",
 ] as const;
 
+/** 팁 파이프라인 장소 상태 (places.tip_status) */
+export const TIP_STATUS_LABEL: Record<string, string> = {
+    collecting: "수집 중",
+    review: "검수 대기",
+    done: "완료",
+    recheck: "재확인 필요",
+};
+
 const TIP_CATEGORY_SET = new Set<string>(TIP_CATEGORY_VALUES);
 
 function isKnownTipCategory(c: string): c is TipCategory {

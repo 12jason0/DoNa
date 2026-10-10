@@ -41,6 +41,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         >
                             🔢 핵심 숫자
                         </Link>
+                        <Link
+                            href="/admin/tips"
+                            className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-green-50 text-gray-700 hover:text-green-700 font-medium transition"
+                        >
+                            📝 팁 검수
+                        </Link>
 
                         <p className="px-4 text-xs font-semibold text-gray-400 uppercase mt-6 mb-2">데이터 관리</p>
                         <Link
