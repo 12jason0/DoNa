@@ -58,6 +58,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
                 priority: 0.9,
             },
             {
+                // 팝업·전시 모음 (기간 한정 장소, 매일 바뀜)
+                url: `${baseUrl}/popups`,
+                lastModified: new Date(),
+                changeFrequency: "daily",
+                priority: 0.8,
+            },
+            {
                 url: `${baseUrl}/map`,
                 lastModified: new Date(),
                 changeFrequency: "weekly",
@@ -136,6 +143,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
                 lastModified: new Date(),
                 changeFrequency: "weekly",
                 priority: 0.9,
+            },
+            {
+                // 팝업·전시 모음 (기간 한정 장소, 매일 바뀜)
+                url: `${baseUrl}/popups`,
+                lastModified: new Date(),
+                changeFrequency: "daily",
+                priority: 0.8,
             },
         ];
     }
