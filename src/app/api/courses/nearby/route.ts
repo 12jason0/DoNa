@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { notExpiredCourseWhere } from "@/lib/placePeriod";
 import prisma from "@/lib/db";
 import { defaultCache } from "@/lib/cache";
 import { sortCoursesByTimeMatch } from "@/lib/timeMatch";
@@ -104,6 +105,7 @@ export async function GET(request: NextRequest) {
 
     // 공개된 코스만 필터링
     andConditions.push({ isPublic: true });
+    andConditions.push(notExpiredCourseWhere()); // 종료일 지난 팝업 장소가 든 코스 제외
     const whereClause = { AND: andConditions };
 
     // isLocked 계산 헬퍼 (grade는 대소문자 무관하게 비교)

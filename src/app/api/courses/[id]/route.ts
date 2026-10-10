@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ymd } from "@/lib/placePeriod";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
 import { getMergedTipsFromRow } from "@/types/tip";
@@ -118,6 +119,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                                 parking_available: true,
                                 reservation_required: true,
                                 reservationUrl: true, // 🟢 예약 주소 추가
+                                start_date: true, // 팝업·전시 기간 (null = 상설)
+                                end_date: true,
                                 latitude: true,
                                 longitude: true,
                                 imageUrl: true,
@@ -226,6 +229,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                                 longitude: lngForMap,
                                 imageUrl: cp.place.imageUrl,
                                 closed_days: [],
+                                start_date: ymd(cp.place.start_date),
+                                end_date: ymd(cp.place.end_date),
                             },
                         };
                     }
@@ -250,6 +255,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                         latitude: isNaN(latitude as number) ? null : latitude,
                         longitude: isNaN(longitude as number) ? null : longitude,
                         closed_days: placeId ? closedDaysMap[placeId] || [] : [],
+                        start_date: ymd(cp.place?.start_date), // "2026-10-17"
+                        end_date: ymd(cp.place?.end_date),
                     };
 
                     if (process.env.NODE_ENV === "development" && cp.place?.id === 70) {

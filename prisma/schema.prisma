@@ -275,6 +275,8 @@ model Place {
   status_checked_at    DateTime?        @map("status_checked_at")
   tip_status           String?          @map("tip_status") @db.VarChar(20)
   tip_query            String?          @map("tip_query") @db.VarChar(200) /// 위치 없이 저장한 장소의 블로그 검색어 (이름 + 지역)
+  start_date           DateTime?        @map("start_date") @db.Date /// 팝업·전시 등 기간 한정 장소 시작일 (null = 상설)
+  end_date             DateTime?        @map("end_date") @db.Date /// 종료일. 지나면 이 장소가 들어간 코스는 목록·추천에서 빠짐
   coursePlaces         CoursePlace[]
   closed_days          PlaceClosedDay[]
   tip_sources          TipSource[]

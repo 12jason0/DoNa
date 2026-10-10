@@ -3,6 +3,7 @@ import { normalizeCostRange } from "@/lib/costRange";
 import { kakaoKeywordSearch, runPlaceAutofill, type KakaoPlace } from "@/lib/placeAutofill";
 import { defaultCache } from "@/lib/cache";
 import { closeTelegramButtons, sendTelegram } from "@/lib/telegram";
+import { parsePeriod, ymd } from "@/lib/placePeriod";
 import { runTipPipeline } from "@/lib/tipPipeline";
 import { getS3Client, getS3Bucket, getS3PublicUrl } from "@/lib/s3";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
@@ -82,6 +83,8 @@ type Pending = {
     isDocument: boolean;
     candidates: KakaoPlace[];
     hasSeparator: boolean;
+    startDate: string | null; // "2026-10-17", null = 상설
+    endDate: string | null;
 };
 const pendingKey = (chatId: number) => `tg:place-pending:${chatId}`;
 
@@ -163,6 +166,8 @@ async function savePlace(chatId: number, pending: Pending, picked: KakaoPlace | 
             status: "draft",
             // 위치 없는 장소는 팁 자료를 "이름 + 지역" 블로그 검색으로만 모음
             tip_query: picked ? null : [placeName, neighborhood].filter(Boolean).join(" "),
+            start_date: pending.startDate ? new Date(pending.startDate) : null,
+            end_date: pending.endDate ? new Date(pending.endDate) : null,
         },
         select: { id: true, name: true },
     });
@@ -182,7 +187,8 @@ async function savePlace(chatId: number, pending: Pending, picked: KakaoPlace | 
     const catNote = category ? `\n🏷 카테고리: ${category}` : "";
     const neighborNote = neighborhood ? `\n📍 지역: ${neighborhood}` : "";
     const noLocationNote = picked ? "" : "\n⚠️ 위치 없음: 어드민 장소 화면에서 주소·좌표를 입력해주세요.";
-    await sendTelegram(chatId, `✅ "${saved.name}" 저장 완료!\n\nID: ${saved.id}${neighborNote}${catNote}${gpsNote}${noLocationNote}\n어드민에서 확인·수정 후 발행하세요.`);
+    const periodNote = pending.startDate ? `\n🗓 기간: ${pending.startDate} ~ ${pending.endDate}` : "\n🗓 기간: 상설";
+    await sendTelegram(chatId, `✅ "${saved.name}" 저장 완료!\n\nID: ${saved.id}${neighborNote}${catNote}${periodNote}${gpsNote}${noLocationNote}\n어드민에서 확인·수정 후 발행하세요.`);
     return saved.id;
 }
 
@@ -227,7 +233,7 @@ export async function POST(request: NextRequest) {
 
         // /start 커맨드
         if (text === "/start") {
-            await sendTelegram(chatId, "안녕하세요!\n\n📎 사진을 파일로 보내면 GPS 자동 인식\n\n형식: 장소이름 | 지역 | 카테고리 (| 대신 , 도 되고, 그냥 \"봉땅 홍대\"처럼 써도 돼요)\n예시: 봉땅 | 홍대 | 카페\n\n카테고리: 카페 / 음식점 / 주점 / 소품샵 / 실내명소 / 야외명소 / 이색데이트 / 액티비티 / 사진관 / 인생네컷 / 향수 / 야경 / 식물원 / 시장 / 쇼핑");
+            await sendTelegram(chatId, "안녕하세요!\n\n📎 사진을 파일로 보내면 GPS 자동 인식\n\n형식: 장소이름 | 지역 | 카테고리 (| 대신 , 도 되고, 그냥 \"봉땅 홍대\"처럼 써도 돼요)\n예시: 봉땅 | 홍대 | 카페\n팝업·전시처럼 기간이 있으면 끝에: 짱구 전시, 성수, 10/17~1/24\n\n카테고리: 카페 / 음식점 / 주점 / 소품샵 / 실내명소 / 야외명소 / 이색데이트 / 액티비티 / 사진관 / 인생네컷 / 향수 / 야경 / 식물원 / 시장 / 쇼핑");
             return NextResponse.json({ ok: true });
         }
 
@@ -242,7 +248,9 @@ export async function POST(request: NextRequest) {
                 return NextResponse.json({ ok: true });
             }
 
-            const { placeName, neighborhood, category, hasSeparator } = parseCaption(rawCaption);
+            // "이름, 지역, 10/17~1/24"처럼 기간이 있으면 떼어내고 나머지로 이름·지역 해석 (없으면 상설)
+            const period = parsePeriod(rawCaption);
+            const { placeName, neighborhood, category, hasSeparator } = parseCaption(period?.rest ?? rawCaption);
             if (!placeName) {
                 await sendTelegram(chatId, "장소 이름을 확인해주세요.");
                 return NextResponse.json({ ok: true });
@@ -254,7 +262,10 @@ export async function POST(request: NextRequest) {
 
             // 카카오 로컬로 "여기 맞아요?" 되묻기 (어떤 형식이든 저장 전 항상). 고를 때까지 1시간 보관
             const found = await searchKakaoWithFallback(neighborhood ? `${placeName} ${neighborhood}` : placeName);
-            const pending: Pending = { placeName, neighborhood, category, fileId, isDocument, candidates: found, hasSeparator };
+            const pending: Pending = {
+                placeName, neighborhood, category, fileId, isDocument, candidates: found, hasSeparator,
+                startDate: ymd(period?.start), endDate: ymd(period?.end),
+            };
             await defaultCache.set(pendingKey(chatId), pending, 60 * 60 * 1000);
             if (found.length === 0) {
                 await sendTelegram(chatId, "🔍 못 찾았어요. 이름을 다시 보내주세요.\n카카오에 없는 곳(팝업·전시 등)이면 위치 없이 저장할 수 있어요.", [

@@ -29,6 +29,8 @@ type Place = {
     latitude?: number | null;
     longitude?: number | null;
     imageUrl?: string | null;
+    start_date?: string | null; // "2026-10-17", 비우면 상설
+    end_date?: string | null;
 };
 
 const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"] as const;
@@ -42,6 +44,7 @@ const INITIAL_PLACE: Omit<Place, "id"> = {
     phone: "", website: "", reservation_required: false,
     reservationUrl: "", parking_available: false,
     latitude: undefined, longitude: undefined, imageUrl: "",
+    start_date: "", end_date: "",
 };
 
 function parseOpeningHoursTime(str: string | null | undefined): { openTime: string; closeTime: string } {
@@ -175,6 +178,8 @@ export default function AdminPlacesPage() {
             latitude: place.latitude ?? undefined,
             longitude: place.longitude ?? undefined,
             imageUrl: place.imageUrl || "",
+            start_date: place.start_date?.slice(0, 10) || "",
+            end_date: place.end_date?.slice(0, 10) || "",
         });
 
         const { openTime: ot, closeTime: ct } = parseOpeningHoursTime(place.opening_hours);
@@ -531,6 +536,15 @@ export default function AdminPlacesPage() {
                         <div className="space-y-1">
                             <label className="text-sm font-medium text-gray-600">경도 (Longitude)</label>
                             <input type="number" step="any" name="longitude" value={formData.longitude ?? ""} onChange={handleNumberChange} className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none" />
+                        </div>
+
+                        <div className="space-y-1">
+                            <label className="text-sm font-medium text-gray-600">시작일 (팝업·전시, 비우면 상설)</label>
+                            <input type="date" name="start_date" value={formData.start_date || ""} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-sm font-medium text-gray-600">종료일 (지나면 이 장소가 든 코스는 목록·추천에서 빠짐)</label>
+                            <input type="date" name="end_date" value={formData.end_date || ""} min={formData.start_date || undefined} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none" />
                         </div>
 
                         <div className="flex gap-6 items-center pt-4">

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { readPeriodInput } from "@/lib/placePeriod";
 import { checkCategory, checkOpeningHours, normalizeOpeningHours } from "@/lib/contentRules";
 import { normalizeCostRange } from "@/lib/costRange";
 import prisma from "@/lib/db";
@@ -68,6 +69,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 reservation_required: true,
                 reservationUrl: true,
                 parking_available: true,
+                start_date: true,
+                end_date: true,
                 latitude: true,
                 longitude: true,
                 imageUrl: true,
@@ -130,7 +133,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
             imageUrl,
             tags,
             closed_days: rawClosedDays,
+            start_date,
+            end_date,
         } = body || {};
+        const period = readPeriodInput(start_date, end_date);
+        if (period.error) return NextResponse.json({ error: period.error }, { status: 400 });
 
         const coerceTags = (val: any) => {
             if (val == null) return null;
@@ -188,6 +195,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
                 ...(imageUrl !== undefined ? { imageUrl } : {}),
                 ...(tags !== undefined ? { tags: coerceTags(tags) } : {}),
                 ...(status !== undefined ? { status } : {}),
+                ...period,
             },
             select: {
                 id: true,

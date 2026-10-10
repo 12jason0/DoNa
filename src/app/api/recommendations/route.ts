@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { notExpiredCourseWhere } from "@/lib/placePeriod";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
 import { getChips, type ChipContext, type DayType } from "@/constants/chipRules";
@@ -1039,7 +1040,7 @@ export async function GET(req: NextRequest) {
             }
         }
 
-        const whereConditions: any = { isPublic: true };
+        const whereConditions: any = { isPublic: true, AND: [notExpiredCourseWhere()] }; // 종료일 지난 팝업 장소가 든 코스 제외
         if (mode === "ai") {
             // 🟢 오늘의 데이트 추천: FREE/BASIC/PREMIUM 모두 조회 후 등급별 필터링
             whereConditions.grade = { in: ["FREE", "BASIC", "PREMIUM"] };

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { notExpiredCourseWhere } from "@/lib/placePeriod";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
 import { captureApiError } from "@/lib/sentry";
@@ -28,6 +29,7 @@ export async function GET(request: NextRequest) {
         // (2) Course 검색 조건 - 공개된 코스만
         let courseWhere: any = {
             isPublic: true,
+            AND: [notExpiredCourseWhere()], // 종료일 지난 팝업 장소가 든 코스 제외
             coursePlaces: {
                 some: {
                     place: {

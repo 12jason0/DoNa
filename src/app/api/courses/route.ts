@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { notExpiredCourseWhere } from "@/lib/placePeriod";
 import { interleaveByGrade, MAX_LIST_COURSES } from "@/lib/courseListOrder";
 import prisma from "@/lib/db";
 import { Prisma } from "@prisma/client";
@@ -185,7 +186,7 @@ export async function GET(request: NextRequest) {
             let cached = noCache ? null : await defaultCache.get<any[]>(cacheKey);
             if (!cached) {
                 const allRaw = await prisma.course.findMany({
-                    where: { isPublic: true },
+                    where: { isPublic: true, ...notExpiredCourseWhere() },
                     take: MAX_LIST_COURSES,
                     orderBy: { id: "desc" },
                     select: courseSelect,
@@ -201,7 +202,7 @@ export async function GET(request: NextRequest) {
         }
 
         // [수정] 비-기본 로드 시 필터 쿼리 로직 명시적 추가
-        const andWhere: any[] = [{ isPublic: true }];
+        const andWhere: any[] = [{ isPublic: true }, notExpiredCourseWhere()];
         if (concept) andWhere.push({ concept: { contains: concept, mode: "insensitive" } }); // 🟢 case-insensitive로 변경
         if (gradeParam) andWhere.push({ grade: gradeParam });
         if (regionQuery) {
