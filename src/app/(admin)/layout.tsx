@@ -15,6 +15,8 @@ export const metadata: Metadata = {
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     return (
+        // 관리자 화면은 시스템 기본 폰트 (globals.css .admin-system-font, 로그인 화면 포함)
+        <div className="admin-system-font">
         <AdminAuthGuard>
             <div className="flex min-h-screen bg-gray-50 text-gray-900 font-sans">
                 {/* 1. 왼쪽 사이드바 (PC 화면용) */}
@@ -132,5 +134,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </div>
             </div>
         </AdminAuthGuard>
+        </div>
     );
 }

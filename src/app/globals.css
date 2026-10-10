@@ -466,3 +466,21 @@ html[lang="ko"] .font-extrabold {
 html[lang="ko"] .font-black {
     font-weight: 500 !important;
 }
+
+/*
+ * 관리자(/admin) 전용: 시스템 기본 폰트 + 표준 굵기.
+ * 위의 브랜드 폰트·굵기 완화 규칙보다 뒤에 두고, 선택자를 html 로 시작해 html[lang="ko"] 규칙보다 우선.
+ * 일반 사용자 페이지에는 영향 없음 ((admin)/layout.tsx 의 .admin-system-font 안에서만)
+ */
+html .admin-system-font {
+    --font-app: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", Roboto, sans-serif;
+    --font-sans: var(--font-app);
+    font-family: var(--font-app);
+    font-weight: 400;
+}
+html .admin-system-font .font-normal { font-weight: 400 !important; }
+html .admin-system-font .font-medium { font-weight: 500 !important; }
+html .admin-system-font .font-semibold { font-weight: 600 !important; }
+html .admin-system-font .font-bold { font-weight: 700 !important; }
+html .admin-system-font .font-extrabold { font-weight: 800 !important; }
+html .admin-system-font .font-black { font-weight: 900 !important; }
