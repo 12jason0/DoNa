@@ -64,6 +64,7 @@ export default function AdminPlacesPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [loading, setLoading] = useState(false);
     const [isAutofilling, setIsAutofilling] = useState(false);
+    const [isFindingAddress, setIsFindingAddress] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const imageInputRef = useRef<HTMLInputElement>(null);
 
@@ -263,6 +264,38 @@ export default function AdminPlacesPage() {
         }
     };
 
+    // 위치 없는 팝업·전시: 모은 블로그 자료에서 주소 찾기 → 확인 후 저장 + 구글 자료 다시 모으기
+    const handleFindAddress = async () => {
+        if (!editingId) return;
+        setIsFindingAddress(true);
+        try {
+            const res = await fetch(`/api/admin/places/${editingId}/find-address`, { method: "POST", credentials: "include" });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "주소 찾기 실패");
+            const f = data.found;
+            if (!f) {
+                alert("주소를 못 찾았어요. 텔레그램에 @건물이름으로 보내거나 직접 입력해주세요.");
+                return;
+            }
+            if (!confirm(`여기 맞아요?\n${f.address}\n(블로그 ${f.sourceCount}곳에서 같은 주소)`)) return;
+            const saveRes = await fetch(`/api/admin/places/${editingId}/find-address`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ apply: { address: f.address, lat: f.lat, lng: f.lng } }),
+            });
+            const saved = await saveRes.json();
+            if (!saveRes.ok) throw new Error(saved.error || "저장 실패");
+            setFormData((prev) => ({ ...prev, address: f.address, latitude: f.lat, longitude: f.lng }));
+            alert(`저장했어요. 구글 자료까지 다시 모았어요${saved.tips ? ` (후보 ${saved.tips.candidate}, 가게 공식 ${saved.tips.official}, 확인 필요 ${saved.tips.needsCheck})` : ""}.`);
+            fetchPlaces(currentPage, false);
+        } catch (e: any) {
+            alert(`주소 찾기 실패: ${e.message}`);
+        } finally {
+            setIsFindingAddress(false);
+        }
+    };
+
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -430,7 +463,19 @@ export default function AdminPlacesPage() {
                             </select>
                         </div>
                         <div className="space-y-1 md:col-span-2">
-                            <label className="text-sm font-medium text-gray-600">주소 (한국어)</label>
+                            <label className="text-sm font-medium text-gray-600">
+                                주소 (한국어)
+                                {editingId && !formData.address && formData.latitude == null && (
+                                    <button
+                                        type="button"
+                                        onClick={handleFindAddress}
+                                        disabled={isFindingAddress}
+                                        className="ml-2 px-2 py-0.5 rounded bg-green-50 border border-green-200 text-green-700 text-xs font-semibold disabled:opacity-50"
+                                    >
+                                        {isFindingAddress ? "찾는 중..." : "주소 자동 찾기"}
+                                    </button>
+                                )}
+                            </label>
                             <input
                                 name="address"
                                 placeholder="도로명 주소"

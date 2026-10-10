@@ -4,6 +4,7 @@ import { kakaoKeywordSearch, runPlaceAutofill, type KakaoPlace } from "@/lib/pla
 import { defaultCache } from "@/lib/cache";
 import { closeTelegramButtons, sendTelegram } from "@/lib/telegram";
 import { parsePeriod, ymd } from "@/lib/placePeriod";
+import { handleAddressButton, handleBuildingMessage, suggestPopupAddress } from "@/lib/popupAddress";
 import { runTipPipeline } from "@/lib/tipPipeline";
 import { getS3Client, getS3Bucket, getS3PublicUrl } from "@/lib/s3";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
@@ -203,6 +204,12 @@ export async function POST(request: NextRequest) {
             const cbChatId: number = cb.message?.chat?.id;
             if (ALLOWED_IDS.length > 0 && !ALLOWED_IDS.includes(cbChatId)) return NextResponse.json({ ok: true });
             await closeTelegramButtons(cb.id, cbChatId, cb.message.message_id);
+            // 위치 없는 팝업의 주소 확인 버튼
+            if (String(cb.data ?? "").startsWith("addr:")) {
+                const placeId = await handleAddressButton(cbChatId, String(cb.data));
+                if (placeId) after(() => runTipPipeline(placeId, cbChatId).catch(() => {}));
+                return NextResponse.json({ ok: true });
+            }
             const pending = await defaultCache.get<Pending>(pendingKey(cbChatId));
             defaultCache.delete(pendingKey(cbChatId));
             const pick = String(cb.data ?? "").replace("pick:", "");
@@ -214,7 +221,11 @@ export async function POST(request: NextRequest) {
             } else {
                 const placeId = await savePlace(cbChatId, pending, picked ?? null);
                 await sendTelegram(cbChatId, "📚 팁 자료 모으는 중... 끝나면 알려드릴게요.");
-                after(() => runTipPipeline(placeId, cbChatId, startedAt).catch(() => {}));
+                after(async () => {
+                    await runTipPipeline(placeId, cbChatId, startedAt).catch(() => {});
+                    // 카카오에 없어 위치 없이 저장한 장소: 모은 블로그 자료에서 주소 찾아 "여기 맞아요?"
+                    if (!picked) await suggestPopupAddress(placeId, cbChatId).catch((e) => console.error("주소 찾기 실패:", e));
+                });
             }
             return NextResponse.json({ ok: true });
         }
@@ -228,6 +239,12 @@ export async function POST(request: NextRequest) {
 
         // 인증되지 않은 채팅 무시
         if (ALLOWED_IDS.length > 0 && !ALLOWED_IDS.includes(chatId)) {
+            return NextResponse.json({ ok: true });
+        }
+
+        // "@건물이름": 위치를 기다리는 팝업 장소의 건물 검색
+        if (text.trim().startsWith("@") && text.trim().length > 1) {
+            await handleBuildingMessage(chatId, text.trim().slice(1).trim());
             return NextResponse.json({ ok: true });
         }
 
