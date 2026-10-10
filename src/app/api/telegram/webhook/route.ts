@@ -5,6 +5,7 @@ import { defaultCache } from "@/lib/cache";
 import { closeTelegramButtons, sendTelegram } from "@/lib/telegram";
 import { parsePeriod, ymd } from "@/lib/placePeriod";
 import { handleAddressButton, handleBuildingMessage, suggestPopupAddress } from "@/lib/popupAddress";
+import { translatePopupFields } from "@/lib/popupTranslate";
 import { runTipPipeline } from "@/lib/tipPipeline";
 import { getS3Client, getS3Bucket, getS3PublicUrl } from "@/lib/s3";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
@@ -223,6 +224,8 @@ export async function POST(request: NextRequest) {
                 await sendTelegram(cbChatId, "📚 팁 자료 모으는 중... 끝나면 알려드릴게요.");
                 after(async () => {
                     await runTipPipeline(placeId, cbChatId, startedAt).catch(() => {});
+                    // 팝업(기간 있음): 이름은 공식 영문명 아니면 원문, 주소는 번역 (모은 블로그 자료 사용)
+                    if (pending.startDate || pending.endDate) await translatePopupFields(placeId).catch((e) => console.error("팝업 번역 실패:", e));
                     // 카카오에 없어 위치 없이 저장한 장소: 모은 블로그 자료에서 주소 찾아 "여기 맞아요?"
                     if (!picked) await suggestPopupAddress(placeId, cbChatId).catch((e) => console.error("주소 찾기 실패:", e));
                 });

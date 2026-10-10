@@ -1,4 +1,22 @@
 {
+  "popups": {
+    "metaTitle": "ソウルのポップアップストア・展示まとめ — 開催中・まもなく開始",
+    "metaDescription": "ソウルで開催中のポップアップストアや展示、2週間以内に始まるものを期間とあわせてまとめました。終了間近のものはカウントダウン表示し、一緒に回れるデートコースもご紹介します。",
+    "heroTitle": "ポップアップ・展示まとめ",
+    "heroSub": "開催中のものと、2週間以内に始まるものです。",
+    "ongoing": "開催中",
+    "upcoming": "まもなく開始",
+    "emptyOngoing": "現在開催中のポップアップはありません",
+    "emptyUpcoming": "2週間以内に始まるポップアップはありません",
+    "coursesWithPlace": "この場所を含むコース",
+    "endsToday": "本日終了",
+    "endsInDays": "終了まであと{n}日",
+    "startsInDays": "{n}日後に開始",
+    "date": "{m}月{d}日",
+    "dateWithYear": "{y}年{m}月{d}日",
+    "period": "{start}〜{end}",
+    "loadFailed": "読み込めませんでした。タップして再試行"
+  },
   "header": {
     "loggingOut": "donaは安全にログアウトしています",
     "closeSettingsModal": "設定モーダルを閉じる",

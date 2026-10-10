@@ -1,4 +1,22 @@
 {
+    "popups": {
+        "metaTitle": "서울 팝업스토어·전시 모음 — 지금 진행 중, 곧 시작",
+        "metaDescription": "지금 서울에서 진행 중인 팝업스토어와 전시, 2주 안에 시작하는 곳을 기간과 함께 모았어요. 종료가 임박한 곳은 D-day로 표시하고, 함께 가기 좋은 데이트 코스도 연결해 드려요.",
+        "heroTitle": "팝업·전시 모음",
+        "heroSub": "지금 진행 중인 곳과 2주 안에 시작하는 곳이에요.",
+        "ongoing": "진행 중",
+        "upcoming": "곧 시작",
+        "emptyOngoing": "지금 진행 중인 팝업이 없어요",
+        "emptyUpcoming": "2주 안에 시작하는 팝업이 없어요",
+        "coursesWithPlace": "이 장소가 들어간 코스",
+        "endsToday": "오늘 종료",
+        "endsInDays": "D-{n} 종료",
+        "startsInDays": "{n}일 후 시작",
+        "date": "{m}.{d}",
+        "dateWithYear": "{y}.{m}.{d}",
+        "period": "{start} ~ {end}",
+        "loadFailed": "불러오지 못했어요. 눌러서 다시 시도"
+    },
     "header": {
         "loggingOut": "dona가 안전하게 로그아웃 하고 있습니다",
         "closeSettingsModal": "설정 모달 닫기",

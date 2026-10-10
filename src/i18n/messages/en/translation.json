@@ -1,4 +1,22 @@
 {
+  "popups": {
+    "metaTitle": "Seoul Pop-up Stores & Exhibitions — Now Open, Opening Soon",
+    "metaDescription": "Pop-up stores and exhibitions open now in Seoul, plus those opening within two weeks, with their dates. Closing-soon spots are marked with a countdown, and we link date courses that include them.",
+    "heroTitle": "Pop-ups & Exhibitions",
+    "heroSub": "Open now, and opening within the next two weeks.",
+    "ongoing": "Now open",
+    "upcoming": "Opening soon",
+    "emptyOngoing": "No pop-ups are open right now",
+    "emptyUpcoming": "No pop-ups open in the next two weeks",
+    "coursesWithPlace": "Courses with this place",
+    "endsToday": "Ends today",
+    "endsInDays": "Ends in {n}d",
+    "startsInDays": "Opens in {n}d",
+    "date": "{m}/{d}",
+    "dateWithYear": "{m}/{d}/{y}",
+    "period": "{start} – {end}",
+    "loadFailed": "Couldn't load. Tap to try again"
+  },
   "header": {
     "loggingOut": "dona is logging out securely",
     "closeSettingsModal": "Close settings modal",

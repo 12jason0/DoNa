@@ -1,4 +1,22 @@
 {
+  "popups": {
+    "metaTitle": "首尔快闪店·展览合集 — 正在进行、即将开始",
+    "metaDescription": "汇总首尔正在进行的快闪店和展览，以及两周内即将开始的活动和日期。即将结束的会显示倒计时，并推荐包含这些地点的约会路线。",
+    "heroTitle": "快闪店·展览合集",
+    "heroSub": "正在进行和两周内即将开始的活动。",
+    "ongoing": "正在进行",
+    "upcoming": "即将开始",
+    "emptyOngoing": "目前没有正在进行的快闪店",
+    "emptyUpcoming": "两周内没有即将开始的快闪店",
+    "coursesWithPlace": "包含此地点的路线",
+    "endsToday": "今天结束",
+    "endsInDays": "还剩{n}天",
+    "startsInDays": "{n}天后开始",
+    "date": "{m}月{d}日",
+    "dateWithYear": "{y}年{m}月{d}日",
+    "period": "{start}～{end}",
+    "loadFailed": "加载失败，点击重试"
+  },
   "header": {
     "loggingOut": "dona正在安全退出登录",
     "closeSettingsModal": "关闭设置弹窗",

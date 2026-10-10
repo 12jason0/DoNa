@@ -4,6 +4,7 @@ import { defaultCache } from "@/lib/cache";
 import { kakaoKeywordSearch } from "@/lib/placeAutofill";
 import { sendTelegram } from "@/lib/telegram";
 import { countDistinctSources } from "@/lib/tipPipeline";
+import { translatePopupFields } from "@/lib/popupTranslate";
 
 // "서울 성동구 연무장5길 9-29", "성동구 연무장 5길 9-29" (시·도는 있어도 없어도 됨)
 const FULL_ROAD_RE = /([가-힣]+(?:구|군|시))\s+([가-힣][가-힣0-9 ]{0,15}?(?:로|길))\s*(\d{1,5}(?:-\d{1,4})?)(?![\d가-힣]|,\d)/g;
@@ -63,12 +64,13 @@ export async function findPopupAddress(placeId: number): Promise<(LocationOption
     return null;
 }
 
-/** 주소·좌표 저장 (이름·tip_query는 그대로) */
+/** 주소·좌표 저장 (이름·tip_query는 그대로) + 주소 다국어 칸 채우기 */
 export async function savePlaceLocation(placeId: number, loc: LocationOption) {
     await prisma.place.update({
         where: { id: placeId },
         data: { address: loc.address, latitude: loc.lat, longitude: loc.lng },
     });
+    await translatePopupFields(placeId).catch((e) => console.error("팝업 주소 번역 실패:", e));
 }
 
 // ---- 텔레그램: "여기 맞아요?" 버튼 / "@건물이름" ----
