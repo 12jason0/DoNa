@@ -611,7 +611,12 @@ export default function AdminPlacesPage() {
                                     <img src={p.imageUrl} alt={p.name} className="w-16 h-16 object-cover rounded-lg flex-shrink-0" />
                                 )}
                                 <div className="flex-1 min-w-0">
-                                    <p className="font-semibold text-gray-800">{p.name}</p>
+                                    <p className="font-semibold text-gray-800">
+                                        {p.name}
+                                        {!p.address && p.latitude == null && (
+                                            <span className="ml-2 px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-semibold">위치 없음</span>
+                                        )}
+                                    </p>
                                     <p className="text-sm text-gray-500 truncate">{p.address}</p>
                                     <p className="text-xs text-gray-400">{p.category}</p>
                                 </div>

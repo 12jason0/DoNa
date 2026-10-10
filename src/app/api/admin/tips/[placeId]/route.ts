@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { verifyAdminJwt } from "@/lib/auth";
-import { approveTip, generateTipCandidates, refreshTipStatus, runTipPipeline } from "@/lib/tipPipeline";
+import { approveTip, generateTipCandidates, logTipRun, refreshTipStatus, runTipPipeline } from "@/lib/tipPipeline";
 import { parseTipsFromDb } from "@/types/tip";
 
 export const dynamic = "force-dynamic";
@@ -72,7 +72,20 @@ export async function POST(req: NextRequest, { params }: Ctx) {
                 await prisma.tipSource.create({
                     data: { place_id: placeId, source_type: "owner_text", author: "가게 공지·메뉴판", title: "관리자 붙여넣기", content: text.slice(0, 5000), written_at: new Date() },
                 });
-                return NextResponse.json(await generateTipCandidates(placeId));
+                const startedAt = new Date();
+                const r = await generateTipCandidates(placeId);
+                await logTipRun({
+                    place_id: placeId,
+                    kind: "paste",
+                    started_at: startedAt,
+                    finished_at: new Date(),
+                    candidate: r.candidate,
+                    official: r.official,
+                    needs_check: r.needsCheck,
+                    input_tokens: r.tokens.input,
+                    output_tokens: r.tokens.output,
+                });
+                return NextResponse.json(r);
             }
             case "recollect":
                 return NextResponse.json(await runTipPipeline(placeId));

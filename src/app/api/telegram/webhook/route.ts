@@ -85,11 +85,14 @@ type Pending = {
 };
 const pendingKey = (chatId: number) => `tg:place-pending:${chatId}`;
 
-/** "맞아요"를 누른 뒤: 기존 저장 흐름 그대로 (주소·좌표는 고른 카카오 장소로 확정) → 저장된 장소 id */
-async function savePlace(chatId: number, pending: Pending, picked: KakaoPlace): Promise<number> {
+/**
+ * "맞아요"를 누른 뒤: 기존 저장 흐름 그대로 (주소·좌표는 고른 카카오 장소로 확정) → 저장된 장소 id
+ * picked가 null이면 "이름 그대로 저장": 보낸 이름으로 저장, 주소·좌표는 비움 (관리자 화면에서 나중에 입력)
+ */
+async function savePlace(chatId: number, pending: Pending, picked: KakaoPlace | null): Promise<number> {
     const { neighborhood, category, fileId, isDocument } = pending;
     // 구분자 없이 "이름 지역"으로 보냈으면 문장 전체가 이름이 되므로 고른 카카오 장소 이름을 씀
-    const placeName = pending.hasSeparator ? pending.placeName : picked.place_name;
+    const placeName = pending.hasSeparator || !picked ? pending.placeName : picked.place_name;
     const categoryMsg = category ? ` (${category})` : "";
     const neighborhoodMsg = neighborhood ? ` / ${neighborhood}` : "";
     await sendTelegram(chatId, `📍 "${placeName}"${neighborhoodMsg}${categoryMsg} 저장 중...`);
@@ -99,14 +102,22 @@ async function savePlace(chatId: number, pending: Pending, picked: KakaoPlace): 
 
     // 파일로 보낸 경우 GPS 추출
     let gpsCoords: { latitude: number; longitude: number } | null = null;
-    if (isDocument && photoBuffer) {
+    if (isDocument && photoBuffer && picked) {
         gpsCoords = await extractGpsFromBuffer(photoBuffer);
         if (gpsCoords) {
             await sendTelegram(chatId, `📡 GPS 감지됨 (${gpsCoords.latitude.toFixed(4)}, ${gpsCoords.longitude.toFixed(4)})`);
         }
     }
 
-    const autofillData = await runPlaceAutofill(placeName, photoBuffer ?? undefined, category ?? undefined, neighborhood ?? undefined, picked).catch((e) => { console.error("autofill 실패:", e); return { name: placeName } as any; });
+    const autofillData = await runPlaceAutofill(placeName, photoBuffer ?? undefined, category ?? undefined, neighborhood ?? undefined, picked ?? undefined).catch((e) => { console.error("autofill 실패:", e); return { name: placeName } as any; });
+    if (!picked) {
+        // 카카오에 없는 장소: 이름이 비슷한 다른 가게의 위치·영업시간이 섞이지 않게 비움
+        Object.assign(autofillData, {
+            address: "", address_en: "", address_ja: "", address_zh: "",
+            latitude: null, longitude: null, google_place_id: "",
+            opening_hours: "", closed_days: [], phone: "", website: "",
+        });
+    }
 
     // GPS가 있으면 카카오 좌표보다 우선 적용
     if (gpsCoords) {
@@ -150,6 +161,8 @@ async function savePlace(chatId: number, pending: Pending, picked: KakaoPlace): 
             longitude: autofillData.longitude ?? null,
             imageUrl: imageUrl || null,
             status: "draft",
+            // 위치 없는 장소는 팁 자료를 "이름 + 지역" 블로그 검색으로만 모음
+            tip_query: picked ? null : [placeName, neighborhood].filter(Boolean).join(" "),
         },
         select: { id: true, name: true },
     });
@@ -168,7 +181,8 @@ async function savePlace(chatId: number, pending: Pending, picked: KakaoPlace): 
     const gpsNote = gpsCoords ? "\n📡 GPS 좌표 자동 적용" : "";
     const catNote = category ? `\n🏷 카테고리: ${category}` : "";
     const neighborNote = neighborhood ? `\n📍 지역: ${neighborhood}` : "";
-    await sendTelegram(chatId, `✅ "${saved.name}" 저장 완료!\n\nID: ${saved.id}${neighborNote}${catNote}${gpsNote}\n어드민에서 확인·수정 후 발행하세요.`);
+    const noLocationNote = picked ? "" : "\n⚠️ 위치 없음: 어드민 장소 화면에서 주소·좌표를 입력해주세요.";
+    await sendTelegram(chatId, `✅ "${saved.name}" 저장 완료!\n\nID: ${saved.id}${neighborNote}${catNote}${gpsNote}${noLocationNote}\n어드민에서 확인·수정 후 발행하세요.`);
     return saved.id;
 }
 
@@ -179,6 +193,7 @@ export async function POST(request: NextRequest) {
         // 장소 확인 버튼
         const cb = body?.callback_query;
         if (cb) {
+            const startedAt = new Date(); // "맞아요" 누른 시각 → 자동 처리 시간 통계
             const cbChatId: number = cb.message?.chat?.id;
             if (ALLOWED_IDS.length > 0 && !ALLOWED_IDS.includes(cbChatId)) return NextResponse.json({ ok: true });
             await closeTelegramButtons(cb.id, cbChatId, cb.message.message_id);
@@ -188,12 +203,12 @@ export async function POST(request: NextRequest) {
             const picked = pending?.candidates[Number(pick)];
             if (!pending) {
                 await sendTelegram(cbChatId, "시간이 지나서 취소됐어요. 사진을 다시 보내주세요.");
-            } else if (!picked) {
+            } else if (!picked && pick !== "raw") {
                 await sendTelegram(cbChatId, "저장 안 했어요. 이름이나 지역을 바꿔서 다시 보내주세요.");
             } else {
-                const placeId = await savePlace(cbChatId, pending, picked);
+                const placeId = await savePlace(cbChatId, pending, picked ?? null);
                 await sendTelegram(cbChatId, "📚 팁 자료 모으는 중... 끝나면 알려드릴게요.");
-                after(() => runTipPipeline(placeId, cbChatId).catch(() => {}));
+                after(() => runTipPipeline(placeId, cbChatId, startedAt).catch(() => {}));
             }
             return NextResponse.json({ ok: true });
         }
@@ -239,12 +254,14 @@ export async function POST(request: NextRequest) {
 
             // 카카오 로컬로 "여기 맞아요?" 되묻기 (어떤 형식이든 저장 전 항상). 고를 때까지 1시간 보관
             const found = await searchKakaoWithFallback(neighborhood ? `${placeName} ${neighborhood}` : placeName);
-            if (found.length === 0) {
-                await sendTelegram(chatId, "🔍 못 찾았어요. 이름을 다시 보내주세요.");
-                return NextResponse.json({ ok: true });
-            }
             const pending: Pending = { placeName, neighborhood, category, fileId, isDocument, candidates: found, hasSeparator };
             await defaultCache.set(pendingKey(chatId), pending, 60 * 60 * 1000);
+            if (found.length === 0) {
+                await sendTelegram(chatId, "🔍 못 찾았어요. 이름을 다시 보내주세요.\n카카오에 없는 곳(팝업·전시 등)이면 위치 없이 저장할 수 있어요.", [
+                    [{ text: "이름 그대로 저장", data: "pick:raw" }],
+                ]);
+                return NextResponse.json({ ok: true });
+            }
 
             const line = (p: KakaoPlace) => `${p.place_name}\n   ${p.road_address_name || p.address_name}`;
             if (found.length === 1) {

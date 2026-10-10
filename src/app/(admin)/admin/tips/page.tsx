@@ -8,6 +8,7 @@ type Row = {
     id: number;
     name: string;
     address: string | null;
+    latitude: number | null;
     tip_status: string;
     updated_at: string;
     candidate: number;
@@ -31,7 +32,12 @@ export default function AdminTipsPage() {
 
     return (
         <div className="p-6 max-w-5xl">
-            <h1 className="text-2xl font-bold mb-6">팁 검수</h1>
+            <div className="flex items-center justify-between mb-6">
+                <h1 className="text-2xl font-bold">팁 검수</h1>
+                <Link href="/admin/tips/stats" className="px-4 py-2 rounded-lg text-sm font-semibold bg-white border border-gray-200 text-gray-700">
+                    📊 통계
+                </Link>
+            </div>
             <div className="flex gap-2 mb-4 flex-wrap">
                 {[["", "전체"], ...Object.entries(TIP_STATUS_LABEL)].map(([key, label]) => (
                     <button
@@ -62,6 +68,9 @@ export default function AdminTipsPage() {
                                         <Link href={`/admin/tips/${r.id}`} className="font-semibold text-green-700 hover:underline">
                                             {r.name}
                                         </Link>
+                                        {!r.address && r.latitude == null && (
+                                            <span className="ml-2 px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-semibold">위치 없음</span>
+                                        )}
                                         <div className="text-xs text-gray-500">{r.address}</div>
                                     </td>
                                     <td className="p-3">{TIP_STATUS_LABEL[r.tip_status] ?? r.tip_status}</td>

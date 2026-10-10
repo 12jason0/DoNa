@@ -274,12 +274,14 @@ model Place {
   place_status         String?          @default("OPERATIONAL") @map("place_status") @db.VarChar(50)
   status_checked_at    DateTime?        @map("status_checked_at")
   tip_status           String?          @map("tip_status") @db.VarChar(20)
+  tip_query            String?          @map("tip_query") @db.VarChar(200) /// 위치 없이 저장한 장소의 블로그 검색어 (이름 + 지역)
   coursePlaces         CoursePlace[]
   closed_days          PlaceClosedDay[]
   tip_sources          TipSource[]
   tip_candidates       TipCandidate[]
   place_tips           PlaceTip[]
   tip_work_logs        TipWorkLog[]
+  tip_runs             TipRun[]
 
   @@index([name])
   @@index([address])
@@ -334,11 +336,34 @@ model PlaceTip {
   content_ja   String?
   content_zh   String?
   candidate_id Int?
+  edited       Boolean  @default(false) /// 후보를 고쳐서 승인했는지 (통계용)
   approved_at  DateTime @default(now())
   place        Place    @relation(fields: [place_id], references: [id], onDelete: Cascade)
 
   @@index([place_id])
   @@map("place_tips")
+}
+
+/// 팁 파이프라인: 자동 처리 1회 기록 (시간·자료 수·후보 수·Claude 토큰). kind: pipeline / paste / translate
+model TipRun {
+  id             Int       @id @default(autoincrement())
+  place_id       Int
+  kind           String    @db.VarChar(20)
+  started_at     DateTime  @default(now())
+  finished_at    DateTime?
+  source_count   Int?
+  filtered_count Int?
+  candidate      Int?
+  official       Int?
+  needs_check    Int?
+  input_tokens   Int       @default(0)
+  output_tokens  Int       @default(0)
+  error          String?
+  place          Place     @relation(fields: [place_id], references: [id], onDelete: Cascade)
+
+  @@index([place_id])
+  @@index([started_at])
+  @@map("tip_runs")
 }
 
 /// 팁 파이프라인: 검수 작업 시간 (상세 연 시각 ~ 마지막 승인)

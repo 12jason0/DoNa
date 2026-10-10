@@ -2,6 +2,7 @@
 // 크롤링 없음. 구글 Places / 네이버 검색 API(블로그) / 카카오 검색 API(블로그·카페)만 사용.
 import Anthropic from "@anthropic-ai/sdk";
 import prisma from "@/lib/db";
+import type { Prisma } from "@prisma/client";
 import { fetchGooglePlaceDetails, findGooglePlace } from "@/lib/googlePlaces";
 import { sendTelegram } from "@/lib/telegram";
 import { translateTips } from "@/lib/translateTips";
@@ -98,11 +99,13 @@ async function kakaoDocs(kind: "blog" | "cafe", query: string): Promise<NewSourc
 export async function collectTipSources(placeId: number) {
     const place = await prisma.place.findUniqueOrThrow({
         where: { id: placeId },
-        select: { name: true, address: true, google_place_id: true, latitude: true, longitude: true },
+        select: { name: true, address: true, google_place_id: true, latitude: true, longitude: true, tip_query: true },
     });
+    // 카카오에 없어 이름만 저장한 장소(위치 없음): 다른 가게와 섞이지 않게 구글은 건너뛰고 블로그만
+    const hasLocation = !!place.address || place.latitude != null;
 
     let googleId = place.google_place_id;
-    if (!googleId) {
+    if (!googleId && hasLocation) {
         const found = await findGooglePlace(place.name, place.address ?? "");
         if (found) {
             googleId = found.place_id;
@@ -110,7 +113,7 @@ export async function collectTipSources(placeId: number) {
         }
     }
 
-    const query = `${place.name} ${regionOf(place.address)}`.trim();
+    const query = place.tip_query || `${place.name} ${regionOf(place.address)}`.trim();
     const [google, naver, kakaoBlog, kakaoCafe] = await Promise.all([
         googleId ? fetchGooglePlaceDetails(googleId, true) : null,
         naverBlogs(query),
@@ -152,7 +155,7 @@ export async function collectTipSources(placeId: number) {
         prisma.tipSource.createMany({ data: rows.map((s) => ({ ...s, place_id: placeId })) }),
     ]);
     const filtered = rows.filter((r) => !r.relevant).length;
-    return { google: !!google, count: rows.length - filtered, filtered };
+    return { google: !!google, hasLocation, count: rows.length - filtered, filtered };
 }
 
 /** 근거 개수: 같은 작성자(플랫폼+작성자)의 글은 1개로. 작성자 모르면 링크, 그것도 없으면 행 하나 */
@@ -182,7 +185,7 @@ export async function generateTipCandidates(placeId: number) {
     const sources = await prisma.tipSource.findMany({ where: { place_id: placeId, relevant: true }, orderBy: { id: "asc" } });
     if (sources.length === 0) {
         await prisma.place.update({ where: { id: placeId }, data: { tip_status: "recheck" } });
-        return { candidate: 0, official: 0, needsCheck: 0, ownerQuestions: [] as string[] };
+        return { candidate: 0, official: 0, needsCheck: 0, ownerQuestions: [] as string[], tokens: { input: 0, output: 0 } };
     }
 
     const material = sources
@@ -219,6 +222,7 @@ ${material}`;
         { model: "claude-sonnet-4-6", max_tokens: 4000, messages: [{ role: "user", content: prompt }] },
         { timeout: 120_000 }
     );
+    const tokens = { input: message.usage.input_tokens, output: message.usage.output_tokens };
     const raw = message.content[0].type === "text" ? message.content[0].text : "";
     const json = raw.match(/\{[\s\S]*\}/);
     if (!json) throw new Error("팁 후보 응답 파싱 실패: " + raw.slice(0, 200));
@@ -267,6 +271,7 @@ ${material}`;
         official: rows.filter((r) => r.status === "official").length,
         needsCheck: rows.filter((r) => r.status === "needs_check").length,
         ownerQuestions: rows.filter((r) => r.status === "needs_check" && r.owner_question).map((r) => r.owner_question).slice(0, 5),
+        tokens,
     };
 }
 
@@ -274,35 +279,58 @@ export function tipReviewUrl(placeId: number) {
     return `${(process.env.NEXT_PUBLIC_SITE_URL || "https://dona.io.kr").replace(/\/$/, "")}/admin/tips/${placeId}`;
 }
 
+/** 자동 처리 1회 기록 (통계 화면용). 기록 실패가 본 작업을 막지 않게 오류는 무시 */
+export function logTipRun(data: Prisma.TipRunUncheckedCreateInput) {
+    return prisma.tipRun.create({ data }).catch((e) => console.error("tip_runs 기록 실패:", e));
+}
+
 /**
- * 텔레그램 "맞아요" 이후 after()에서 실행.
+ * 텔레그램 "맞아요" 이후 after()에서 실행. startedAt: "맞아요"를 누른 시각 (자동 처리 시간 = 그때 ~ 후보 생성 완료)
  * Hobby 플랜 함수 최대 300초 → 수집(API별 10초 제한, 병렬) + Claude 1회(120초 제한)로 최대 약 150초.
  */
-export async function runTipPipeline(placeId: number, chatId?: number) {
+export async function runTipPipeline(placeId: number, chatId?: number, startedAt = new Date()) {
     const place = await prisma.place.update({ where: { id: placeId }, data: { tip_status: "collecting" }, select: { name: true } });
+    let collected: Awaited<ReturnType<typeof collectTipSources>> | null = null;
     try {
-        const collected = await collectTipSources(placeId);
+        collected = await collectTipSources(placeId);
         const r = await generateTipCandidates(placeId);
+        await logTipRun({
+            place_id: placeId,
+            kind: "pipeline",
+            started_at: startedAt,
+            finished_at: new Date(),
+            source_count: collected.count,
+            filtered_count: collected.filtered,
+            candidate: r.candidate,
+            official: r.official,
+            needs_check: r.needsCheck,
+            input_tokens: r.tokens.input,
+            output_tokens: r.tokens.output,
+        });
         if (!chatId) return r;
         const questions = r.ownerQuestions.length
             ? "\n\n사장님께 물어볼 것:\n" + r.ownerQuestions.map((q, i) => `${i + 1}. ${q}`).join("\n")
             : "";
+        const where = collected.google ? "" : collected.hasLocation ? ", 구글 장소 못 찾음" : ", 위치 없음: 블로그만 검색";
         await sendTelegram(
             chatId,
-            `📝 "${place.name}" 팁 후보 ${r.candidate}개, 가게 공식 ${r.official}개, 확인 필요 ${r.needsCheck}개\n(자료 ${collected.count}건, 관련 없음 ${collected.filtered}건 제외${collected.google ? "" : ", 구글 장소 못 찾음"})\n\n검수: ${tipReviewUrl(placeId)}${questions}`
+            `📝 "${place.name}" 팁 후보 ${r.candidate}개, 가게 공식 ${r.official}개, 확인 필요 ${r.needsCheck}개\n(자료 ${collected.count}건, 관련 없음 ${collected.filtered}건 제외${where})\n\n검수: ${tipReviewUrl(placeId)}${questions}`
         );
         return r;
     } catch (e) {
         console.error("팁 파이프라인 실패:", e);
+        await logTipRun({
+            place_id: placeId,
+            kind: "pipeline",
+            started_at: startedAt,
+            source_count: collected?.count,
+            filtered_count: collected?.filtered,
+            error: String(e).slice(0, 500),
+        });
         await prisma.place.update({ where: { id: placeId }, data: { tip_status: "recheck" } });
         if (chatId) await sendTelegram(chatId, `⚠️ "${place.name}" 팁 자료 처리 실패. 검수 화면에서 "다시 모으기"를 눌러주세요.\n${tipReviewUrl(placeId)}`);
         throw e;
     }
-}
-
-/** 이 장소가 들어간 코스 중, 같은 카테고리 팁이 이미 있는 코스 (중복으로 쌓지 않음) */
-export function coursesWithSameCategory(coursePlaces: { tips: string | null; course: { title: string } }[], category: string) {
-    return coursePlaces.filter((cp) => parseTipsFromDb(cp.tips).some((t) => t.category === category)).map((cp) => cp.course.title);
 }
 
 /**
@@ -313,6 +341,7 @@ export async function approveTip(placeId: number, tip: { category: string; conte
     const category = ((TIP_CATEGORY_VALUES as readonly string[]).includes(tip.category) ? tip.category : "ETC") as TipCategory;
     const ko: TipItem = { category, content: tip.content.trim() };
     if (!ko.content) throw new Error("팁 내용이 비어 있어요");
+    const t0 = new Date();
     const tr = await translateTips([ko]);
     const en = tr.tips_en?.[0], ja = tr.tips_ja?.[0], zh = tr.tips_zh?.[0];
 
@@ -346,10 +375,12 @@ export async function approveTip(placeId: number, tip: { category: string; conte
     }
 
     const now = new Date();
+    const candidate = candidateId ? await prisma.tipCandidate.findUnique({ where: { id: candidateId }, select: { content: true, category: true } }) : null;
+    const edited = !!candidate && (candidate.content !== ko.content || candidate.category !== category);
     const log = await prisma.tipWorkLog.findFirst({ where: { place_id: placeId }, orderBy: { opened_at: "desc" } });
     await prisma.$transaction([
         prisma.placeTip.create({
-            data: { place_id: placeId, category, content: ko.content, content_en: en?.content, content_ja: ja?.content, content_zh: zh?.content, candidate_id: candidateId },
+            data: { place_id: placeId, category, content: ko.content, content_en: en?.content, content_ja: ja?.content, content_zh: zh?.content, candidate_id: candidateId, edited },
         }),
         ...(candidateId
             ? [prisma.tipCandidate.update({ where: { id: candidateId }, data: { status: "approved", content: ko.content, category, decided_at: now } })]
@@ -357,6 +388,7 @@ export async function approveTip(placeId: number, tip: { category: string; conte
         ...updates,
         ...(log ? [prisma.tipWorkLog.update({ where: { id: log.id }, data: { last_approved_at: now, approved_count: { increment: 1 } } })] : []),
     ]);
+    await logTipRun({ place_id: placeId, kind: "translate", started_at: t0, finished_at: now, input_tokens: tr.usage.input, output_tokens: tr.usage.output });
     await refreshTipStatus(placeId);
     return { appliedCourses: updates.length, skippedCourses };
 }

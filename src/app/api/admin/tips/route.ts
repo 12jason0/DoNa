@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
             id: true,
             name: true,
             address: true,
+            latitude: true,
             tip_status: true,
             updated_at: true,
             tip_candidates: { where: { status: { in: PENDING_STATUSES } }, select: { status: true } },

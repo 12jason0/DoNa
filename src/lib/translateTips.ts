@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { TipItem } from "@/types/tip";
 
-export type TranslatedTips = { tips_en: TipItem[]; tips_ja: TipItem[]; tips_zh: TipItem[] };
+export type TranslatedTips = { tips_en: TipItem[]; tips_ja: TipItem[]; tips_zh: TipItem[]; usage: { input: number; output: number } };
 
 /** 한국어 팁 → 영·일·중 번역 (관리자 코스 화면 번역 버튼과 팁 검수 승인에서 같이 씀) */
 export async function translateTips(tips: TipItem[]): Promise<TranslatedTips> {
@@ -31,5 +31,5 @@ ${JSON.stringify(tips, null, 2)}`;
     const raw = message.content[0].type === "text" ? message.content[0].text : "";
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("번역 응답 파싱 실패: " + raw.slice(0, 200));
-    return JSON.parse(jsonMatch[0]);
+    return { ...JSON.parse(jsonMatch[0]), usage: { input: message.usage.input_tokens, output: message.usage.output_tokens } };
 }
