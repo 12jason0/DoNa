@@ -100,6 +100,7 @@ export default function SideMenuSheet() {
     const goSignup = () => handleDismiss(() => router.push("/(auth)/signup" as any));
     const onEscape = () => handleDismiss(() => openModal("comingSoon"));
     const goSuggest = () => handleDismiss(() => router.push("/suggest" as any));
+    const goPopups = () => handleDismiss(() => router.push("/popups" as any));
 
     return (
         <>
@@ -144,6 +145,13 @@ export default function SideMenuSheet() {
                                 <Text style={[styles.label, { color: "#d97706" }]}>{i18n("header.suggestPlace")}</Text>
                                 <View style={[styles.iconCircle, { backgroundColor: "#fef3c7" }]}>
                                     <Ionicons name="bulb-outline" size={20} color="#d97706" />
+                                </View>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity style={styles.row} onPress={goPopups} activeOpacity={0.85}>
+                                <Text style={[styles.label, { color: "#be123c" }]}>{i18n("nav.popups")}</Text>
+                                <View style={[styles.iconCircle, { backgroundColor: "#ffe4e6" }]}>
+                                    <Ionicons name="ticket-outline" size={20} color="#e11d48" />
                                 </View>
                             </TouchableOpacity>
 
