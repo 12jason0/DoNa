@@ -51,15 +51,42 @@ export function branchOf(name: string): string | null {
     return b ? squash(b) : null;
 }
 
+// 주소: "광평중길 82", "신북로 584-6", "성수이로7길 12" (도로명) / "한강로2가 49-1", "교래리 524-1" (지번)
+// 이름 뒤 번호가 "5분", "3,000원"처럼 이어지면 주소 아님
+const ADDRESS_RE = {
+    road: /([가-힣][가-힣0-9 ]{0,20}?(?:로|길))\s*(\d{1,5}(?:-\d{1,4})?)(?![\d가-힣]|,\d)/g,
+    jibun: /([가-힣][가-힣0-9 ]{0,20}?(?:동|리|가))\s*(\d{1,5}(?:-\d{1,4})?)(?![\d가-힣]|,\d)/g,
+};
+// 앞쪽 행정구역("제주 제주시" / "제주특별자치도 제주시")은 글마다 달라서 마지막 단어(길 이름)만 비교
+const addressesIn = (text: string, kind: keyof typeof ADDRESS_RE) =>
+    [...text.matchAll(ADDRESS_RE[kind])].map((m) => ({ name: squash(m[1].trim().split(/\s+/).at(-1) ?? ""), num: m[2] }));
+
+/**
+ * 글에 우리와 같은 종류(도로명/지번)의 주소가 있는데 하나도 우리 주소와 안 맞으면 true.
+ * 주소가 없거나 종류가 다르면(우리는 지번, 글은 도로명) 판단 안 함 → false
+ */
+export function isOtherAddress(text: string, ourAddress: string | null) {
+    if (!ourAddress) return false;
+    const kind = addressesIn(ourAddress, "road").length ? "road" : "jibun";
+    const ours = addressesIn(ourAddress, kind).at(-1);
+    if (!ours) return false;
+    const found = addressesIn(text, kind);
+    // "광평 중길"처럼 길 이름 중간을 띄어 쓴 경우는 끝부분 일치로 인정
+    return found.length > 0 && !found.some((f) => f.num === ours.num && (f.name.endsWith(ours.name) || ours.name.endsWith(f.name)));
+}
+
 /**
  * 제목·요약에 가게 이름 핵심 단어가 있는 글만 관련 있음.
+ * 글에 적힌 주소가 우리 주소와 다르면 관련 없음.
  * 지점이 있는 장소면, 브랜드 바로 뒤에 다른 지점명("한림칼국수 함덕점")이 적혀 있고 우리 지점은 언급이 없는 글은 관련 없음.
  * 지점 언급이 없는 글은 그대로 관련 있음.
  */
-export function isRelevant(keywords: string[], title: string | null, content: string | null, branch: string | null = null) {
-    const text = squash(`${title ?? ""} ${content ?? ""}`);
+export function isRelevant(keywords: string[], title: string | null, content: string | null, branch: string | null = null, address: string | null = null) {
+    const raw = `${title ?? ""} ${content ?? ""}`;
+    const text = squash(raw);
     if (keywords.length === 0) return true;
     if (!keywords.some((k) => text.includes(k))) return false;
+    if (isOtherAddress(raw, address)) return false;
     if (!branch || text.includes(branch)) return true;
     const brand = keywords[0];
     // ponytail: 브랜드 바로 뒤 "…점"만 지점으로 봄. "함덕 맛집 한림칼국수"처럼 지점명 없이 지역만 쓴 글은 못 거름
@@ -167,7 +194,7 @@ export async function collectTipSources(placeId: number) {
     for (const s of [...naver, ...kakaoBlog, ...kakaoCafe]) {
         if (!s.url || seen.has(s.url) || !s.content) continue;
         seen.add(s.url);
-        rows.push({ ...s, relevant: isRelevant(keywords, s.title, s.content, branch) });
+        rows.push({ ...s, relevant: isRelevant(keywords, s.title, s.content, branch, place.address) });
     }
 
     await prisma.$transaction([

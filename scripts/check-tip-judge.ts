@@ -1,6 +1,6 @@
 // 팁 후보 판정 규칙 확인: npx tsx scripts/check-tip-judge.ts
 import assert from "node:assert";
-import { branchOf, coreKeywords, countDistinctSources, isRelevant, judgeCandidate } from "../src/lib/tipPipeline";
+import { branchOf, coreKeywords, isOtherAddress, countDistinctSources, isRelevant, judgeCandidate } from "../src/lib/tipPipeline";
 
 const s = (id: number, source_type: string, author: string | null, url: string | null = `u${id}`) => ({ id, source_type, author, url });
 const now = Date.parse("2026-10-10");
@@ -35,4 +35,16 @@ assert.ok(isRelevant(kw, "한림 칼국수 제주공항점 후기", null, br)); 
 assert.ok(isRelevant(kw, "본점 또는 표선점, 한림칼국수 제주공항점", null, br)); // 우리 지점도 언급
 assert.ok(isRelevant(kw, "한림칼국수 다녀왔어요", "점심으로 딱", br)); // 지점 언급 없음
 assert.ok(isRelevant(kw, "한림칼국수점심 메뉴", null, br)); // "점심"은 지점 아님
+// 주소: 같은 종류 주소가 있는데 우리와 다르면 관련 없음
+const ours = "제주특별자치도 제주시 광평중길 82";
+assert.ok(isOtherAddress("[주소] 제주 제주시 조천읍 신북로 584-6 1층 [화장실] 매장외부", ours));
+assert.ok(!isOtherAddress("위치 : 제주 제주시 광평중길 82 영업시간", ours));
+assert.ok(!isOtherAddress("제주시 광평 중길 82", ours)); // 띄어쓰기 달라도 같은 주소
+assert.ok(!isOtherAddress("한림해안로 141 … 제주시 광평중길 82 … 표선관정로117번길 1", ours)); // 여러 지점 중 우리 주소 포함
+assert.ok(!isOtherAddress("제주공항에서 자차로 11분, 차로 5분내 거리", ours)); // 주소 아님
+assert.ok(!isOtherAddress("보말칼국수 10,000원 주차 가능", ours));
+assert.ok(!isOtherAddress("교래리 524-1", ours)); // 우리는 도로명, 글은 지번 → 판단 안 함
+assert.ok(isOtherAddress("서울 용산구 한강로3가 12", "서울 용산구 한강로2가 49-1"));
+assert.ok(!isOtherAddress("한강로2가 49-1 위치", "서울 용산구 한강로2가 49-1"));
+assert.ok(!isRelevant(kw, "함덕 맛집 한림칼국수", "[주소] 제주 제주시 조천읍 신북로 584-6 1층", br, ours));
 console.log("ok");
