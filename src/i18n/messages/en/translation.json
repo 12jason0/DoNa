@@ -501,6 +501,15 @@
     "freeTips": "Your tips",
     "reviews": "Reviews",
     "writeReview": "Write",
+    "restDays": "Closed: {days}",
+    "openEveryDay": "Open every day",
+    "dayShort0": "Sun",
+    "dayShort1": "Mon",
+    "dayShort2": "Tue",
+    "dayShort3": "Wed",
+    "dayShort4": "Thu",
+    "dayShort5": "Fri",
+    "dayShort6": "Sat",
     "info": {
         "title": "Course info",
         "duration": "Duration",
@@ -898,7 +907,7 @@
   },
   "courseCard": {
     "realtimeReservation": "Real-time reservation",
-    "placesClosed": "{n} closed"
+    "placesClosed": "{n} closed on {day}"
   },
   "loading": {
     "pageOverlay": "Finding courses...",

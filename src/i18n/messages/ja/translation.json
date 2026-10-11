@@ -498,6 +498,15 @@
     "freeTips": "保有のコツ",
     "reviews": "利用レビュー",
     "writeReview": "書く",
+    "restDays": "定休日：{days}",
+    "openEveryDay": "毎日行けます",
+    "dayShort0": "日",
+    "dayShort1": "月",
+    "dayShort2": "火",
+    "dayShort3": "水",
+    "dayShort4": "木",
+    "dayShort5": "金",
+    "dayShort6": "土",
     "info": {
         "title": "コース情報",
         "duration": "所要時間",
@@ -895,7 +904,7 @@
   },
   "courseCard": {
     "realtimeReservation": "リアルタイム予約",
-    "placesClosed": "{n}件休業"
+    "placesClosed": "{day}は{n}件休業"
   },
   "loading": {
     "pageOverlay": "コースを検索中...",

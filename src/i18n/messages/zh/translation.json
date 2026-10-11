@@ -498,6 +498,15 @@
     "freeTips": "我的小貼士",
     "reviews": "使用者評價",
     "writeReview": "撰寫",
+    "restDays": "公休日：{days}",
+    "openEveryDay": "每天都能去",
+    "dayShort0": "週日",
+    "dayShort1": "週一",
+    "dayShort2": "週二",
+    "dayShort3": "週三",
+    "dayShort4": "週四",
+    "dayShort5": "週五",
+    "dayShort6": "週六",
     "info": {
         "title": "路線資訊",
         "duration": "所需時間",
@@ -895,7 +904,7 @@
   },
   "courseCard": {
     "realtimeReservation": "即時預約",
-    "placesClosed": "{n}處休息"
+    "placesClosed": "{day}有{n}處休息"
   },
   "loading": {
     "pageOverlay": "正在查詢課程...",

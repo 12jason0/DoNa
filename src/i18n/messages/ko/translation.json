@@ -464,6 +464,15 @@
         "freeTips": "보유 꿀팁",
         "reviews": "이용후기",
         "writeReview": "작성하기",
+        "restDays": "쉬는 날: {days}",
+        "openEveryDay": "매일 갈 수 있어요",
+        "dayShort0": "일",
+        "dayShort1": "월",
+        "dayShort2": "화",
+        "dayShort3": "수",
+        "dayShort4": "목",
+        "dayShort5": "금",
+        "dayShort6": "토",
         "info": {
             "title": "코스 정보",
             "duration": "소요시간",
@@ -865,7 +874,7 @@
     },
     "courseCard": {
         "realtimeReservation": "실시간 예약",
-        "placesClosed": "{n}곳 휴무"
+        "placesClosed": "{day} {n}곳 휴무"
     },
     "loading": {
         "pageOverlay": "코스를 찾고 있어요...",

@@ -35,6 +35,7 @@ import { useTranslatedTitle } from "@/hooks/useTranslatedTitle";
 import { useRegions } from "@/hooks/useRegions";
 import HorizontalScrollContainer from "@/components/HorizontalScrollContainer";
 import { COURSE_DETAIL_SENTINELS } from "@/lib/courseDetailSentinels";
+import { courseRestDaysLabel } from "@/lib/courseRestDays";
 import type { TranslationKeys } from "@/types/i18n";
 import {
     PLACE_STATUS_CLOSED,
@@ -1853,6 +1854,12 @@ export default function CourseDetailClient({
                                     </span>
                                 )}
                             </div>
+                            {/* 잠긴 코스는 장소가 비어 있어 표시 안 함 */}
+                            {isUnlocked && (courseData.coursePlaces?.length ?? 0) > 0 && (
+                                <p className="mt-3 text-[13px] font-medium text-white/90 drop-shadow-md">
+                                    🗓️ {courseRestDaysLabel(courseData.coursePlaces ?? [], t)}
+                                </p>
+                            )}
                         </div>
                     </header>
 

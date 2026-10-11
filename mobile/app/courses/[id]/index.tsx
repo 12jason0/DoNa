@@ -31,6 +31,7 @@ import { resolveImageUrl } from "../../../src/lib/imageUrl";
 import { shareFeedTemplate } from "@react-native-kakao/share";
 import { kakaoSdkReady } from "../../_layout";
 import { paidCourseShareDescription } from "../../../../src/lib/courseShareDescription";
+import { courseRestDaysLabel } from "../../../../src/lib/courseRestDays";
 import { useThemeColors } from "../../../src/hooks/useThemeColors";
 import { useLocale } from "../../../src/lib/useLocale";
 import { textFontForLocale } from "../../../src/lib/textDefaultFont";
@@ -741,6 +742,10 @@ export default function CourseDetailScreen() {
                                 </View>
                             ) : null}
                         </View>
+                        {/* 잠긴 코스는 장소가 비어 있어 표시 안 함 */}
+                        {!isCourseLocked && (course.coursePlaces?.length ?? 0) > 0 ? (
+                            <Text style={s.heroRestDays}>🗓️ {courseRestDaysLabel(course.coursePlaces ?? [], i18n)}</Text>
+                        ) : null}
                     </View>
                 </View>
 
@@ -1479,6 +1484,7 @@ const s = StyleSheet.create({
         borderColor: "rgba(255,255,255,0.4)",
     },
     heroMetaPillText: { fontSize: 13, fontWeight: "500", color: "#fff" },
+    heroRestDays: { fontSize: 13, fontWeight: "500", color: "rgba(255,255,255,0.9)", marginTop: 10 },
 
     // 메인 카드 (웹: mt-4 rounded-2xl bg-white shadow-sm border border-gray-100)
     mainOuter: { marginTop: 16, paddingHorizontal: 20, marginBottom: 0, zIndex: 2 },

@@ -5,6 +5,7 @@ import { isNewCourse } from "@/lib/courseListOrder";
 import Image from "@/components/ImageFallback";
 import React, { useState, memo, useMemo, useEffect } from "react"; // memo, useMemo 추가
 import { useLocale } from "@/context/LocaleContext";
+import type { TranslationKeys } from "@/types/i18n";
 import { translateCourseConcept, translateCourseRegion } from "@/lib/courseTranslate";
 import { useRegions } from "@/hooks/useRegions";
 import { useTranslatedTitle } from "@/hooks/useTranslatedTitle";
@@ -228,7 +229,11 @@ const CourseCard = memo(
                         <div className="absolute bottom-3 right-3 z-10">
                             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/95 backdrop-blur-sm border border-red-100">
                                 <span className="text-[12px] font-bold text-red-600 leading-none">
-                                    {t("courseCard.placesClosed", { n: getClosedPlaceCount(course) })}
+                                    {t("courseCard.placesClosed", {
+                                        n: getClosedPlaceCount(course),
+                                        // 휴무 판정(getPlaceStatus)과 같은 기기 시각 기준 요일
+                                        day: t(`placeDetail.weekday${new Date().getDay()}` as TranslationKeys),
+                                    })}
                                 </span>
                             </div>
                         </div>
