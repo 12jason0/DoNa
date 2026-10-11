@@ -1817,6 +1817,7 @@
     "basicInfo": "基本信息",
     "openingHours": "营业时间",
     "avgCost": "人均消费",
+    "noInfo": "暂无信息",
     "phone": "电话",
     "website": "网站",
     "parking": "停车",
@@ -1894,7 +1895,8 @@
     "SHOPPING": "购物",
     "ATTRACTION": "景点",
     "BOOKSTORE": "书店",
-    "BEAUTY": "美容"
+    "BEAUTY": "美容",
+    "POPUP": "快闪店"
   },
   "crowdLevel": {
     "EASY": "不拥挤",

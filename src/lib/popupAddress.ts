@@ -1,7 +1,7 @@
-// 카카오에 없는 팝업·전시의 위치 찾기 (크롤링 없음: 이미 모은 블로그 요약 + 카카오 주소 검색 API)
+// 카카오에 없는 팝업·전시의 위치 찾기 (크롤링 없음): 네이버 지역검색 API → 이미 모은 블로그 요약 → @건물이름
 import prisma from "@/lib/db";
 import { defaultCache } from "@/lib/cache";
-import { kakaoKeywordSearch } from "@/lib/placeAutofill";
+import { isNameMatch, kakaoKeywordSearch, naverSearch } from "@/lib/placeAutofill";
 import { sendTelegram } from "@/lib/telegram";
 import { countDistinctSources } from "@/lib/tipPipeline";
 import { translatePopupFields } from "@/lib/popupTranslate";
@@ -40,11 +40,24 @@ async function kakaoAddress(query: string): Promise<LocationOption | null> {
     return { label: address, address, lat: Number(d.y), lng: Number(d.x) };
 }
 
+/** 네이버 지역검색: 이름이 맞는 결과의 주소 → 카카오 주소 검색으로 좌표 */
+async function findNaverAddress(placeId: number): Promise<LocationOption | null> {
+    const place = await prisma.place.findUniqueOrThrow({ where: { id: placeId }, select: { name: true, tip_query: true } });
+    const item = await naverSearch(place.tip_query || place.name).catch(() => null);
+    const name = item?.title?.replace(/<[^>]+>/g, "") || "";
+    if (!name || !isNameMatch(place.name, name)) return null;
+    const hit = await kakaoAddress(item.roadAddress || item.address);
+    return hit && { ...hit, label: `${name} (${hit.address})` };
+}
+
 /**
- * 모은 블로그 자료에서 주소 찾기: 서로 다른 글(같은 작성자는 1개) 2개 이상이 같은 주소면 채택 → 카카오 주소 검색으로 좌표.
- * 못 찾으면 null
+ * 주소 찾기: 네이버 지역검색 → 없으면 모은 블로그 자료(서로 다른 글 2개 이상이 같은 주소, 같은 작성자는 1개) → 카카오 주소 검색으로 좌표.
+ * via: 어디서 찾았는지 (확인 문구용). 못 찾으면 null
  */
-export async function findPopupAddress(placeId: number): Promise<(LocationOption & { sourceCount: number }) | null> {
+export async function findPopupAddress(placeId: number): Promise<(LocationOption & { via: string }) | null> {
+    const naver = await findNaverAddress(placeId);
+    if (naver) return { ...naver, via: "네이버 지역검색" };
+
     const sources = await prisma.tipSource.findMany({
         where: { place_id: placeId, relevant: true },
         select: { id: true, source_type: true, author: true, url: true, title: true, content: true },
@@ -59,16 +72,22 @@ export async function findPopupAddress(placeId: number): Promise<(LocationOption
         .sort((a, b) => b.count - a.count);
     for (const r of ranked) {
         const hit = await kakaoAddress(r.address);
-        if (hit) return { ...hit, sourceCount: r.count };
+        if (hit) return { ...hit, via: `블로그 ${r.count}곳에서 같은 주소` };
     }
     return null;
 }
 
-/** 주소·좌표 저장 (이름·tip_query는 그대로) + 주소 다국어 칸 채우기 */
+/** 주소·좌표 저장 (이름·tip_query는 그대로) + 주소 다국어 빈 칸 채우기 (주소가 바뀌면 예전 주소 번역은 비움) */
 export async function savePlaceLocation(placeId: number, loc: LocationOption) {
+    const prev = await prisma.place.findUniqueOrThrow({ where: { id: placeId }, select: { address: true } });
     await prisma.place.update({
         where: { id: placeId },
-        data: { address: loc.address, latitude: loc.lat, longitude: loc.lng },
+        data: {
+            address: loc.address,
+            latitude: loc.lat,
+            longitude: loc.lng,
+            ...(prev.address !== loc.address ? { address_en: null, address_ja: null, address_zh: null } : {}),
+        },
     });
     await translatePopupFields(placeId).catch((e) => console.error("팝업 주소 번역 실패:", e));
 }
@@ -98,7 +117,7 @@ export async function suggestPopupAddress(placeId: number, chatId: number) {
     const pending: AddressPending = { placeId, placeName: place.name, options: found ? [found] : [] };
     await defaultCache.set(addressPendingKey(chatId), pending, TTL);
     if (!found) return askBuilding(chatId, place.name);
-    return askOptions(chatId, pending, `📍 "${place.name}" 여기 맞아요? (블로그 ${found.sourceCount}곳에서 같은 주소)`);
+    return askOptions(chatId, pending, `📍 "${place.name}" 여기 맞아요? (${found.via})`);
 }
 
 /** "@건물이름" 메시지: 기다리는 장소가 있으면 카카오 키워드 검색 결과를 버튼으로 */

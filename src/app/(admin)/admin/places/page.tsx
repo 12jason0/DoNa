@@ -49,7 +49,7 @@ const INITIAL_PLACE: Omit<Place, "id"> = {
 
 function parseOpeningHoursTime(str: string | null | undefined): { openTime: string; closeTime: string } {
     const m = (str || "").match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
-    if (!m) return { openTime: "10:00", closeTime: "21:00" };
+    if (!m) return { openTime: "", closeTime: "" }; // 모르면 빈 칸 (기본값 넣지 않음)
     return { openTime: m[1].padStart(5, "0"), closeTime: m[2].padStart(5, "0") };
 }
 
@@ -57,9 +57,9 @@ export default function AdminPlacesPage() {
     const [places, setPlaces] = useState<Place[]>([]);
     const [drafts, setDrafts] = useState<Place[]>([]);
     const [formData, setFormData] = useState<Omit<Place, "id">>(INITIAL_PLACE);
-    const [openTime, setOpenTime] = useState("10:00");
-    const [closeTime, setCloseTime] = useState("21:00");
-    const [openDays, setOpenDays] = useState<number[]>([1, 2, 3, 4, 5, 6]); // 월~토 기본
+    const [openTime, setOpenTime] = useState("");
+    const [closeTime, setCloseTime] = useState("");
+    const [openDays, setOpenDays] = useState<number[]>(ALL_DAYS); // 휴무일 모르면 표시 안 함 (일요일 휴무 기본값 없음)
     const [editingId, setEditingId] = useState<number | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -195,7 +195,7 @@ export default function AdminPlacesPage() {
                 .filter((d: number | null) => d !== null);
             setOpenDays(ALL_DAYS.filter((d) => !closedDowList.includes(d)));
         } catch {
-            setOpenDays([1, 2, 3, 4, 5, 6]);
+            setOpenDays(ALL_DAYS);
         }
 
         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -264,7 +264,7 @@ export default function AdminPlacesPage() {
         }
     };
 
-    // 위치 없는 팝업·전시: 모은 블로그 자료에서 주소 찾기 → 확인 후 저장 + 구글 자료 다시 모으기
+    // 위치 없는 팝업·전시: 네이버 지역검색 → 모은 블로그 자료에서 주소 찾기 → 확인 후 저장 + 구글 자료 다시 모으기
     const handleFindAddress = async () => {
         if (!editingId) return;
         setIsFindingAddress(true);
@@ -277,7 +277,7 @@ export default function AdminPlacesPage() {
                 alert("주소를 못 찾았어요. 텔레그램에 @건물이름으로 보내거나 직접 입력해주세요.");
                 return;
             }
-            if (!confirm(`여기 맞아요?\n${f.address}\n(블로그 ${f.sourceCount}곳에서 같은 주소)`)) return;
+            if (!confirm(`여기 맞아요?\n${f.address}\n(${f.via})`)) return;
             const saveRes = await fetch(`/api/admin/places/${editingId}/find-address`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -321,9 +321,9 @@ export default function AdminPlacesPage() {
     const cancelEdit = () => {
         setEditingId(null);
         setFormData(INITIAL_PLACE);
-        setOpenTime("10:00");
-        setCloseTime("21:00");
-        setOpenDays([1, 2, 3, 4, 5, 6]);
+        setOpenTime("");
+        setCloseTime("");
+        setOpenDays(ALL_DAYS);
     };
 
     const handleDelete = async (id: number) => {
@@ -362,9 +362,9 @@ export default function AdminPlacesPage() {
             if (res.ok) {
                 alert(editingId ? "장소가 수정되었습니다." : "장소 생성 완료");
                 setFormData(INITIAL_PLACE);
-                setOpenTime("10:00");
-                setCloseTime("21:00");
-                setOpenDays([1, 2, 3, 4, 5, 6]);
+                setOpenTime("");
+                setCloseTime("");
+                setOpenDays(ALL_DAYS);
                 setEditingId(null);
                 fetchPlaces(currentPage, false);
             } else {

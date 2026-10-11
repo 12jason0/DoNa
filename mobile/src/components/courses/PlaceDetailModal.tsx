@@ -187,11 +187,9 @@ export function PlaceDetailModal({
                                         {i18n(placeStatusTranslationKey(placeStatusInfo.status))}
                                     </Text>
                                 </View>
-                                {place.opening_hours ? (
-                                    <Text style={[s.detailHoursText, { color: t.textMuted }]} numberOfLines={1}>
-                                        {place.opening_hours}
-                                    </Text>
-                                ) : null}
+                                <Text style={[s.detailHoursText, { color: t.textMuted }]} numberOfLines={1}>
+                                    {place.opening_hours || i18n("courseDetail.info.hoursUnknown")}
+                                </Text>
                             </View>
                         </View>
 

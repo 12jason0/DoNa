@@ -1844,6 +1844,7 @@
         "basicInfo": "기본 정보",
         "openingHours": "영업시간",
         "avgCost": "평균 비용",
+        "noInfo": "정보 없음",
         "phone": "전화번호",
         "website": "웹사이트",
         "parking": "주차",
@@ -1921,7 +1922,8 @@
         "SHOPPING": "쇼핑",
         "ATTRACTION": "관광명소",
         "BOOKSTORE": "서점",
-        "BEAUTY": "뷰티"
+        "BEAUTY": "뷰티",
+        "POPUP": "팝업스토어"
     },
     "crowdLevel": {
         "EASY": "여유",

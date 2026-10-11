@@ -113,28 +113,26 @@ export default function PlaceDetailView({ place }: { place: PlaceDetailSerialize
                     <div className="bg-white rounded-2xl shadow-lg p-6">
                         <h2 className="text-2xl font-bold mb-6">{t("placeDetail.basicInfo")}</h2>
                         <div className="space-y-4">
-                            {place.opening_hours && (
-                                <div className="flex items-start gap-3">
-                                    <span className="text-blue-500 text-xl mt-1">🕒</span>
-                                    <div className="flex-1">
-                                        <p className="font-medium text-gray-800 mb-1">{t("placeDetail.openingHours")}</p>
-                                        <p className="text-sm text-gray-600">{place.opening_hours}</p>
+                            <div className="flex items-start gap-3">
+                                <span className="text-blue-500 text-xl mt-1">🕒</span>
+                                <div className="flex-1">
+                                    <p className="font-medium text-gray-800 mb-1">{t("placeDetail.openingHours")}</p>
+                                    <p className="text-sm text-gray-600">{place.opening_hours || t("placeDetail.noInfo")}</p>
+                                    {place.opening_hours && (
                                         <div className="mt-2">
                                             <PlaceStatusBadge place={place} closedDays={place.closed_days} size="sm" />
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
-                            )}
+                            </div>
 
-                            {place.avg_cost_range && (
-                                <div className="flex items-start gap-3">
-                                    <span className="text-green-500 text-xl mt-1">💰</span>
-                                    <div>
-                                        <p className="font-medium text-gray-800 mb-1">{t("placeDetail.avgCost")}</p>
-                                        <p className="text-sm text-gray-600">{place.avg_cost_range}</p>
-                                    </div>
+                            <div className="flex items-start gap-3">
+                                <span className="text-green-500 text-xl mt-1">💰</span>
+                                <div>
+                                    <p className="font-medium text-gray-800 mb-1">{t("placeDetail.avgCost")}</p>
+                                    <p className="text-sm text-gray-600">{place.avg_cost_range || t("placeDetail.noInfo")}</p>
                                 </div>
-                            )}
+                            </div>
 
                             {place.phone && (
                                 <div className="flex items-start gap-3">

@@ -23,6 +23,7 @@ const RAW_BY_TYPE: Record<PlaceCategoryType, string[]> = {
         "액티비티",
         "시장",
         "소품샵",
+        "팝업스토어",
     ],
 };
 

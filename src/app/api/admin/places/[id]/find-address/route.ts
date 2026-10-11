@@ -9,7 +9,7 @@ export const maxDuration = 300; // 저장 후 구글 자료까지 다시 모으�
 
 /**
  * 위치 없는 장소의 주소 자동 찾기
- * body 없음: 모은 블로그 자료에서 주소 후보 찾기 → { found: {address, lat, lng, sourceCount} | null }
+ * body 없음: 네이버 지역검색 → 모은 블로그 자료에서 주소 후보 찾기 → { found: {address, lat, lng, via} | null }
  * body { apply: {address, lat, lng} }: 저장 후 구글 자료 포함해 팁 자료 다시 모으기
  */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

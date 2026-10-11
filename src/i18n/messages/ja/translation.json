@@ -1817,6 +1817,7 @@
     "basicInfo": "基本情報",
     "openingHours": "営業時間",
     "avgCost": "平均費用",
+    "noInfo": "情報なし",
     "phone": "電話番号",
     "website": "ウェブサイト",
     "parking": "駐車場",
@@ -1894,7 +1895,8 @@
     "SHOPPING": "ショッピング",
     "ATTRACTION": "観光スポット",
     "BOOKSTORE": "書店",
-    "BEAUTY": "ビューティー"
+    "BEAUTY": "ビューティー",
+    "POPUP": "ポップアップストア"
   },
   "crowdLevel": {
     "EASY": "空いている",

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse, after } from "next/server";
-import { normalizeCostRange } from "@/lib/costRange";
 import { kakaoKeywordSearch, runPlaceAutofill, type KakaoPlace } from "@/lib/placeAutofill";
 import { defaultCache } from "@/lib/cache";
 import { closeTelegramButtons, sendTelegram } from "@/lib/telegram";
@@ -140,6 +139,9 @@ async function savePlace(chatId: number, pending: Pending, picked: KakaoPlace | 
         }
     }
 
+    // 팝업·전시(기간 있음) 이름은 번역하지 않음: 비워 두면 팁 자료를 모은 뒤 translatePopupFields가 공식 영문명/원문으로 채움
+    if (pending.startDate || pending.endDate) Object.assign(autofillData, { name_en: "", name_ja: "", name_zh: "" });
+
     // draft 로 DB 저장 (이름은 캡션 원본 유지)
     const saved = await (prisma as any).place.create({
         data: {
@@ -156,7 +158,6 @@ async function savePlace(chatId: number, pending: Pending, picked: KakaoPlace | 
             description_ja: autofillData.description_ja || null,
             description_zh: autofillData.description_zh || null,
             category: autofillData.category || null,
-            avg_cost_range: normalizeCostRange(autofillData.avg_cost_range) || null,
             opening_hours: autofillData.opening_hours || null,
             phone: autofillData.phone || null,
             website: autofillData.website || null,
@@ -253,7 +254,7 @@ export async function POST(request: NextRequest) {
 
         // /start 커맨드
         if (text === "/start") {
-            await sendTelegram(chatId, "안녕하세요!\n\n📎 사진을 파일로 보내면 GPS 자동 인식\n\n형식: 장소이름 | 지역 | 카테고리 (| 대신 , 도 되고, 그냥 \"봉땅 홍대\"처럼 써도 돼요)\n예시: 봉땅 | 홍대 | 카페\n팝업·전시처럼 기간이 있으면 끝에: 짱구 전시, 성수, 10/17~1/24\n\n카테고리: 카페 / 음식점 / 주점 / 소품샵 / 실내명소 / 야외명소 / 이색데이트 / 액티비티 / 사진관 / 인생네컷 / 향수 / 야경 / 식물원 / 시장 / 쇼핑");
+            await sendTelegram(chatId, "안녕하세요!\n\n📎 사진을 파일로 보내면 GPS 자동 인식\n\n형식: 장소이름 | 지역 | 카테고리 (| 대신 , 도 되고, 그냥 \"봉땅 홍대\"처럼 써도 돼요)\n예시: 봉땅 | 홍대 | 카페\n팝업·전시처럼 기간이 있으면 끝에: 짱구 전시, 성수, 10/17~1/24\n\n카테고리: 카페 / 음식점 / 주점 / 소품샵 / 실내명소 / 야외명소 / 이색데이트 / 액티비티 / 사진관 / 인생네컷 / 향수 / 야경 / 식물원 / 시장 / 쇼핑 / 팝업스토어");
             return NextResponse.json({ ok: true });
         }
 

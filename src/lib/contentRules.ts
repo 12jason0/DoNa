@@ -40,6 +40,7 @@ export const PLACE_CATEGORIES = [
     "식물원",
     "시장",
     "소품샵",
+    "팝업스토어",
 ] as const;
 
 const MAX_PLACE_GAP_KM = 1.2;

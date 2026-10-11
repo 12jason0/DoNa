@@ -1829,6 +1829,7 @@
     "basicInfo": "Overview",
     "openingHours": "Hours",
     "avgCost": "Average cost",
+    "noInfo": "No info",
     "phone": "Phone",
     "website": "Website",
     "parking": "Parking",
@@ -1906,7 +1907,8 @@
     "SHOPPING": "Shopping",
     "ATTRACTION": "Attraction",
     "BOOKSTORE": "Bookstore",
-    "BEAUTY": "Beauty"
+    "BEAUTY": "Beauty",
+    "POPUP": "Pop-up Store"
   },
   "crowdLevel": {
     "EASY": "Not busy",

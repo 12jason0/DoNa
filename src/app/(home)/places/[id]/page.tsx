@@ -166,9 +166,9 @@ export default async function PlacePage({ params }: { params: Promise<{ id: stri
     const rows: [string, string | null][] = [
         ["카테고리", place.category],
         ["주소", place.address],
-        ["영업시간", place.opening_hours],
+        ["영업시간", place.opening_hours || "정보 없음"],
         ["휴무", closedLines.length ? closedLines.join(", ") : null],
-        ["가격대", price],
+        ["가격대", price || "정보 없음"],
     ];
 
     return (

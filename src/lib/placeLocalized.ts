@@ -43,6 +43,7 @@ export function pickPlaceAddress(place: PlaceLocalizedFields, locale: Locale): s
 type TranslateFn = (key: TranslationKeys) => string;
 
 const PLACE_CATEGORY_MAP: { keywords: string[]; key: string }[] = [
+    { keywords: ["팝업", "popup", "pop-up"], key: "POPUP" },
     { keywords: ["카페", "cafe", "커피", "coffee", "베이커리", "bakery"], key: "CAFE" },
     { keywords: ["식당", "음식", "맛집", "한식", "중식", "양식", "일식", "이탈리안", "피자", "restaurant", "italian", "레스토랑", "뷔페"], key: "RESTAURANT" },
     { keywords: ["술", "바", "맥주", "호프", "주점", "bar", "pub", "와인"], key: "BAR" },

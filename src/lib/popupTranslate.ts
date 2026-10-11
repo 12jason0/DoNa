@@ -1,5 +1,6 @@
 // 팝업·전시 장소 이름·주소 다국어 (기존 places.name_*/address_* 칸, 자동채우기와 같은 haiku)
 // 이름은 고유명사라 번역하지 않음: 블로그 자료에 공식 영문명이 그대로 있으면 name_en, 없으면 원문 유지
+// 빈 칸만 채움: 관리자가 직접 넣은 이름·주소 번역은 덮어쓰지 않음
 import Anthropic from "@anthropic-ai/sdk";
 import prisma from "@/lib/db";
 import { logTipRun } from "@/lib/tipPipeline";
@@ -15,7 +16,10 @@ export function verifyOfficialName(candidate: unknown, texts: string[]): string 
 }
 
 export async function translatePopupFields(placeId: number) {
-    const place = await prisma.place.findUniqueOrThrow({ where: { id: placeId }, select: { name: true, address: true } });
+    const place = await prisma.place.findUniqueOrThrow({
+        where: { id: placeId },
+        select: { name: true, address: true, name_en: true, name_ja: true, name_zh: true, address_en: true, address_ja: true, address_zh: true },
+    });
     const sources = await prisma.tipSource.findMany({
         where: { place_id: placeId, relevant: true, source_type: { not: "google_review" } },
         select: { title: true, content: true },
@@ -54,12 +58,13 @@ export async function translatePopupFields(placeId: number) {
     }
 
     const official = verifyOfficialName(ai.official_en_name, texts);
-    const data = {
+    const auto: Record<string, string | null> = {
         name_en: official ?? place.name,
         name_ja: place.name,
         name_zh: place.name,
         ...(place.address ? { address_en: ai.address_en || null, address_ja: ai.address_ja || null, address_zh: ai.address_zh || null } : {}),
     };
-    await prisma.place.update({ where: { id: placeId }, data });
+    const data = Object.fromEntries(Object.entries(auto).filter(([k]) => !place[k as keyof typeof place]?.trim()));
+    if (Object.keys(data).length) await prisma.place.update({ where: { id: placeId }, data });
     return { ...data, officialFound: !!official, tokens };
 }

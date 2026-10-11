@@ -26,7 +26,8 @@ export async function kakaoKeywordSearch(query: string, size = 1): Promise<Kakao
     return data.documents ?? [];
 }
 
-async function naverSearch(name: string) {
+/** 네이버 지역검색 (공식 API), 첫 결과 1개 */
+export async function naverSearch(name: string) {
     const clientId = process.env.NAVER_SEARCH_CLIENT_ID;
     const clientSecret = process.env.NAVER_SEARCH_CLIENT_SECRET;
     if (!clientId || !clientSecret) return null;
@@ -62,7 +63,6 @@ export interface PlaceAutofillResult {
     description_en: string;
     description_ja: string;
     description_zh: string;
-    avg_cost_range: string;
     reservation_required: boolean;
     google_place_id: string;
 }
@@ -98,7 +98,7 @@ export async function translateAddress(address: string): Promise<{ address_en: s
     }
 }
 
-function isNameMatch(input: string, result: string): boolean {
+export function isNameMatch(input: string, result: string): boolean {
     const norm = (s: string) => s.replace(/\s/g, "").toLowerCase();
     const a = norm(input);
     const b = norm(result);
@@ -163,7 +163,6 @@ export async function runPlaceAutofill(name: string, imageBuffer?: Buffer, force
                 '  "address_en": "주어진 한국어 주소를 영문으로 변환 (로마자 표기)",',
                 '  "address_ja": "주어진 한국어 주소를 일본어로 번역",',
                 '  "address_zh": "주어진 한국어 주소를 중국어로 번역",',
-                '  "avg_cost_range": "카테고리 기반으로 1인 기준 최소~최대 가격대를 숫자+쉼표 형식으로 추정 (예: 10,000 - 20,000)",',
                 '  "reservation_required": false',
                 "}",
                 "",
@@ -216,7 +215,6 @@ export async function runPlaceAutofill(name: string, imageBuffer?: Buffer, force
         description_en: aiData.description_en || "",
         description_ja: aiData.description_ja || "",
         description_zh: aiData.description_zh || "",
-        avg_cost_range: aiData.avg_cost_range || "",
         reservation_required: aiData.reservation_required === true,
         google_place_id: google?.place_id || "",
     };
