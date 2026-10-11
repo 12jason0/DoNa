@@ -22,6 +22,14 @@ export type InstagramDm = { igsid: string; username: string | null; text: string
 export const telegramAdminIds = () => (process.env.TELEGRAM_ADMIN_IDS || "").split(",").map((s) => Number(s.trim())).filter(Boolean);
 const notifyAdmins = (text: string, buttons?: { text: string; data: string }[][]) => Promise.all(telegramAdminIds().map((id) => sendTelegram(id, text, buttons)));
 
+/** 같은 key는 하루(KST 날짜) 한 번만 텔레그램 알림 */
+export async function notifyAdminsOncePerDay(key: string, text: string) {
+    const dayKey = `${key}:${new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10)}`;
+    if (await defaultCache.get(dayKey)) return;
+    await defaultCache.set(dayKey, 1, 24 * 60 * 60 * 1000);
+    await notifyAdmins(text);
+}
+
 /** 보낸 사람 IGSID → 인스타 계정 이름 (상대가 먼저 DM을 보낸 경우에만 조회됨) */
 export async function fetchInstagramUsername(igsid: string): Promise<string | null> {
     const url = `${GRAPH}/${encodeURIComponent(igsid)}?fields=username&access_token=${process.env.INSTAGRAM_PAGE_ACCESS_TOKEN}`;
