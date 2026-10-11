@@ -277,6 +277,7 @@ model Place {
   tip_query            String?          @map("tip_query") @db.VarChar(200) /// 위치 없이 저장한 장소의 블로그 검색어 (이름 + 지역)
   start_date           DateTime?        @map("start_date") @db.Date /// 팝업·전시 등 기간 한정 장소 시작일 (null = 상설)
   end_date             DateTime?        @map("end_date") @db.Date /// 종료일. 지나면 이 장소가 들어간 코스는 목록·추천에서 빠짐
+  instagram_handle     String?          @map("instagram_handle") @db.VarChar(30) /// 인스타 계정 이름 (@ 없이 소문자). 인스타 DM 보낸 사람 → 장소 매칭용
   coursePlaces         CoursePlace[]
   closed_days          PlaceClosedDay[]
   tip_sources          TipSource[]
@@ -288,6 +289,7 @@ model Place {
   @@index([name])
   @@index([address])
   @@index([latitude, longitude])
+  @@index([instagram_handle])
   @@map("places")
 }
 
