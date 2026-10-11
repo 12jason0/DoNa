@@ -14,3 +14,13 @@ assert.equal(validMetaSignature(body, sig.replace("sha256=", ""), secret), false
 assert.equal(validMetaSignature(body, null, secret), false);
 assert.equal(validMetaSignature(body, sig, undefined), false); // 시크릿 없으면 전부 거부
 console.log("ok");
+
+// 원본 바이트로 계산: 한글이 이스케이프된 본문을 파싱 후 다시 문자열로 만들면 서명이 달라짐
+const bs = String.fromCharCode(92); // 백슬래시
+const escaped = Buffer.from(`{"text":"${bs}uc548${bs}ub155"}`, "utf8"); // 메타처럼 한글("안녕")을 유니코드 이스케이프한 본문
+const sig2 = "sha256=" + createHmac("sha256", secret).update(escaped).digest("hex");
+assert.equal(validMetaSignature(escaped, sig2, secret), true);
+assert.equal(validMetaSignature(JSON.stringify(JSON.parse(escaped.toString())), sig2, secret), false);
+// 시크릿 앞뒤 공백·줄바꿈은 무시
+assert.equal(validMetaSignature(escaped, sig2, ` ${secret}\n`), true);
+console.log("ok bytes");

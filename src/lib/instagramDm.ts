@@ -9,12 +9,89 @@ import { generateTipCandidates, logTipRun, tipReviewUrl } from "@/lib/tipPipelin
 export const GRAPH = "https://graph.facebook.com/v23.0";
 const PENDING_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-/** 웹훅 서명: X-Hub-Signature-256 = "sha256=" + HMAC-SHA256(DoNa-Content 앱 시크릿, 원문 본문). META_APP_SECRET(다른 앱) 아님 */
-export function validMetaSignature(raw: string, header: string | null, secret: string | undefined) {
-    if (!secret || !header?.startsWith("sha256=")) return false;
-    const expected = Buffer.from(createHmac("sha256", secret).update(raw, "utf8").digest("hex"));
-    const got = Buffer.from(header.slice("sha256=".length));
+/**
+ * 웹훅 서명: X-Hub-Signature-256 = "sha256=" + HMAC-SHA256(앱 시크릿, 받은 본문 바이트 그대로).
+ * JSON을 파싱했다가 다시 문자열로 만들면 한글 이스케이프 등이 달라져 안 맞음 → 원본 바이트로만 계산. 시크릿 앞뒤 공백은 제거.
+ * META_APP_SECRET(다른 앱, 2398114527253289) 아님
+ */
+export function validMetaSignature(raw: Buffer | string, header: string | null, secret: string | undefined) {
+    const key = secret?.trim();
+    if (!key || !header?.startsWith("sha256=")) return false;
+    const expected = Buffer.from(createHmac("sha256", key).update(raw).digest("hex"));
+    const got = Buffer.from(header.slice("sha256=".length).trim().toLowerCase());
     return got.length === expected.length && timingSafeEqual(got, expected);
+}
+
+/** 어느 시크릿으로 서명됐는지: DoNa-Content 앱 / 인스타 로그인 앱 / 둘 다 아님 */
+export function signedBy(raw: Buffer, header: string | null): "meta" | "instagram" | null {
+    if (validMetaSignature(raw, header, process.env.META_CONTENT_APP_SECRET)) return "meta";
+    if (validMetaSignature(raw, header, process.env.INSTAGRAM_LOGIN_APP_SECRET)) return "instagram";
+    return null;
+}
+
+/** 서명 실패 진단용 (시크릿 값은 안 드러냄): 길이·앞뒤 공백 여부. 메타 앱 시크릿은 보통 32자 */
+export function secretShape(name: string) {
+    const v = process.env[name];
+    if (!v) return `${name}: 없음`;
+    return `${name}: ${v.trim().length}자${v !== v.trim() ? " (앞뒤 공백 있었음 → 제거하고 계산)" : ""}`;
+}
+
+type Messaging = { sender?: { id?: string }; message?: { mid?: string; text?: string; is_echo?: boolean; is_deleted?: boolean } };
+
+/** 서명 통과한 웹훅 본문 → 처리할 DM 목록. 같은 메시지 ID는 3일 동안 한 번만 (메타가 다시 보내도) */
+export async function dmsFromPayload(raw: Buffer): Promise<{ igsid: string; text: string }[]> {
+    const body = JSON.parse(raw.toString("utf8"));
+    if (body.object !== "instagram") return [];
+    const out: { igsid: string; text: string }[] = [];
+    for (const entry of body.entry ?? []) {
+        for (const m of (entry.messaging ?? []) as Messaging[]) {
+            const msg = m.message;
+            const sender = m.sender?.id;
+            // 우리 계정이 보낸 메시지(echo)·삭제·글자 없는 메시지(사진·스티커 등)는 건너뜀
+            if (!msg?.mid || !msg.text?.trim() || msg.is_echo || msg.is_deleted || !sender || sender === entry.id) continue;
+            if (await defaultCache.get(`ig:mid:${msg.mid}`)) continue;
+            await defaultCache.set(`ig:mid:${msg.mid}`, 1, 3 * 24 * 60 * 60 * 1000);
+            out.push({ igsid: sender, text: msg.text.trim() });
+        }
+    }
+    return out;
+}
+
+/** 서명 실패한 요청은 30분 보관 → 원인 고친 뒤 텔레그램 "/igretry"로 다시 처리 */
+const FAILED_KEY = "ig:failed";
+const FAILED_TTL_MS = 30 * 60 * 1000;
+type FailedHook = { body: string; header: string | null; at: number }; // body: base64 (바이트 그대로)
+
+export async function keepFailedWebhook(raw: Buffer, header: string | null) {
+    const now = Date.now();
+    const list = ((await defaultCache.get<FailedHook[]>(FAILED_KEY)) ?? []).filter((f) => now - f.at < FAILED_TTL_MS);
+    list.push({ body: raw.toString("base64"), header, at: now });
+    await defaultCache.set(FAILED_KEY, list.slice(-20), FAILED_TTL_MS);
+}
+
+/** 보관한 실패 요청을 지금 시크릿으로 다시 검증해서 처리 */
+export async function retryFailedWebhooks(chatId: number) {
+    const now = Date.now();
+    const list = ((await defaultCache.get<FailedHook[]>(FAILED_KEY)) ?? []).filter((f) => now - f.at < FAILED_TTL_MS);
+    if (list.length === 0) return sendTelegram(chatId, "다시 처리할 실패 요청이 없어요 (30분 지나면 지워져요).");
+    const still: FailedHook[] = [];
+    let dms = 0;
+    for (const f of list) {
+        const raw = Buffer.from(f.body, "base64");
+        if (!signedBy(raw, f.header)) {
+            still.push(f);
+            continue;
+        }
+        for (const dm of await dmsFromPayload(raw)) {
+            dms++;
+            await handleInstagramDm(dm.igsid, dm.text);
+        }
+    }
+    await defaultCache.set(FAILED_KEY, still, FAILED_TTL_MS);
+    await sendTelegram(
+        chatId,
+        `실패 요청 ${list.length}건 중 ${list.length - still.length}건 서명 통과 → DM ${dms}개 처리. 아직 안 맞는 것 ${still.length}건\n${secretShape("META_CONTENT_APP_SECRET")}\n${secretShape("INSTAGRAM_LOGIN_APP_SECRET")}`
+    );
 }
 
 export type InstagramDm = { igsid: string; username: string | null; text: string };

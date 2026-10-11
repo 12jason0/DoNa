@@ -6,7 +6,7 @@ import { CLOSED_STATUS, parsePeriod, ymd } from "@/lib/placePeriod";
 import { handleAddressButton, handleBuildingMessage, suggestPopupAddress } from "@/lib/popupAddress";
 import { translatePopupFields } from "@/lib/popupTranslate";
 import { runTipPipeline } from "@/lib/tipPipeline";
-import { resolvePendingDm } from "@/lib/instagramDm";
+import { resolvePendingDm, retryFailedWebhooks } from "@/lib/instagramDm";
 import { getS3Client, getS3Bucket, getS3PublicUrl } from "@/lib/s3";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import sharp from "sharp";
@@ -296,6 +296,12 @@ export async function POST(request: NextRequest) {
 
         // 인증되지 않은 채팅 무시
         if (ALLOWED_IDS.length > 0 && !ALLOWED_IDS.includes(chatId)) {
+            return NextResponse.json({ ok: true });
+        }
+
+        // "/igretry": 서명 실패로 보관한 인스타 웹훅(30분)을 지금 시크릿으로 다시 처리
+        if (text.trim() === "/igretry") {
+            after(() => retryFailedWebhooks(chatId).catch((e) => console.error("인스타 웹훅 재처리 실패:", e)));
             return NextResponse.json({ ok: true });
         }
 
