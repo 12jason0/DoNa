@@ -36,7 +36,7 @@ export async function translatePopupFields(placeId: number) {
             "",
             "1) 아래 자료에 이 팝업의 공식 영문명이 '그대로' 적혀 있으면 그 문자열을 official_en_name에 그대로 복사하세요.",
             "   자료에 없으면 null. 직접 번역하거나 로마자로 바꾸지 마세요.",
-            place.address ? "2) 주소를 address_en(로마자 표기), address_ja(일본어), address_zh(중국어 간체)로 옮기세요." : "",
+            place.address ? "2) 주소를 address_en(로마자 표기), address_ja(일본어), address_zh(중국어 번체, 대만)로 옮기세요." : "",
             "",
             'JSON만 응답: {"official_en_name": string|null' + (place.address ? ', "address_en": "...", "address_ja": "...", "address_zh": "..."' : "") + "}",
             "",

@@ -10,7 +10,7 @@ function acceptLanguageHeader(locale: LocalePreference): string {
         case 'ja':
             return 'ja-JP,ja;q=0.9,en;q=0.5';
         case 'zh':
-            return 'zh-CN,zh;q=0.9,en;q=0.5';
+            return 'zh-TW,zh;q=0.9,en;q=0.5';
         default:
             return 'ko-KR,ko;q=0.9,en;q=0.5';
     }

@@ -4,7 +4,7 @@ import type { LocalePreference } from "./appSettingsStorage";
 export function localeTag(locale: string): string {
     if (locale === "en") return "en-US";
     if (locale === "ja") return "ja-JP";
-    if (locale === "zh") return "zh-CN";
+    if (locale === "zh") return "zh-TW";
     return "ko-KR";
 }
 
@@ -13,7 +13,8 @@ export function formatViewsCompact(views: number, locale: LocalePreference): str
     if (views >= 10000) {
         const n = (views / 10000).toFixed(views % 10000 ? 1 : 0);
         if (locale === "ko") return `${n}만`;
-        if (locale === "ja" || locale === "zh") return `${n}万`;
+        if (locale === "ja") return `${n}万`;
+        if (locale === "zh") return `${n}萬`;
         return `${(views / 1000).toFixed(views % 1000 ? 1 : 0)}k`;
     }
     if (views >= 1000) {

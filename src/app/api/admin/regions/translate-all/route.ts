@@ -26,10 +26,10 @@ export async function POST(req: NextRequest) {
         max_tokens: 1024,
         messages: [{
             role: "user",
-            content: `Translate these Korean neighborhood names into English, Japanese, and Chinese (Simplified).
+            content: `Translate these Korean neighborhood names into English, Japanese, and Traditional Chinese (Taiwan).
 Return ONLY a JSON object mapping each Korean name to its translations, no explanation:
 {
-  "성수": {"en":"Seongsu","ja":"聖水","zh":"圣水"},
+  "성수": {"en":"Seongsu","ja":"聖水","zh":"聖水"},
   ...
 }
 

@@ -55,7 +55,7 @@ export default function GlobalError({
     }, [error]);
 
     const m = MESSAGES[locale];
-    const htmlLang = locale === "zh" ? "zh-CN" : locale;
+    const htmlLang = locale === "zh" ? "zh-TW" : locale;
 
     return (
         <html lang={htmlLang}>

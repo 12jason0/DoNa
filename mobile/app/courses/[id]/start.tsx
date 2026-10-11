@@ -117,7 +117,7 @@ export default function CourseStartMemoryScreen() {
     const bgImageUrl = course?.imageUrl ?? course?.coursePlaces?.[0]?.place?.imageUrl;
     const userName = user?.name ?? user?.nickname ?? (user?.email ? user.email.split("@")[0] : null);
 
-    const dateLoc = locale === "en" ? "en-US" : locale === "ja" ? "ja-JP" : locale === "zh" ? "zh-CN" : "ko-KR";
+    const dateLoc = locale === "en" ? "en-US" : locale === "ja" ? "ja-JP" : locale === "zh" ? "zh-TW" : "ko-KR";
     const formattedDate = new Date()
         .toLocaleDateString(dateLoc, { year: "numeric", month: "numeric", day: "numeric" })
         .replace(/\s/g, "");

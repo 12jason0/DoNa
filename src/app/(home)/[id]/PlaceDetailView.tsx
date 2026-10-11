@@ -43,7 +43,7 @@ export type PlaceDetailSerialized = {
 };
 
 function intlLocale(locale: Locale): string {
-    return locale === "zh" ? "zh-CN" : locale;
+    return locale === "zh" ? "zh-TW" : locale;
 }
 
 function formatSpecificClosedDate(date: Date, locale: Locale): string {

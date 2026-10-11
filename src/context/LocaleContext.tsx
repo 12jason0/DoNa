@@ -61,7 +61,7 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
         setLocaleState(newLocale);
         if (typeof window !== "undefined") {
             localStorage.setItem(LOCALE_KEY, newLocale);
-            document.documentElement.lang = newLocale === "zh" ? "zh-CN" : newLocale;
+            document.documentElement.lang = newLocale === "zh" ? "zh-TW" : newLocale;
         }
     }, []);
 
@@ -126,7 +126,7 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
         const applyLocaleData = (data: Record<string, unknown>) => {
             setMessagesCache((prev) => ({ ...prev, [targetLocale]: data }));
             setLocaleState(targetLocale);
-            document.documentElement.lang = targetLocale === "zh" ? "zh-CN" : targetLocale;
+            document.documentElement.lang = targetLocale === "zh" ? "zh-TW" : targetLocale;
         };
         messageLoaders[targetLocale]().then(applyLocaleData);
     }, []);
@@ -134,7 +134,7 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
     // html lang 속성 초기화
     useEffect(() => {
         if (typeof window === "undefined") return;
-        document.documentElement.lang = locale === "zh" ? "zh-CN" : locale;
+        document.documentElement.lang = locale === "zh" ? "zh-TW" : locale;
     }, [locale]);
 
     // en/ja/zh 번역 로드 (비동기)

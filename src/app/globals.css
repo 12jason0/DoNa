@@ -151,9 +151,9 @@ html:lang(ja) {
 
 /* 중국어 UI */
 html[lang="zh"],
-html[lang="zh-CN"],
+html[lang="zh-TW"],
 html:lang(zh),
-html:lang(zh-CN) {
+html:lang(zh-TW) {
     --font-app:
         "ArrowFix", "ZCOOLKuaiLe", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
     --font-sans: var(--font-app);

@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     if (description?.trim()) fields.description = description.trim();
 
     const prompt = `You are a professional translator for a Korean date course app called DoNa.
-Translate the following Korean course fields into English, Japanese, and Chinese (Simplified).
+Translate the following Korean course fields into English, Japanese, and Traditional Chinese (Taiwan).
 
 Rules:
 - Keep translations natural and appealing for each language's culture

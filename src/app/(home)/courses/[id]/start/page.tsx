@@ -479,7 +479,7 @@ function GuidePageInner() {
     }
 
     const localeTag =
-        locale === "ko" ? "ko-KR" : locale === "ja" ? "ja-JP" : locale === "zh" ? "zh-CN" : "en-US";
+        locale === "ko" ? "ko-KR" : locale === "ja" ? "ja-JP" : locale === "zh" ? "zh-TW" : "en-US";
     const currentDate = new Date().toLocaleDateString(localeTag, { year: "numeric", month: "long", day: "numeric" });
     const formattedDate = new Date()
         .toLocaleDateString(localeTag, { year: "numeric", month: "numeric", day: "numeric" })

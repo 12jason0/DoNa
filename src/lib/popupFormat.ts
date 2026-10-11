@@ -35,7 +35,7 @@ export function popupRegion(p: PopupItem, l: PopupLocale) {
     const m =
         address.match(/[A-Za-z]+-(?:gu|gun)\b/i) ??
         address.match(/[가-힣]+(?:구|군)(?=[\s,]|$)/) ??
-        address.match(/[^\s,市都]{1,6}?(?:区|郡)/);
+        address.match(/[^\s,市都]{1,6}?(?:区|區|郡)/);
     return m?.[0] ?? "";
 }
 

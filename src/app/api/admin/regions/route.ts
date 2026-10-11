@@ -13,7 +13,7 @@ async function translateRegionName(name: string): Promise<{ name_en: string; nam
         max_tokens: 256,
         messages: [{
             role: "user",
-            content: `Translate this Korean neighborhood/district name into English, Japanese, and Chinese (Simplified). Return ONLY a JSON object, no explanation:
+            content: `Translate this Korean neighborhood/district name into English, Japanese, and Traditional Chinese (Taiwan). Return ONLY a JSON object, no explanation:
 {"en":"...","ja":"...","zh":"..."}
 
 Korean name: ${name}`,

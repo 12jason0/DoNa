@@ -6,7 +6,7 @@ export type TranslatedTips = { tips_en: TipItem[]; tips_ja: TipItem[]; tips_zh: 
 /** 한국어 팁 → 영·일·중 번역 (관리자 코스 화면 번역 버튼과 팁 검수 승인에서 같이 씀) */
 export async function translateTips(tips: TipItem[]): Promise<TranslatedTips> {
     const prompt = `You are a professional translator for a Korean date course app called DoNa.
-Translate the following Korean place tips into English, Japanese, and Chinese (Simplified).
+Translate the following Korean place tips into English, Japanese, and Traditional Chinese (Taiwan).
 
 Rules:
 - Keep the translation natural and culturally appropriate for each language

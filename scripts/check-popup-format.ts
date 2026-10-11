@@ -32,5 +32,6 @@ assert.equal(verifyOfficialName(null, ["x"]), null);
 // 띄어쓰기 없는 일본어·중국어 주소 (실제 423 번역 결과)
 assert.equal(popupRegion({ ...base, address_ja: "ソウル特別市城東区練武場5キル9-29" }, "ja"), "城東区");
 assert.equal(popupRegion({ ...base, address_zh: "首尔市城东区练武场5街9-29" }, "zh"), "城东区");
+assert.equal(popupRegion({ ...base, address_zh: "首爾特別市城東區聖水洞2街277-135" }, "zh"), "城東區"); // 번체
 assert.equal(popupRegion({ ...base, address: "서울특별시 성동구 연무장5길 9-29" }, "ko"), "성동구");
 console.log("ok");

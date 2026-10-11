@@ -514,7 +514,7 @@ export default function HomeScreen() {
                                                       : locale === "ja"
                                                         ? "ja-JP"
                                                         : locale === "zh"
-                                                          ? "zh-CN"
+                                                          ? "zh-TW"
                                                           : "en-US",
                                                   { month: "numeric", day: "numeric" },
                                               )

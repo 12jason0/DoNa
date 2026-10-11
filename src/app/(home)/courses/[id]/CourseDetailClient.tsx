@@ -61,11 +61,11 @@ function translateDurationChip(raw: string, locale: "ko" | "en" | "ja" | "zh"): 
     const v = (raw || "").trim();
     if (!v || locale === "ko") return v;
     const map: Record<string, { en: string; ja: string; zh: string }> = {
-        "2시간": { en: "2 hours", ja: "2時間", zh: "2小时" },
-        "3시간": { en: "3 hours", ja: "3時間", zh: "3小时" },
-        "4시간": { en: "4 hours", ja: "4時間", zh: "4小时" },
-        "5시간": { en: "5 hours", ja: "5時間", zh: "5小时" },
-        "6시간+": { en: "6+ hours", ja: "6時間以上", zh: "6小时以上" },
+        "2시간": { en: "2 hours", ja: "2時間", zh: "2小時" },
+        "3시간": { en: "3 hours", ja: "3時間", zh: "3小時" },
+        "4시간": { en: "4 hours", ja: "4時間", zh: "4小時" },
+        "5시간": { en: "5 hours", ja: "5時間", zh: "5小時" },
+        "6시간+": { en: "6+ hours", ja: "6時間以上", zh: "6小時以上" },
     };
     const hit = map[v];
     if (hit) return hit[locale];

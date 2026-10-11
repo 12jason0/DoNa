@@ -59,7 +59,7 @@ export default function MemoryCTA({
         if (!dateString) return "";
         try {
             const date = new Date(dateString);
-            const localeMap: Record<string, string> = { ko: "ko-KR", en: "en-US", ja: "ja-JP", zh: "zh-CN" };
+            const localeMap: Record<string, string> = { ko: "ko-KR", en: "en-US", ja: "ja-JP", zh: "zh-TW" };
             return date.toLocaleDateString(localeMap[locale] || locale, { month: "numeric", day: "numeric" });
         } catch {
             return "";
