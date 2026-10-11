@@ -92,6 +92,7 @@ export async function GET(request: NextRequest) {
                     imageUrl: true,
                     tags: true,
                     status: true,
+                    place_status: true,
                 },
             })) as any[];
 

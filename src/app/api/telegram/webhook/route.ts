@@ -2,7 +2,7 @@ import { NextRequest, NextResponse, after } from "next/server";
 import { kakaoKeywordSearch, runPlaceAutofill, type KakaoPlace } from "@/lib/placeAutofill";
 import { defaultCache } from "@/lib/cache";
 import { closeTelegramButtons, sendTelegram } from "@/lib/telegram";
-import { parsePeriod, ymd } from "@/lib/placePeriod";
+import { CLOSED_STATUS, parsePeriod, ymd } from "@/lib/placePeriod";
 import { handleAddressButton, handleBuildingMessage, suggestPopupAddress } from "@/lib/popupAddress";
 import { translatePopupFields } from "@/lib/popupTranslate";
 import { runTipPipeline } from "@/lib/tipPipeline";
@@ -92,8 +92,9 @@ const pendingKey = (chatId: number) => `tg:place-pending:${chatId}`;
 /**
  * "맞아요"를 누른 뒤: 기존 저장 흐름 그대로 (주소·좌표는 고른 카카오 장소로 확정) → 저장된 장소 id
  * picked가 null이면 "이름 그대로 저장": 보낸 이름으로 저장, 주소·좌표는 비움 (관리자 화면에서 나중에 입력)
+ * 같은 google_place_id 장소가 이미 있으면 저장하지 않고 "팁 다시 모을까요?" 버튼만 보냄 → null
  */
-async function savePlace(chatId: number, pending: Pending, picked: KakaoPlace | null): Promise<number> {
+async function savePlace(chatId: number, pending: Pending, picked: KakaoPlace | null): Promise<number | null> {
     const { neighborhood, category, fileId, isDocument } = pending;
     // 구분자 없이 "이름 지역"으로 보냈으면 문장 전체가 이름이 되므로 고른 카카오 장소 이름을 씀
     const placeName = pending.hasSeparator || !picked ? pending.placeName : picked.place_name;
@@ -127,6 +128,22 @@ async function savePlace(chatId: number, pending: Pending, picked: KakaoPlace | 
     if (gpsCoords) {
         autofillData.latitude = gpsCoords.latitude;
         autofillData.longitude = gpsCoords.longitude;
+    }
+
+    // 중복 방지: 구글 장소 ID는 자동 채우기에서 나오므로 그 뒤, 사진 업로드·저장 전에 확인
+    // ponytail: 자동 채우기 비용은 이미 씀. 카카오 ID 칸이 생기면 자동 채우기 전에 확인 가능
+    if (autofillData.google_place_id) {
+        const existing = await prisma.place.findFirst({
+            where: { google_place_id: autofillData.google_place_id },
+            select: { id: true, name: true, status: true },
+        });
+        if (existing) {
+            const closedNote = existing.status === CLOSED_STATUS ? " (폐업 처리됨)" : "";
+            await sendTelegram(chatId, `이미 있는 장소예요 (ID ${existing.id}, ${existing.name})${closedNote}. 팁 다시 모을까요?`, [
+                [{ text: "팁 다시 모으기", data: `retip:${existing.id}` }, { text: "취소", data: "retip:none" }],
+            ]);
+            return null;
+        }
     }
 
     // 영문명으로 S3 업로드
@@ -212,6 +229,17 @@ export async function POST(request: NextRequest) {
                 if (placeId) after(() => runTipPipeline(placeId, cbChatId).catch(() => {}));
                 return NextResponse.json({ ok: true });
             }
+            // 이미 있는 장소: "팁 다시 모으기" / "취소"
+            if (String(cb.data ?? "").startsWith("retip:")) {
+                const placeId = Number(String(cb.data).slice("retip:".length));
+                if (!placeId) {
+                    await sendTelegram(cbChatId, "저장 안 했어요.");
+                } else {
+                    await sendTelegram(cbChatId, "📚 팁 자료 다시 모으는 중... 끝나면 알려드릴게요.");
+                    after(() => runTipPipeline(placeId, cbChatId, startedAt).catch(() => {}));
+                }
+                return NextResponse.json({ ok: true });
+            }
             const pending = await defaultCache.get<Pending>(pendingKey(cbChatId));
             defaultCache.delete(pendingKey(cbChatId));
             const pick = String(cb.data ?? "").replace("pick:", "");
@@ -222,6 +250,7 @@ export async function POST(request: NextRequest) {
                 await sendTelegram(cbChatId, "저장 안 했어요. 이름이나 지역을 바꿔서 다시 보내주세요.");
             } else {
                 const placeId = await savePlace(cbChatId, pending, picked ?? null);
+                if (!placeId) return NextResponse.json({ ok: true });
                 await sendTelegram(cbChatId, "📚 팁 자료 모으는 중... 끝나면 알려드릴게요.");
                 after(async () => {
                     await runTipPipeline(placeId, cbChatId, startedAt).catch(() => {});

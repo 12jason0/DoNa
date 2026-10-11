@@ -31,6 +31,8 @@ type Place = {
     imageUrl?: string | null;
     start_date?: string | null; // "2026-10-17", 비우면 상설
     end_date?: string | null;
+    status?: string; // "closed" = 관리자 폐업 처리
+    place_status?: string | null; // 구글 영업 상태 (크론이 매주 갱신)
 };
 
 const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"] as const;
@@ -713,7 +715,14 @@ export default function AdminPlacesPage() {
                                     {places.map((p) => (
                                         <tr key={p.id} className="hover:bg-gray-50 group">
                                             <td className="p-3 border-b text-gray-500">{p.id}</td>
-                                            <td className="p-3 border-b font-medium text-gray-800">{p.name}</td>
+                                            <td className="p-3 border-b font-medium text-gray-800">
+                                                {p.name}
+                                                {p.status === "closed" ? (
+                                                    <span className="ml-2 px-1.5 py-0.5 rounded text-[11px] font-semibold bg-red-100 text-red-700">폐업</span>
+                                                ) : p.place_status === "CLOSED_PERMANENTLY" ? (
+                                                    <span className="ml-2 px-1.5 py-0.5 rounded text-[11px] font-semibold bg-gray-100 text-gray-500">구글: 폐업</span>
+                                                ) : null}
+                                            </td>
                                             <td className="p-3 border-b text-gray-600">{p.category}</td>
                                             <td className="p-3 border-b text-gray-500 truncate max-w-xs">{p.address}</td>
                                             <td className="p-3 border-b text-right space-x-2">
