@@ -7,7 +7,7 @@ export function textFontForLocale(locale: LocalePreference): TextStyle {
     if (locale === "ko") return { fontFamily: "Cafe24Dongdong", fontWeight: "400" };
     if (locale === "en") return { fontFamily: "KalamRegular", fontWeight: "400" };
     if (locale === "ja") return { fontFamily: "HachiMaruPop", fontWeight: "400" };
-    if (locale === "zh") return { fontFamily: "ZCOOLKuaiLe", fontWeight: "400" };
+    if (locale === "zh") return { fontFamily: "JfOpenHuninn", fontWeight: "400" };
     return {};
 }
 
@@ -28,7 +28,7 @@ function defaultFontStyle(locale: LocalePreference): object {
     if (locale === "ko") return { fontFamily: "Cafe24Dongdong", fontWeight: "300" };
     if (locale === "en") return { fontFamily: "KalamRegular", fontWeight: "400" };
     if (locale === "ja") return { fontFamily: "HachiMaruPop", fontWeight: "400" };
-    if (locale === "zh") return { fontFamily: "ZCOOLKuaiLe", fontWeight: "400" };
+    if (locale === "zh") return { fontFamily: "JfOpenHuninn", fontWeight: "400" };
     return {};
 }
 

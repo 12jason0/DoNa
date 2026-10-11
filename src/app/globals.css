@@ -92,14 +92,8 @@
     font-display: swap;
 }
 
-/* public/fonts/ZCOOLKuaiLe-Regular.woff2 — 중국어(zh) */
-@font-face {
-    font-family: "ZCOOLKuaiLe";
-    src: url("/fonts/ZCOOLKuaiLe-Regular.woff2") format("woff2");
-    font-weight: 400;
-    font-style: normal;
-    font-display: swap;
-}
+/* 중국어(zh, 번체) 글꼴 DonaZhRound: @font-face는 public/fonts/zh/font-face.css (zh 사용자만 LocaleContext에서 불러옴).
+ * jf open 粉圓 2.1 (SIL OFL 1.1, public/fonts/zh/OFL.txt). 웹용으로 나눈 수정본이라 OFL 예약 이름(huninn) 대신 DonaZhRound */
 
 /* 🟢 Tailwind v4 클래스 기반 다크모드 활성화 */
 @custom-variant dark (&:where(.dark, .dark *));
@@ -121,7 +115,7 @@
 :root {
     --color-background: var(--background);
     --color-foreground: var(--foreground);
-    /* ko 기본: 영어도 Cafe24Dongdong 우선. HachiMaruPop/ZCOOLKuaiLe는 여기 넣지 말 것 —
+    /* ko 기본: 영어도 Cafe24Dongdong 우선. HachiMaruPop/DonaZhRound는 여기 넣지 말 것 —
        Cafe24에 없는 글자 하나만 나와도 3.7MB를 받음. ja/zh는 아래 lang 규칙에서만 사용 */
     --font-app:
         "ArrowFix", "Cafe24Dongdong", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
@@ -155,7 +149,7 @@ html[lang="zh-TW"],
 html:lang(zh),
 html:lang(zh-TW) {
     --font-app:
-        "ArrowFix", "ZCOOLKuaiLe", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
+        "ArrowFix", "DonaZhRound", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", ui-sans-serif, system-ui, sans-serif;
     --font-sans: var(--font-app);
     --font-mono: var(--font-app);
 }

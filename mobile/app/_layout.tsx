@@ -67,7 +67,7 @@ Notifications.setNotificationHandler({
 
 // ─── Root Layout ──────────────────────────────────────────────────────────────
 
-// RN: locale별 단일 폰트. ko: Cafe24Dongdong / en: Kalam* / ja: HachiMaruPop / zh: ZCOOLKuaiLe
+// RN: locale별 단일 폰트. ko: Cafe24Dongdong / en: Kalam* / ja: HachiMaruPop / zh: JfOpenHuninn
 applyDefaultTextFontForLocale(loadLocalePreference());
 
 function RootLayoutInner() {
@@ -106,7 +106,8 @@ function RootLayoutInner() {
         KalamRegular: require("../assets/fonts/Kalam-Regular.ttf"),
         KalamBold: require("../assets/fonts/Kalam-Bold.ttf"),
         HachiMaruPop: require("../assets/fonts/HachiMaruPop-Regular.ttf"),
-        ZCOOLKuaiLe: require("../assets/fonts/ZCOOLKuaiLe-Regular.ttf"),
+        // 중국어(번체): jf open 粉圓 2.1 원본 (SIL OFL 1.1, assets/fonts/jf-openhuninn-OFL.txt)
+        JfOpenHuninn: require("../assets/fonts/jf-openhuninn-2.1.ttf"),
     });
 
     // 네이티브 스플래시 즉시 숨김 → JS DonaSplashAnimation(4초)이 전체 스플래시를 담당

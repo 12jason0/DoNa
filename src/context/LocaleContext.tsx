@@ -135,6 +135,11 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         if (typeof window === "undefined") return;
         document.documentElement.lang = locale === "zh" ? "zh-TW" : locale;
+        // 중국어 글꼴 선언(약 67KB)은 zh일 때만 불러옴 — globals.css에 넣으면 모든 사용자가 받음
+        if (locale === "zh" && !document.getElementById("zh-font-css")) {
+            const link = Object.assign(document.createElement("link"), { id: "zh-font-css", rel: "stylesheet", href: "/fonts/zh/font-face.css" });
+            document.head.appendChild(link);
+        }
     }, [locale]);
 
     // en/ja/zh 번역 로드 (비동기)
