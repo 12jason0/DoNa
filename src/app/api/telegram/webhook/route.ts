@@ -92,12 +92,27 @@ const pendingKey = (chatId: number) => `tg:place-pending:${chatId}`;
 /**
  * "맞아요"를 누른 뒤: 기존 저장 흐름 그대로 (주소·좌표는 고른 카카오 장소로 확정) → 저장된 장소 id
  * picked가 null이면 "이름 그대로 저장": 보낸 이름으로 저장, 주소·좌표는 비움 (관리자 화면에서 나중에 입력)
- * 같은 google_place_id 장소가 이미 있으면 저장하지 않고 "팁 다시 모을까요?" 버튼만 보냄 → null
+ * 같은 카카오 ID(자동 채우기 전)나 google_place_id(자동 채우기 후) 장소가 이미 있으면 저장하지 않고 "팁 다시 모을까요?" 버튼만 보냄 → null
  */
+async function askRetip(chatId: number, existing: { id: number; name: string; status: string }) {
+    const closedNote = existing.status === CLOSED_STATUS ? " (폐업 처리됨)" : "";
+    await sendTelegram(chatId, `이미 있는 장소예요 (ID ${existing.id}, ${existing.name})${closedNote}. 팁 다시 모을까요?`, [
+        [{ text: "팁 다시 모으기", data: `retip:${existing.id}` }, { text: "취소", data: "retip:none" }],
+    ]);
+}
+
 async function savePlace(chatId: number, pending: Pending, picked: KakaoPlace | null): Promise<number | null> {
     const { neighborhood, category, fileId, isDocument } = pending;
     // 구분자 없이 "이름 지역"으로 보냈으면 문장 전체가 이름이 되므로 고른 카카오 장소 이름을 씀
     const placeName = pending.hasSeparator || !picked ? pending.placeName : picked.place_name;
+    // 중복 방지 1: 고른 카카오 장소 ID가 이미 있으면 자동 채우기(Claude·구글 비용) 전에 멈춤
+    if (picked?.id) {
+        const existing = await prisma.place.findFirst({ where: { kakao_place_id: picked.id }, select: { id: true, name: true, status: true } });
+        if (existing) {
+            await askRetip(chatId, existing);
+            return null;
+        }
+    }
     const categoryMsg = category ? ` (${category})` : "";
     const neighborhoodMsg = neighborhood ? ` / ${neighborhood}` : "";
     await sendTelegram(chatId, `📍 "${placeName}"${neighborhoodMsg}${categoryMsg} 저장 중...`);
@@ -130,18 +145,14 @@ async function savePlace(chatId: number, pending: Pending, picked: KakaoPlace | 
         autofillData.longitude = gpsCoords.longitude;
     }
 
-    // 중복 방지: 구글 장소 ID는 자동 채우기에서 나오므로 그 뒤, 사진 업로드·저장 전에 확인
-    // ponytail: 자동 채우기 비용은 이미 씀. 카카오 ID 칸이 생기면 자동 채우기 전에 확인 가능
+    // 중복 방지 2: 카카오 ID가 아직 없는 기존 장소용. 구글 ID는 자동 채우기에서 나오므로 사진 업로드·저장 전에 확인
     if (autofillData.google_place_id) {
         const existing = await prisma.place.findFirst({
             where: { google_place_id: autofillData.google_place_id },
             select: { id: true, name: true, status: true },
         });
         if (existing) {
-            const closedNote = existing.status === CLOSED_STATUS ? " (폐업 처리됨)" : "";
-            await sendTelegram(chatId, `이미 있는 장소예요 (ID ${existing.id}, ${existing.name})${closedNote}. 팁 다시 모을까요?`, [
-                [{ text: "팁 다시 모으기", data: `retip:${existing.id}` }, { text: "취소", data: "retip:none" }],
-            ]);
+            await askRetip(chatId, existing);
             return null;
         }
     }
@@ -180,6 +191,7 @@ async function savePlace(chatId: number, pending: Pending, picked: KakaoPlace | 
             website: autofillData.website || null,
             reservation_required: autofillData.reservation_required ?? false,
             google_place_id: autofillData.google_place_id || null,
+            kakao_place_id: picked?.id || null,
             latitude: autofillData.latitude ?? null,
             longitude: autofillData.longitude ?? null,
             imageUrl: imageUrl || null,
