@@ -186,6 +186,7 @@ export default function AdminTipDetailPage() {
     if (!data) return <div className="p-6">{notice || "불러오는 중..."}</div>;
 
     const pending = data.tip_candidates.filter((c) => c.status in STATUS_BADGE);
+    const placeInfo = data.tip_candidates.filter((c) => c.status === "place_info");
 
     // 근거 자료: 최신순, 아직 검수 안 한 후보가 인용한 글은 위로, 2년 넘은 글은 접어두기, 관련 없는 글은 개수만
     const citedBy = new Map<number, number[]>();
@@ -287,6 +288,21 @@ export default function AdminTipDetailPage() {
                             후보 다시 만들기
                         </button>
                     </div>
+
+                    {placeInfo.length > 0 && (
+                        <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
+                            <h3 className="font-semibold mb-1 text-sm">장소 정보 칸 후보 ({placeInfo.length})</h3>
+                            <p className="text-xs text-gray-500 mb-2">영업시간·주소·메뉴처럼 팁이 아닌 기본 정보예요. 맞으면 장소 관리에서 직접 넣어 주세요.</p>
+                            <ul className="text-sm space-y-1">
+                                {placeInfo.map((c) => (
+                                    <li key={c.id}>
+                                        <span className="text-gray-500">[{c.category}]</span> {c.content}{" "}
+                                        <span className="text-xs text-gray-400">#{c.source_ids.join(", #")}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
 
                     {data.place_tips.length > 0 && (
                         <div>

@@ -225,6 +225,14 @@ export function judgeCandidate(distinctCount: number, latest: Date | null, confl
 }
 
 type AiTip = { category: string; content: string; source_ids: number[]; conflict?: boolean; owner_fact?: boolean; owner_question?: string };
+type AiPlaceInfo = { field: string; content: string; source_ids: number[] };
+
+/** 새 팁 후보가 쓰는 카테고리 (예전 팁의 WALKING·PHOTO_ZONE 등은 승인·화면에서 그대로 유지) */
+export const TIP_GEN_CATEGORIES: readonly TipCategory[] = ["SIGNATURE_MENU", "WAITING", "PARKING", "CAUTION", "GOOD_TO_KNOW", "ETC"];
+const MAX_TIPS = 6;
+/** 팁이 아닌 기본 정보(영업시간·주소 등) → 팁 목록에 안 넣고 장소 정보 칸 후보로 따로 저장 (tip_candidates.status, category = 칸 이름) */
+export const PLACE_INFO_STATUS = "place_info";
+export const PLACE_INFO_FIELDS = ["opening_hours", "closed_days", "address", "access", "menu", "price", "service", "other"] as const;
 
 /** 2단계: 모은 자료만 근거로 팁 후보 생성 → tip_candidates (아직 결정 안 한 후보는 교체) */
 export async function generateTipCandidates(placeId: number) {
@@ -232,7 +240,7 @@ export async function generateTipCandidates(placeId: number) {
     const sources = await prisma.tipSource.findMany({ where: { place_id: placeId, relevant: true }, orderBy: { id: "asc" } });
     if (sources.length === 0) {
         await prisma.place.update({ where: { id: placeId }, data: { tip_status: "recheck" } });
-        return { candidate: 0, official: 0, needsCheck: 0, ownerQuestions: [] as string[], tokens: { input: 0, output: 0 } };
+        return { candidate: 0, official: 0, needsCheck: 0, placeInfo: 0, ownerQuestions: [] as string[], tokens: { input: 0, output: 0 } };
     }
 
     const material = sources
@@ -245,22 +253,50 @@ export async function generateTipCandidates(placeId: number) {
     const prompt = `당신은 20-30대 커플 데이트 앱 'DoNa'의 팁 에디터입니다.
 장소: ${place.name} (${place.category ?? "카테고리 모름"})
 
-아래 [번호] 자료만 근거로, 데이트하러 가는 사람이 미리 알면 행동이 바뀌는 한 줄 팁을 만드세요.
+아래 [번호] 자료만 근거로, 두 사람이 데이트하러 가기 전에 알면 실패를 피하거나 경험이 달라지는 팁을 만드세요.
 
-규칙:
+좋은 팁 (하나 이상 해당해야 함):
+- 모르고 가면 실패하는 것: 헤맴, 문 닫힘, 품절, 웨이팅, 재고 없음
+- 알고 가면 경험이 달라지는 것: 숨은 기능, 다른 결과물, 추가 서비스
+- 리뷰에서 "몰랐다/헤맸다/아쉬웠다/미리 할걸"이 반복되는 내용 → 가장 먼저
+
+팁이 아닌 것 (tips에 넣지 마세요):
+- 영업시간, 휴무일, 주소, 거리, 서비스·메뉴 목록, 가격표 → place_info로 따로 보내세요
+- "분위기 좋아요", "맛있어요"처럼 어디에나 있는 말 → 버리세요
+- 블로그 소개글 대부분에 나오는 기본 설명 → 버리세요
+- 기본 정보는 데이트 실패와 이어질 때만 팁이 됩니다.
+  나쁨: "월요일 휴무"  좋음: "오후 1시 오픈 — 오전 첫 코스로 넣으면 문 닫혀 있음"
+
+형식:
+- content는 한국어 한 줄, 50자 안팎. 구조: "사실 — 그래서 데이트에서 생기는 일 / 해야 할 행동"
+- 두 사람이 데이트하는 시점으로 쓰세요. 감정 표현은 괜찮지만 앞의 '사실'은 반드시 자료에 근거가 있어야 합니다.
+- category는 다음 중 하나: ${TIP_GEN_CATEGORIES.join(", ")}
+- 장소당 3~${MAX_TIPS}개. 좋은 팁이 없으면 적게(0개도 됨). 억지로 채우지 마세요.
+
+예시 (필름카메라 대여·사진관 한 곳, 형식 참고용):
+좋음:
+- CAUTION: 건물에 간판 없음 — 삼각지역 3번 출구 앞 건물 3층 301호로 바로 올라갈 것
+- CAUTION: 대여 재고 한정 — 주말엔 DM으로 가능 여부 먼저 확인
+- GOOD_TO_KNOW: 가게 안 인생네컷은 디카 감성 버전 — 일반 네컷이랑 결과물이 다름
+- GOOD_TO_KNOW: 반납할 때 실물 인화 가능 — 사이트 다운로드도 돼서 둘 다 챙길 수 있음
+나쁨:
+- "월요일은 정기휴무, 화~금 오후 1~7시 운영" → 기본 정보 (place_info)
+- "필름카메라 대여·현상·스캔 서비스와 폴라로이드 셀프 촬영" → 서비스 목록 (place_info)
+- "삼각지역 3번 출구에서 도보 1분(약 88~91m)" → 거리 정보 (place_info)
+
+근거 규칙:
 - 자료에 없는 내용은 절대 만들지 마세요. 추측·일반론 금지.
-- "분위기 좋아요", "맛있어요", "추천해요"처럼 읽어도 행동이 안 바뀌는 문장은 버리세요.
-  좋은 예: "주말 오후 2~4시는 대기 30분 이상, 오픈 직후 방문", "주차장 없음, 안국역 1번 출구에서 도보 5분"
 - 같은 내용은 하나로 합치고, 그 내용을 말한 자료 번호를 source_ids에 모두 넣으세요.
 - 자료끼리 내용이 다르면(예: 주차 된다 / 안 된다) conflict: true.
 - owner_text 자료는 가게가 직접 올린 공지·메뉴판입니다. 팁이 owner_text에 적힌 메뉴·가격·이용시간·예약·휴무 같은 사실이면 owner_fact: true.
   평가·분위기·추천 문장이거나 owner_text가 근거가 아니면 owner_fact: false.
 - 각 팁마다 사장님께 사실 확인용으로 물을 짧은 질문을 owner_question에 쓰세요.
-- category는 다음 중 하나: ${TIP_CATEGORY_VALUES.join(", ")}
-- content는 한국어 한 문장, 60자 이내.
+
+place_info: 팁이 아닌 기본 정보 중 자료에 근거가 있는 것. field는 다음 중 하나: ${PLACE_INFO_FIELDS.join(", ")}
+(access = 역·출구·거리 같은 찾아가는 길, service = 서비스 목록). content는 자료에 적힌 그대로 한 줄.
 
 다른 텍스트 없이 JSON만:
-{"tips":[{"category":"WAITING","content":"...","source_ids":[1,2],"conflict":false,"owner_fact":false,"owner_question":"..."}]}
+{"tips":[{"category":"CAUTION","content":"...","source_ids":[1,2],"conflict":false,"owner_fact":false,"owner_question":"..."}],"place_info":[{"field":"opening_hours","content":"...","source_ids":[3]}]}
 
 자료:
 ${material}`;
@@ -273,7 +309,9 @@ ${material}`;
     const raw = message.content[0].type === "text" ? message.content[0].text : "";
     const json = raw.match(/\{[\s\S]*\}/);
     if (!json) throw new Error("팁 후보 응답 파싱 실패: " + raw.slice(0, 200));
-    const aiTips: AiTip[] = JSON.parse(json[0]).tips ?? [];
+    const parsed = JSON.parse(json[0]);
+    const aiTips: AiTip[] = parsed.tips ?? [];
+    const aiInfo: AiPlaceInfo[] = parsed.place_info ?? [];
 
     const byId = new Map(sources.map((s) => [s.id, s]));
     const rows: {
@@ -296,7 +334,7 @@ ${material}`;
         // AI 표시만 믿지 않고, 근거에 붙여넣은 공지·메뉴판이 실제로 있어야 인정
         const ownerFact = t.owner_fact === true && used.some((s) => s.source_type === "owner_text");
         rows.push({
-            category: (TIP_CATEGORY_VALUES as readonly string[]).includes(t.category) ? (t.category as TipCategory) : "ETC",
+            category: (TIP_GEN_CATEGORIES as readonly string[]).includes(t.category) ? (t.category as TipCategory) : "ETC",
             content: t.content.trim(),
             status: judgeCandidate(count, latest, conflict, ownerFact),
             conflict,
@@ -305,11 +343,27 @@ ${material}`;
             latest_source_at: latest,
             owner_question: t.owner_question?.trim() ?? "",
         });
+        if (rows.length >= MAX_TIPS) break;
     }
 
+    // 기본 정보는 판정 없이 근거만 붙여 따로 저장 (팁 목록·승인 대상 아님)
+    const infoRows = aiInfo.flatMap((i) => {
+        const used = [...new Set(i.source_ids ?? [])].map((id) => byId.get(id)).filter((s) => s != null);
+        if (used.length === 0 || !i.content?.trim()) return [];
+        return [{
+            place_id: placeId,
+            category: (PLACE_INFO_FIELDS as readonly string[]).includes(i.field) ? i.field : "other",
+            content: i.content.trim(),
+            status: PLACE_INFO_STATUS,
+            source_ids: used.map((s) => s.id),
+            source_count: countDistinctSources(used),
+            latest_source_at: used.reduce<Date | null>((m, s) => (s.written_at && (!m || s.written_at > m) ? s.written_at : m), null),
+        }];
+    });
+
     await prisma.$transaction([
-        prisma.tipCandidate.deleteMany({ where: { place_id: placeId, status: { in: PENDING_STATUSES } } }),
-        prisma.tipCandidate.createMany({ data: rows.map(({ owner_question, ...r }) => ({ ...r, place_id: placeId })) }),
+        prisma.tipCandidate.deleteMany({ where: { place_id: placeId, status: { in: [...PENDING_STATUSES, PLACE_INFO_STATUS] } } }),
+        prisma.tipCandidate.createMany({ data: [...rows.map(({ owner_question, ...r }) => ({ ...r, place_id: placeId })), ...infoRows] }),
         prisma.place.update({ where: { id: placeId }, data: { tip_status: rows.length ? "review" : "recheck" } }),
     ]);
 
@@ -317,6 +371,7 @@ ${material}`;
         candidate: rows.filter((r) => r.status === "candidate").length,
         official: rows.filter((r) => r.status === "official").length,
         needsCheck: rows.filter((r) => r.status === "needs_check").length,
+        placeInfo: infoRows.length,
         ownerQuestions: rows.filter((r) => r.status === "needs_check" && r.owner_question).map((r) => r.owner_question).slice(0, 5),
         tokens,
     };
@@ -361,7 +416,7 @@ export async function runTipPipeline(placeId: number, chatId?: number, startedAt
         const where = collected.google ? "" : collected.hasLocation ? ", 구글 장소 못 찾음" : ", 위치 없음: 블로그만 검색";
         await sendTelegram(
             chatId,
-            `📝 "${place.name}" 팁 후보 ${r.candidate}개, 가게 공식 ${r.official}개, 확인 필요 ${r.needsCheck}개\n(자료 ${collected.count}건, 관련 없음 ${collected.filtered}건 제외${where})\n\n검수: ${tipReviewUrl(placeId)}${questions}`
+            `📝 "${place.name}" 팁 후보 ${r.candidate}개, 가게 공식 ${r.official}개, 확인 필요 ${r.needsCheck}개${r.placeInfo ? `, 장소 정보 칸 후보 ${r.placeInfo}개` : ""}\n(자료 ${collected.count}건, 관련 없음 ${collected.filtered}건 제외${where})\n\n검수: ${tipReviewUrl(placeId)}${questions}`
         );
         return r;
     } catch (e) {
