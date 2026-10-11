@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { verifyAdminJwt } from "@/lib/auth";
-import { approveTip, generateTipCandidates, hasSameTip, logTipRun, MANUAL_STATUS, refreshTipStatus, removeApprovedTip, runTipPipeline, updateApprovedTip } from "@/lib/tipPipeline";
+import { approveTip, EDITED_STATUS, generateTipCandidates, hasSameTip, HUMAN_STATUSES, logTipRun, MANUAL_STATUS, refreshTipStatus, removeApprovedTip, runTipPipeline, updateApprovedTip } from "@/lib/tipPipeline";
 import { TIP_CATEGORY_VALUES } from "@/types/tip";
 import { parseTipsFromDb } from "@/types/tip";
 
@@ -47,7 +47,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
  * action:
  *  approve {candidateId, category, content}  — 승인 / 수정 후 승인
  *  reject {candidateId}
- *  editCandidate {candidateId, category, content} — 후보 수정만 (승인 안 함)
+ *  editCandidate {candidateId, category, content} — 후보 수정만 (승인 안 함). 자동 후보는 "수정함"이 돼서 다시 만들어도 남음
  *  add {category, content}                    — 직접 작성 후보 추가 (승인은 따로). 같은 문장 있으면 409
  *  editTip {tipId, category, content}         — 승인 팁 수정 (코스 팁도 같이)
  *  demote {tipId} / deleteTip {tipId}         — 승인 팁을 후보로 내림 / 삭제 (코스 팁에서 빠짐)
@@ -78,7 +78,9 @@ export async function POST(req: NextRequest, { params }: Ctx) {
                 const content = String(body.content ?? "").trim();
                 const category = (TIP_CATEGORY_VALUES as readonly string[]).includes(body.category) ? body.category : "ETC";
                 if (!content) return NextResponse.json({ error: "팁 내용이 비어 있어요" }, { status: 400 });
-                const candidate = await prisma.tipCandidate.update({ where: { id: Number(body.candidateId), place_id: placeId }, data: { category, content } });
+                const prev = await prisma.tipCandidate.findFirstOrThrow({ where: { id: Number(body.candidateId), place_id: placeId }, select: { status: true } });
+                const status = HUMAN_STATUSES.includes(prev.status) ? prev.status : EDITED_STATUS;
+                const candidate = await prisma.tipCandidate.update({ where: { id: Number(body.candidateId) }, data: { category, content, status } });
                 return NextResponse.json({ candidate });
             }
             case "editTip":

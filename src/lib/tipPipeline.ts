@@ -212,11 +212,13 @@ export function countDistinctSources(sources: { id: number; source_type: string;
 
 /** 검수 대기 상태 (자동 생성): 후보 / 가게 공식 / 확인 필요. 다시 만들 때 지우고 새로 만듦 */
 export const PENDING_STATUSES = ["candidate", "official", "needs_check"];
-/** 사람이 만든 후보: 직접 작성 / 승인했다가 후보로 내림. 다시 만들어도 지우지 않음 */
+/** 사람이 손댄 후보: 직접 작성 / 승인했다가 후보로 내림 / 자동 후보를 고쳐 저장. 다시 만들어도 지우지 않음 */
 export const MANUAL_STATUS = "manual";
 export const DEMOTED_STATUS = "demoted";
+export const EDITED_STATUS = "edited";
+export const HUMAN_STATUSES = [MANUAL_STATUS, DEMOTED_STATUS, EDITED_STATUS];
 /** 검수 화면 "후보" 구역·남은 후보 수에 들어가는 상태 전부 */
-export const REVIEW_STATUSES = [...PENDING_STATUSES, MANUAL_STATUS, DEMOTED_STATUS];
+export const REVIEW_STATUSES = [...PENDING_STATUSES, ...HUMAN_STATUSES];
 
 /**
  * 후보 / 가게 공식 / 확인 필요 판정 (AI가 아니라 코드가 정함)
@@ -366,10 +368,19 @@ ${material}`;
         }];
     });
 
+    // 사람이 손댄 후보와 승인 팁은 남기고, 같은 문장인 새 후보는 빼고 나머지만 추가
+    const [kept, approved] = await Promise.all([
+        prisma.tipCandidate.findMany({ where: { place_id: placeId, status: { in: HUMAN_STATUSES } }, select: { content: true } }),
+        prisma.placeTip.findMany({ where: { place_id: placeId }, select: { content: true } }),
+    ]);
+    const known = [...kept, ...approved].map((t) => t.content);
+    const fresh = rows.filter((r) => !known.some((k) => sameText(k, r.content)));
+    rows.splice(0, rows.length, ...fresh);
+
     await prisma.$transaction([
         prisma.tipCandidate.deleteMany({ where: { place_id: placeId, status: { in: [...PENDING_STATUSES, PLACE_INFO_STATUS] } } }),
         prisma.tipCandidate.createMany({ data: [...rows.map(({ owner_question, ...r }) => ({ ...r, place_id: placeId })), ...infoRows] }),
-        prisma.place.update({ where: { id: placeId }, data: { tip_status: rows.length ? "review" : "recheck" } }),
+        prisma.place.update({ where: { id: placeId }, data: { tip_status: rows.length || kept.length ? "review" : "recheck" } }),
     ]);
 
     return {
@@ -442,7 +453,7 @@ export async function runTipPipeline(placeId: number, chatId?: number, startedAt
 
 /**
  * 승인: place_tips 저장(4개 언어) + 이 장소가 들어간 코스들의 course_places.tips 끝에 추가.
- * 같은 카테고리 팁이 이미 있는 코스는 건드리지 않고 skippedCourses로 돌려줌.
+ * 같은 카테고리여도 추가. 같은 문장(띄어쓰기 무시)이 이미 있는 코스만 건너뛰고 skippedCourses로 돌려줌.
  */
 export async function approveTip(placeId: number, tip: { category: string; content: string }, candidateId?: number) {
     const category = ((TIP_CATEGORY_VALUES as readonly string[]).includes(tip.category) ? tip.category : "ETC") as TipCategory;
@@ -461,7 +472,7 @@ export async function approveTip(placeId: number, tip: { category: string; conte
     const updates = [];
     for (const cp of coursePlaces) {
         const koTips = parseTipsFromDb(cp.tips);
-        if (koTips.some((t) => t.category === category)) {
+        if (koTips.some((t) => sameText(t.content, ko.content))) {
             skippedCourses.push(cp.course.title);
             continue;
         }
@@ -501,15 +512,16 @@ export async function approveTip(placeId: number, tip: { category: string; conte
     return { appliedCourses: updates.length, skippedCourses, tip: saved };
 }
 
-/** 같은 장소에 같은 문장(띄어쓰기 무시)이 승인 팁이나 검수 중 후보에 이미 있는지 */
+/** 같은 문장인지 (띄어쓰기 무시) */
+export const sameText = (a: string, b: string) => a.replace(/\s+/g, "") === b.replace(/\s+/g, "");
+
+/** 같은 장소에 같은 문장이 승인 팁이나 검수 중 후보에 이미 있는지 */
 export async function hasSameTip(placeId: number, content: string) {
-    const norm = (t: string) => t.replace(/\s+/g, "");
-    const target = norm(content);
     const [tips, cands] = await Promise.all([
         prisma.placeTip.findMany({ where: { place_id: placeId }, select: { content: true } }),
         prisma.tipCandidate.findMany({ where: { place_id: placeId, status: { in: REVIEW_STATUSES } }, select: { content: true } }),
     ]);
-    return [...tips, ...cands].some((t) => norm(t.content) === target);
+    return [...tips, ...cands].some((t) => sameText(t.content, content));
 }
 
 /** 코스 팁 JSON 한 칸에서 (카테고리+문장)이 같은 첫 팁을 next로 바꾸거나(null이면 뺌). 없으면 그대로 */
@@ -525,7 +537,7 @@ export function replaceTipInJson(col: string | null, category: string, content: 
 
 /**
  * 승인 팁을 코스 팁(course_places.tips 4개 언어)에서 바꾸거나 뺌.
- * 승인 때 같은 카테고리라 건너뛴 코스는 해당 문장이 없으니 그대로. next = null 이면 뺌
+ * 승인 때 같은 문장이 있어 건너뛴 코스는 (카테고리+문장)이 맞을 때만 바뀜. next = null 이면 뺌
  */
 function courseTipUpdates(
     coursePlaces: { id: number; tips: string | null; tips_en: string | null; tips_ja: string | null; tips_zh: string | null }[],

@@ -53,6 +53,7 @@ const STATUS_BADGE: Record<string, [string, string]> = {
     needs_check: ["확인 필요", "bg-amber-100 text-amber-800"],
     manual: ["직접 작성", "bg-purple-100 text-purple-800"],
     demoted: ["승인 취소", "bg-gray-200 text-gray-700"],
+    edited: ["수정함", "bg-sky-100 text-sky-800"],
 };
 const MAX_LEN = 35;
 const catLabel = (c: string) => (ko.tipCategory as Record<string, string>)[c] ?? c;
@@ -148,7 +149,7 @@ function CandidateCard({
             <TipEditor category={category} content={content} setCategory={setCategory} setContent={setContent} />
             {sameCategory.length > 0 && (
                 <p className="text-xs text-amber-700 mt-1">
-                    이 코스에 이미 비슷한 팁 있음 (승인해도 이 코스엔 안 넣어요): {sameCategory.map((co) => co.title).join(", ")}
+                    이 코스에 같은 카테고리 팁 있음 (승인하면 추가돼요. 겹치면 정리해 주세요): {sameCategory.map((co) => co.title).join(", ")}
                 </p>
             )}
             <div className="flex gap-2 mt-2">
@@ -304,12 +305,12 @@ export default function AdminTipDetailPage() {
                 realId.current.set(tmp, r.tip.id);
                 return replaceTip(d, tmp, { ...r.tip, approved_at: now() });
             },
-            (r) => `승인했어요. 코스 ${r.appliedCourses}곳에 반영` + (r.skippedCourses.length ? ` · 같은 카테고리 팁이 이미 있어 건너뜀: ${r.skippedCourses.join(", ")}` : "")
+            (r) => `승인했어요. 코스 ${r.appliedCourses}곳에 반영` + (r.skippedCourses.length ? ` · 같은 문장이 이미 있어 건너뜀: ${r.skippedCourses.join(", ")}` : "")
         );
     };
     const saveCandidate = (c: Candidate, category: string, content: string) =>
         run(
-            (d) => replaceCandidate(d, c.id, { ...c, category, content }),
+            (d) => replaceCandidate(d, c.id, { ...c, category, content, status: ["manual", "demoted"].includes(c.status) ? c.status : "edited" }),
             () => ({ action: "editCandidate", candidateId: idOf(c.id), category, content })
         );
     const reject = (c: Candidate) => run((d) => replaceCandidate(d, c.id, null), () => ({ action: "reject", candidateId: idOf(c.id) }));
