@@ -6,6 +6,7 @@ import { CLOSED_STATUS, parsePeriod, ymd } from "@/lib/placePeriod";
 import { handleAddressButton, handleBuildingMessage, suggestPopupAddress } from "@/lib/popupAddress";
 import { translatePopupFields } from "@/lib/popupTranslate";
 import { runTipPipeline } from "@/lib/tipPipeline";
+import { resolvePendingDm } from "@/lib/instagramDm";
 import { getS3Client, getS3Bucket, getS3PublicUrl } from "@/lib/s3";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import sharp from "sharp";
@@ -225,6 +226,11 @@ async function savePlace(chatId: number, pending: Pending, picked: KakaoPlace | 
 }
 
 export async function POST(request: NextRequest) {
+    // 텔레그램 setWebhook의 secret_token과 같은 값이 헤더로 와야 함 (값을 넣기 전에는 검사 안 함)
+    const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
+    if (secret && request.headers.get("x-telegram-bot-api-secret-token") !== secret) {
+        return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
     try {
         const body = await request.json();
 
@@ -239,6 +245,12 @@ export async function POST(request: NextRequest) {
             if (String(cb.data ?? "").startsWith("addr:")) {
                 const placeId = await handleAddressButton(cbChatId, String(cb.data));
                 if (placeId) after(() => runTipPipeline(placeId, cbChatId).catch(() => {}));
+                return NextResponse.json({ ok: true });
+            }
+            // 인스타 DM 장소 고르기: igpick:키:장소ID (0 = 무시)
+            if (String(cb.data ?? "").startsWith("igpick:")) {
+                const [, key, placeId] = String(cb.data).split(":");
+                after(() => resolvePendingDm(cbChatId, key, Number(placeId)).catch((e) => console.error("인스타 DM 처리 실패:", e)));
                 return NextResponse.json({ ok: true });
             }
             // 이미 있는 장소: "팁 다시 모으기" / "취소"
@@ -284,6 +296,13 @@ export async function POST(request: NextRequest) {
 
         // 인증되지 않은 채팅 무시
         if (ALLOWED_IDS.length > 0 && !ALLOWED_IDS.includes(chatId)) {
+            return NextResponse.json({ ok: true });
+        }
+
+        // "ig 키 장소ID": 맞는 장소가 없던 인스타 DM을 그 장소에 넣기
+        const igPick = text.trim().match(/^ig\s+([0-9a-f]{8})\s+(\d+)$/i);
+        if (igPick) {
+            after(() => resolvePendingDm(chatId, igPick[1].toLowerCase(), Number(igPick[2])).catch((e) => console.error("인스타 DM 처리 실패:", e)));
             return NextResponse.json({ ok: true });
         }
 

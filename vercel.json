@@ -39,6 +39,10 @@
     {
       "path": "/api/cron/popup-ending",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/instagram-token-check",
+      "schedule": "0 1 * * *"
     }
   ]
 }
