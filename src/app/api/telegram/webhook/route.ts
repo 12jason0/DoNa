@@ -7,6 +7,7 @@ import { handleAddressButton, handleBuildingMessage, suggestPopupAddress } from 
 import { translatePopupFields } from "@/lib/popupTranslate";
 import { runTipPipeline } from "@/lib/tipPipeline";
 import { resolvePendingDm, retryFailedWebhooks } from "@/lib/instagramDm";
+import { instagramFromGoogle, instagramFromNaver } from "@/lib/instagramHandle";
 import { getS3Client, getS3Bucket, getS3PublicUrl } from "@/lib/s3";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import sharp from "sharp";
@@ -158,6 +159,12 @@ async function savePlace(chatId: number, pending: Pending, picked: KakaoPlace | 
         }
     }
 
+    // 인스타 계정: 네이버 지역 검색 link(이름·주소 맞는 결과) → 없으면 구글 website. 인스타 직접 조회 안 함
+    const instagram = picked
+        ? ((await instagramFromNaver(placeName, autofillData.address).catch(() => null)) ??
+          (await instagramFromGoogle(autofillData.google_place_id).catch(() => null)))
+        : null;
+
     // 영문명으로 S3 업로드
     let imageUrl = "";
     if (photoBuffer) {
@@ -193,6 +200,7 @@ async function savePlace(chatId: number, pending: Pending, picked: KakaoPlace | 
             reservation_required: autofillData.reservation_required ?? false,
             google_place_id: autofillData.google_place_id || null,
             kakao_place_id: picked?.id || null,
+            instagram_handle: instagram?.handle ?? null,
             latitude: autofillData.latitude ?? null,
             longitude: autofillData.longitude ?? null,
             imageUrl: imageUrl || null,
@@ -221,7 +229,7 @@ async function savePlace(chatId: number, pending: Pending, picked: KakaoPlace | 
     const neighborNote = neighborhood ? `\n📍 지역: ${neighborhood}` : "";
     const noLocationNote = picked ? "" : "\n⚠️ 위치 없음: 어드민 장소 화면에서 주소·좌표를 입력해주세요.";
     const periodNote = pending.startDate ? `\n🗓 기간: ${pending.startDate} ~ ${pending.endDate}` : "\n🗓 기간: 상설";
-    await sendTelegram(chatId, `✅ "${saved.name}" 저장 완료!\n\nID: ${saved.id}${neighborNote}${catNote}${periodNote}${gpsNote}${noLocationNote}\n어드민에서 확인·수정 후 발행하세요.`);
+    await sendTelegram(chatId, `✅ "${saved.name}" 저장 완료!\n\nID: ${saved.id}${neighborNote}${catNote}${periodNote}${instagram ? `\n📷 인스타: @${instagram.handle}` : ""}${gpsNote}${noLocationNote}\n어드민에서 확인·수정 후 발행하세요.`);
     return saved.id;
 }
 
