@@ -47,18 +47,10 @@ const INITIAL_PLACE: Omit<Place, "id"> = {
     start_date: "", end_date: "",
 };
 
-function parseOpeningHoursTime(str: string | null | undefined): { openTime: string; closeTime: string } {
-    const m = (str || "").match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
-    if (!m) return { openTime: "", closeTime: "" }; // 모르면 빈 칸 (기본값 넣지 않음)
-    return { openTime: m[1].padStart(5, "0"), closeTime: m[2].padStart(5, "0") };
-}
-
 export default function AdminPlacesPage() {
     const [places, setPlaces] = useState<Place[]>([]);
     const [drafts, setDrafts] = useState<Place[]>([]);
     const [formData, setFormData] = useState<Omit<Place, "id">>(INITIAL_PLACE);
-    const [openTime, setOpenTime] = useState("");
-    const [closeTime, setCloseTime] = useState("");
     const [openDays, setOpenDays] = useState<number[]>(ALL_DAYS); // 휴무일 모르면 표시 안 함 (일요일 휴무 기본값 없음)
     const [editingId, setEditingId] = useState<number | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -183,10 +175,6 @@ export default function AdminPlacesPage() {
             end_date: place.end_date?.slice(0, 10) || "",
         });
 
-        const { openTime: ot, closeTime: ct } = parseOpeningHoursTime(place.opening_hours);
-        setOpenTime(ot);
-        setCloseTime(ct);
-
         try {
             const res = await fetch(`/api/places/${place.id}`, { credentials: "include" });
             const data = await res.json();
@@ -244,13 +232,9 @@ export default function AdminPlacesPage() {
                 description_ja: d.description_ja || prev.description_ja,
                 description_zh: d.description_zh || prev.description_zh,
                 avg_cost_range: d.avg_cost_range || prev.avg_cost_range,
+                opening_hours: d.opening_hours || prev.opening_hours,
             }));
 
-            if (d.opening_hours) {
-                const { openTime: ot, closeTime: ct } = parseOpeningHoursTime(d.opening_hours);
-                setOpenTime(ot);
-                setCloseTime(ct);
-            }
             if (d.closed_days) {
                 const closedDowList: number[] = d.closed_days
                     .map((c: { day_of_week: number | null }) => c.day_of_week)
@@ -321,8 +305,6 @@ export default function AdminPlacesPage() {
     const cancelEdit = () => {
         setEditingId(null);
         setFormData(INITIAL_PLACE);
-        setOpenTime("");
-        setCloseTime("");
         setOpenDays(ALL_DAYS);
     };
 
@@ -347,12 +329,11 @@ export default function AdminPlacesPage() {
             const url = editingId ? `/api/places/${editingId}` : "/api/places";
             const method = editingId ? "PATCH" : "POST";
 
-            const opening_hours = openTime && closeTime ? `${openTime}-${closeTime}` : "";
             const closed_days = ALL_DAYS
                 .filter((d) => !openDays.includes(d))
                 .map((d) => ({ day_of_week: d, specific_date: null, note: null }));
 
-            const payload = { ...formData, opening_hours, closed_days };
+            const payload = { ...formData, closed_days };
             const res = await fetch(url, {
                 method,
                 headers: { "Content-Type": "application/json" },
@@ -362,8 +343,6 @@ export default function AdminPlacesPage() {
             if (res.ok) {
                 alert(editingId ? "장소가 수정되었습니다." : "장소 생성 완료");
                 setFormData(INITIAL_PLACE);
-                setOpenTime("");
-                setCloseTime("");
                 setOpenDays(ALL_DAYS);
                 setEditingId(null);
                 fetchPlaces(currentPage, false);
@@ -529,21 +508,14 @@ export default function AdminPlacesPage() {
                         {/* 영업시간 + 요일 */}
                         <div className="space-y-3 md:col-span-2">
                             <label className="text-sm font-medium text-gray-600">영업 시간</label>
-                            <div className="flex items-center gap-3 flex-wrap">
-                                <input
-                                    type="time"
-                                    value={openTime}
-                                    onChange={(e) => setOpenTime(e.target.value)}
-                                    className="border p-1.5 rounded text-sm"
-                                />
-                                <span className="text-gray-400">~</span>
-                                <input
-                                    type="time"
-                                    value={closeTime}
-                                    onChange={(e) => setCloseTime(e.target.value)}
-                                    className="border p-1.5 rounded text-sm"
-                                />
-                            </div>
+                            {/* 저장된 글자 그대로 (요일별·여러 구간이 첫 구간으로 줄지 않게). 모르면 빈 칸 */}
+                            <input
+                                name="opening_hours"
+                                placeholder="예: 11:00 - 21:00  /  월-금: 11:00 - 21:00; 토-일: 10:00 - 22:00"
+                                value={formData.opening_hours || ""}
+                                onChange={handleInputChange}
+                                className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none"
+                            />
                             <div className="flex gap-2 flex-wrap">
                                 {DAY_NAMES.map((name, d) => (
                                     <button
