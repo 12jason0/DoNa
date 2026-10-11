@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readPeriodInput } from "@/lib/placePeriod";
+import { openPlaceWhere, readPeriodInput } from "@/lib/placePeriod";
 import { translateAddress } from "@/lib/placeAutofill";
 import { checkCategory, checkOpeningHours, normalizeOpeningHours } from "@/lib/contentRules";
 import { normalizeCostRange } from "@/lib/costRange";
@@ -111,6 +111,7 @@ export async function GET(request: NextRequest) {
 
         // 데이터베이스에서 해당 지역의 장소들을 가져오기 (Prisma)
         const places = (await (prisma as any).place.findMany({
+            where: openPlaceWhere,
             take: 20,
             select: {
                 id: true,

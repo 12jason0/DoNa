@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { captureApiError } from "@/lib/sentry";
+import { openPlaceWhere } from "@/lib/placePeriod";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,7 @@ export async function GET(request: NextRequest) {
         // 1) Places 테이블에서 이름/주소 부분 일치 검색
         const place = await prisma.place.findFirst({
             where: {
+                ...openPlaceWhere,
                 OR: [
                     { name: { contains: query, mode: "insensitive" } },
                     { address: { contains: query, mode: "insensitive" } },

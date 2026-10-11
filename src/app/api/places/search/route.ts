@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { notExpiredCourseWhere, openPlaceWhere } from "@/lib/placePeriod";
 import prisma from "@/lib/db";
 import { REGION_MAPPING } from "@/lib/regionMapping";
 import { captureApiError } from "@/lib/sentry";
@@ -34,6 +35,7 @@ export async function GET(request: NextRequest) {
         
         // --- 코스 검색 (Course) ---
         const courseWhere: any = {
+            ...notExpiredCourseWhere(),
             AND: tokens.map((token) => {
                 // 토큰이 지역명이면 -> region 필드에서 검색 OR 이미 targetRegions에 포함되어 있으므로 region 필터로 커버
                 // 토큰이 일반 단어면 -> title, description, concept, tags, region 중 하나에 포함
@@ -52,6 +54,7 @@ export async function GET(request: NextRequest) {
 
         // --- 장소 검색 (Place) ---
         const placeWhere: any = {
+            ...openPlaceWhere,
             AND: tokens.map((token) => ({
                 OR: [
                     { name: { contains: token } },

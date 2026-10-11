@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { notExpiredCourseWhere, openPlaceWhere } from "@/lib/placePeriod";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
 
@@ -148,6 +149,7 @@ export async function GET(request: NextRequest) {
         // [B-2] 배치로 DB 매칭 (N+1 쿼리 문제 해결)
         const dbPlaces = await prisma.place.findMany({
             where: {
+                ...openPlaceWhere,
                 OR: [
                     { name: { in: kakaoNames } },
                     ...kakaoAddresses.filter(Boolean).map((addr: string) => ({ address: { contains: addr } })),
@@ -239,7 +241,7 @@ export async function GET(request: NextRequest) {
         // 1. 장소 기반 연관 코스 조회 (기존 로직)
         if (relatedCourseIdsArray.length > 0) {
             const coursesByPlace = await prisma.course.findMany({
-                where: { id: { in: relatedCourseIdsArray } },
+                where: { id: { in: relatedCourseIdsArray }, ...notExpiredCourseWhere() },
                 select: {
                     id: true,
                     title: true,
@@ -269,6 +271,7 @@ export async function GET(request: NextRequest) {
                 where: {
                     OR: Array.from(targetRegions).map((r) => ({ region: { contains: r } })),
                     id: { notIn: relatedCourseIdsArray }, // 이미 장소로 찾은 코스는 중복 제외
+                    ...notExpiredCourseWhere(),
                 },
                 take: 5, // 지역 기반 추천은 최대 5개만 (너무 많아질 수 있음)
                 orderBy: { view_count: "desc" }, // 인기순

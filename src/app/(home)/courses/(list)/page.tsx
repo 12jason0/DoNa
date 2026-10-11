@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { interleaveByGrade, MAX_LIST_COURSES } from "@/lib/courseListOrder";
 import CoursesClient from "./CoursesClient";
+import { notExpiredCourseWhere } from "@/lib/placePeriod";
 import prisma from "@/lib/db";
 import { filterCoursesByImagePolicy, type CourseWithPlaces } from "@/lib/imagePolicy";
 import { cookies } from "next/headers";
@@ -55,7 +56,7 @@ const getHeroCourses = unstable_cache(
     async (): Promise<HeroSliderItem[]> => {
         try {
             const heroRaw = await prisma.course.findMany({
-                where: { isPublic: true },
+                where: { isPublic: true, ...notExpiredCourseWhere() },
                 orderBy: [{ view_count: "desc" }, { id: "desc" }],
                 take: 20,
                 select: {
@@ -225,7 +226,7 @@ const getCachedRawCourses = unstable_cache(
     async (timeOfDay: string | null) => {
         // 공개 코스 전체를 첫 화면에 (무한 스크롤에 기대지 않음). 순서는 /api/courses 기본 목록과 동일
         const rawAll = await prisma.course.findMany({
-            where: { isPublic: true },
+            where: { isPublic: true, ...notExpiredCourseWhere() },
             take: MAX_LIST_COURSES,
             orderBy: { id: "desc" },
             select: courseSelectOptions,

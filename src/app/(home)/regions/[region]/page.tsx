@@ -3,6 +3,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { notExpiredCourseWhere } from "@/lib/placePeriod";
 import prisma from "@/lib/db";
 import { courseInRegion, regionIntro } from "@/lib/regionIntro";
 
@@ -36,7 +37,7 @@ async function getRegionData(region: string) {
     if (!known) return null;
 
     const rows = await prisma.course.findMany({
-        where: { isPublic: true, region: { contains: region } },
+        where: { isPublic: true, region: { contains: region }, ...notExpiredCourseWhere() },
         orderBy: [{ isPopular: "desc" }, { createdAt: "desc" }],
         select: {
             id: true,

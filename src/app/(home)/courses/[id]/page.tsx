@@ -3,6 +3,7 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import prisma from "@/lib/db";
+import { isExpiredOption } from "@/lib/placePeriod";
 import { cookies } from "next/headers";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
 import CourseDetailClient, { CourseData } from "./CourseDetailClient"; // 🟢 [Fix] CourseData 타입 임포트 추가
@@ -97,6 +98,8 @@ async function fetchCourseFromDb(id: string): Promise<CourseData | null> {
                             place: {
                                 select: {
                                     id: true,
+                                    end_date: true, // 끝났거나 폐업 처리한 선택지 숨김 (isExpiredOption)
+                                    status: true,
                                     name: true,
                                     name_en: true,
                                     name_ja: true,
@@ -143,7 +146,7 @@ async function fetchCourseFromDb(id: string): Promise<CourseData | null> {
 
         const courseDetail = course.courseDetail || null;
         const highlights = course.highlights || [];
-        const coursePlaces = course.coursePlaces || [];
+        const coursePlaces = (course.coursePlaces || []).filter((cp: any) => !isExpiredOption(cp));
 
         return {
             id: String(course.id),

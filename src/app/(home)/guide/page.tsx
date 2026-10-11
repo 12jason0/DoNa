@@ -6,6 +6,7 @@
 // - 화면에 보이는 문장과 1:1로 일치하는 JSON-LD(FAQPage / MobileApplication / ItemList)를 주입.
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notExpiredCourseWhere } from "@/lib/placePeriod";
 import prisma from "@/lib/db";
 import { getS3StaticUrl } from "@/lib/s3Static";
 import ComingSoonEscape from "./ComingSoonEscape";
@@ -74,7 +75,7 @@ async function getGuideData(): Promise<{ courses: ExampleCourse[]; courseCount: 
     try {
         const [rows, courseCount] = await Promise.all([
             prisma.course.findMany({
-                where: { isPublic: true, grade: "FREE" },
+                where: { isPublic: true, grade: "FREE", ...notExpiredCourseWhere() },
                 orderBy: { view_count: "desc" },
                 take: 8,
                 select: {

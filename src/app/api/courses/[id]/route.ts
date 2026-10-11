@@ -121,6 +121,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                                 reservationUrl: true, // 🟢 예약 주소 추가
                                 start_date: true, // 팝업·전시 기간 (null = 상설)
                                 end_date: true,
+                                status: true, // 폐업 처리한 선택지 숨김 (isExpiredOption)
                                 latitude: true,
                                 longitude: true,
                                 imageUrl: true,

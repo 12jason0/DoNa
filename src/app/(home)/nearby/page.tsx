@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import NearbyClient from "./NearbyClient";
+import { notExpiredCourseWhere } from "@/lib/placePeriod";
 import prisma from "@/lib/db";
 import { cookies, headers } from "next/headers";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
@@ -102,13 +103,13 @@ const getCachedDefaultNearbyCourses = unstable_cache(
 
         const [freeRaw, basicRaw, premiumRaw] = await Promise.all([
             prisma.course.findMany({
-                where: { isPublic: true, grade: "FREE" },
+                where: { isPublic: true, grade: "FREE", ...notExpiredCourseWhere() },
                 take: 30,
                 orderBy: { id: "desc" },
                 select: courseSelectOptions,
             }),
             prisma.course.findMany({
-                where: { isPublic: true, grade: "BASIC" },
+                where: { isPublic: true, grade: "BASIC", ...notExpiredCourseWhere() },
                 take: TARGET_BASIC,
                 orderBy: { id: "desc" },
                 select: courseSelectOptions,

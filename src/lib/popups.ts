@@ -1,6 +1,6 @@
 // 팝업·전시 목록 (웹 /popups 페이지와 앱용 /api/popups 가 같이 씀). 표시 문구는 popupFormat.ts
 import prisma from "@/lib/db";
-import { kstToday, notExpiredCourseWhere, ymd } from "@/lib/placePeriod";
+import { CLOSED_STATUS, kstToday, notExpiredCourseWhere, ymd } from "@/lib/placePeriod";
 import type { PopupItem } from "@/lib/popupFormat";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -11,7 +11,7 @@ export async function listPopups(now = new Date()): Promise<{ ongoing: PopupItem
     const today = kstToday(now);
     const rows = await prisma.place.findMany({
         where: {
-            status: { not: "draft" },
+            status: { notIn: ["draft", CLOSED_STATUS] },
             latitude: { not: null },
             AND: [
                 { OR: [{ start_date: { not: null } }, { end_date: { not: null } }] },

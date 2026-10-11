@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import HomeClient from "./HomeClient";
+import { notExpiredCourseWhere } from "@/lib/placePeriod";
 import prisma from "@/lib/db";
 import { unstable_cache } from "next/cache";
 import { cookies } from "next/headers";
@@ -29,7 +30,7 @@ const ORG_LD = {
 const getInitialRecommendations = unstable_cache(
     async () => {
         const courses = await prisma.course.findMany({
-            where: { isPublic: true, grade: "FREE" },
+            where: { isPublic: true, grade: "FREE", ...notExpiredCourseWhere() },
             orderBy: [{ view_count: "desc" }, { id: "desc" }],
             take: 3,
             select: {

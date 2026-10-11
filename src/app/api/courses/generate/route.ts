@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { captureApiError } from "@/lib/sentry";
+import { openPlaceWhere } from "@/lib/placePeriod";
 export const dynamic = "force-dynamic";
 // 쿼리: ?tag=coffee&count=3&places=4
 // places 테이블에서 tag/category/name에 tag가 포함된 장소를 랜덤 샘플링해
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
 
     try {
         // Prisma로 장소 조회
-        const where: any = { AND: [{ latitude: { not: null } }, { longitude: { not: null } }] };
+        const where: any = { AND: [{ latitude: { not: null } }, { longitude: { not: null } }, openPlaceWhere] };
         if (region) (where.AND as any[]).push({ address: { contains: region } });
         if (tags.length > 0) {
             (where.AND as any[]).push({
@@ -57,6 +58,7 @@ export async function GET(request: NextRequest) {
                         AND: [
                             { latitude: { not: null } },
                             { longitude: { not: null } },
+                            openPlaceWhere,
                             ...(region ? [{ address: { contains: region } }] : []),
                         ],
                     },

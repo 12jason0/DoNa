@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { notExpiredCourseWhere } from "@/lib/placePeriod";
+import { notExpiredCourseWhere, openPlaceWhere } from "@/lib/placePeriod";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
 import { captureApiError } from "@/lib/sentry";
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
 
         // 3. 쿼리 조건 생성
         // (1) Place 검색 조건
-        let placeWhere: any = { ...locationFilter };
+        let placeWhere: any = { ...locationFilter, ...openPlaceWhere };
 
         // (2) Course 검색 조건 - 공개된 코스만
         let courseWhere: any = {
