@@ -210,8 +210,13 @@ export function countDistinctSources(sources: { id: number; source_type: string;
     return new Set(sources.map((s) => (s.author ? `${s.source_type.split("_")[0]}:${s.author}` : s.url ? `url:${s.url}` : `id:${s.id}`))).size;
 }
 
-/** 검수 대기 상태: 후보 / 가게 공식 / 확인 필요 */
+/** 검수 대기 상태 (자동 생성): 후보 / 가게 공식 / 확인 필요. 다시 만들 때 지우고 새로 만듦 */
 export const PENDING_STATUSES = ["candidate", "official", "needs_check"];
+/** 사람이 만든 후보: 직접 작성 / 승인했다가 후보로 내림. 다시 만들어도 지우지 않음 */
+export const MANUAL_STATUS = "manual";
+export const DEMOTED_STATUS = "demoted";
+/** 검수 화면 "후보" 구역·남은 후보 수에 들어가는 상태 전부 */
+export const REVIEW_STATUSES = [...PENDING_STATUSES, MANUAL_STATUS, DEMOTED_STATUS];
 
 /**
  * 후보 / 가게 공식 / 확인 필요 판정 (AI가 아니라 코드가 정함)
@@ -480,7 +485,7 @@ export async function approveTip(placeId: number, tip: { category: string; conte
     const candidate = candidateId ? await prisma.tipCandidate.findUnique({ where: { id: candidateId }, select: { content: true, category: true } }) : null;
     const edited = !!candidate && (candidate.content !== ko.content || candidate.category !== category);
     const log = await prisma.tipWorkLog.findFirst({ where: { place_id: placeId }, orderBy: { opened_at: "desc" } });
-    await prisma.$transaction([
+    const [created] = await prisma.$transaction([
         prisma.placeTip.create({
             data: { place_id: placeId, category, content: ko.content, content_en: en?.content, content_ja: ja?.content, content_zh: zh?.content, candidate_id: candidateId, edited },
         }),
@@ -492,11 +497,98 @@ export async function approveTip(placeId: number, tip: { category: string; conte
     ]);
     await logTipRun({ place_id: placeId, kind: "translate", started_at: t0, finished_at: now, input_tokens: tr.usage.input, output_tokens: tr.usage.output });
     await refreshTipStatus(placeId);
-    return { appliedCourses: updates.length, skippedCourses };
+    const saved = { id: created.id, category: created.category, content: created.content, candidate_id: created.candidate_id };
+    return { appliedCourses: updates.length, skippedCourses, tip: saved };
+}
+
+/** 같은 장소에 같은 문장(띄어쓰기 무시)이 승인 팁이나 검수 중 후보에 이미 있는지 */
+export async function hasSameTip(placeId: number, content: string) {
+    const norm = (t: string) => t.replace(/\s+/g, "");
+    const target = norm(content);
+    const [tips, cands] = await Promise.all([
+        prisma.placeTip.findMany({ where: { place_id: placeId }, select: { content: true } }),
+        prisma.tipCandidate.findMany({ where: { place_id: placeId, status: { in: REVIEW_STATUSES } }, select: { content: true } }),
+    ]);
+    return [...tips, ...cands].some((t) => norm(t.content) === target);
+}
+
+/** 코스 팁 JSON 한 칸에서 (카테고리+문장)이 같은 첫 팁을 next로 바꾸거나(null이면 뺌). 없으면 그대로 */
+export function replaceTipInJson(col: string | null, category: string, content: string | null, next: TipItem | null) {
+    if (!col?.trim() || !content) return col;
+    const items = parseTipsFromDb(col);
+    const i = items.findIndex((t) => t.category === category && t.content === content);
+    if (i < 0) return col;
+    if (next) items[i] = { ...items[i], ...next };
+    else items.splice(i, 1);
+    return tipsToJson(items);
+}
+
+/**
+ * 승인 팁을 코스 팁(course_places.tips 4개 언어)에서 바꾸거나 뺌.
+ * 승인 때 같은 카테고리라 건너뛴 코스는 해당 문장이 없으니 그대로. next = null 이면 뺌
+ */
+function courseTipUpdates(
+    coursePlaces: { id: number; tips: string | null; tips_en: string | null; tips_ja: string | null; tips_zh: string | null }[],
+    prev: { category: string; content: string; content_en: string | null; content_ja: string | null; content_zh: string | null },
+    next: { category: TipCategory; content: string; content_en?: string | null; content_ja?: string | null; content_zh?: string | null } | null
+) {
+    const edit = (col: string | null, old: string | null, neu: string | null | undefined) =>
+        replaceTipInJson(col, prev.category, old, next && neu ? { category: next.category, content: neu } : null);
+    return coursePlaces.flatMap((cp) => {
+        const data = {
+            tips: edit(cp.tips, prev.content, next?.content),
+            tips_en: edit(cp.tips_en, prev.content_en, next?.content_en),
+            tips_ja: edit(cp.tips_ja, prev.content_ja, next?.content_ja),
+            tips_zh: edit(cp.tips_zh, prev.content_zh, next?.content_zh),
+        };
+        const changed = data.tips !== cp.tips || data.tips_en !== cp.tips_en || data.tips_ja !== cp.tips_ja || data.tips_zh !== cp.tips_zh;
+        return changed ? [prisma.coursePlace.update({ where: { id: cp.id }, data })] : [];
+    });
+}
+
+const coursePlacesOf = (placeId: number) =>
+    prisma.coursePlace.findMany({ where: { place_id: placeId }, select: { id: true, tips: true, tips_en: true, tips_ja: true, tips_zh: true } });
+
+/** 승인 팁 수정: 문장이 바뀌면 다시 번역. 코스 팁에 들어간 같은 문장도 함께 바꿈 */
+export async function updateApprovedTip(placeId: number, tipId: number, tip: { category: string; content: string }) {
+    const prev = await prisma.placeTip.findFirstOrThrow({ where: { id: tipId, place_id: placeId } });
+    const category = ((TIP_CATEGORY_VALUES as readonly string[]).includes(tip.category) ? tip.category : "ETC") as TipCategory;
+    const content = tip.content.trim();
+    if (!content) throw new Error("팁 내용이 비어 있어요");
+    let tr = { content_en: prev.content_en, content_ja: prev.content_ja, content_zh: prev.content_zh };
+    if (content !== prev.content) {
+        const t0 = new Date();
+        const r = await translateTips([{ category, content }]);
+        tr = { content_en: r.tips_en?.[0]?.content ?? null, content_ja: r.tips_ja?.[0]?.content ?? null, content_zh: r.tips_zh?.[0]?.content ?? null };
+        await logTipRun({ place_id: placeId, kind: "translate", started_at: t0, finished_at: new Date(), input_tokens: r.usage.input, output_tokens: r.usage.output });
+    }
+    const updates = courseTipUpdates(await coursePlacesOf(placeId), prev, { category, content, ...tr });
+    await prisma.$transaction([
+        prisma.placeTip.update({ where: { id: tipId }, data: { category, content, ...tr, edited: true } }),
+        ...updates,
+    ]);
+    return { tip: { id: tipId, category, content, candidate_id: prev.candidate_id } };
+}
+
+/** 승인 팁을 후보로 내리거나(demote) 지움: 코스 팁(앱 화면)에서 빠짐 */
+export async function removeApprovedTip(placeId: number, tipId: number, demote: boolean) {
+    const prev = await prisma.placeTip.findFirstOrThrow({ where: { id: tipId, place_id: placeId } });
+    const updates = courseTipUpdates(await coursePlacesOf(placeId), prev, null);
+    const now = new Date();
+    const back = { status: demote ? DEMOTED_STATUS : "rejected", category: prev.category, content: prev.content, decided_at: now };
+    // 후보 행: 원래 후보에서 승인한 팁이면 그 행을 되살리고(내림) / 거절 처리(삭제). 직접 추가했던 팁을 내리면 새 후보 행
+    const candidateOp = prev.candidate_id
+        ? prisma.tipCandidate.update({ where: { id: prev.candidate_id }, data: back })
+        : demote
+          ? prisma.tipCandidate.create({ data: { place_id: placeId, ...back, decided_at: null } })
+          : null;
+    const results = await prisma.$transaction([prisma.placeTip.delete({ where: { id: tipId } }), ...updates, ...(candidateOp ? [candidateOp] : [])]);
+    if (demote) await prisma.place.update({ where: { id: placeId }, data: { tip_status: "review" } });
+    return { candidate: demote ? results[results.length - 1] : null, removedFromCourses: updates.length };
 }
 
 /** 남은 후보가 없으면 완료 */
 export async function refreshTipStatus(placeId: number) {
-    const pending = await prisma.tipCandidate.count({ where: { place_id: placeId, status: { in: PENDING_STATUSES } } });
+    const pending = await prisma.tipCandidate.count({ where: { place_id: placeId, status: { in: REVIEW_STATUSES } } });
     if (pending === 0) await prisma.place.update({ where: { id: placeId }, data: { tip_status: "done" } });
 }

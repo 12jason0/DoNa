@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { verifyAdminJwt } from "@/lib/auth";
-import { approveTip, generateTipCandidates, logTipRun, refreshTipStatus, runTipPipeline } from "@/lib/tipPipeline";
+import { approveTip, generateTipCandidates, hasSameTip, logTipRun, MANUAL_STATUS, refreshTipStatus, removeApprovedTip, runTipPipeline, updateApprovedTip } from "@/lib/tipPipeline";
+import { TIP_CATEGORY_VALUES } from "@/types/tip";
 import { parseTipsFromDb } from "@/types/tip";
 
 export const dynamic = "force-dynamic";
@@ -46,7 +47,10 @@ export async function GET(req: NextRequest, { params }: Ctx) {
  * action:
  *  approve {candidateId, category, content}  — 승인 / 수정 후 승인
  *  reject {candidateId}
- *  add {category, content}                    — 직접 팁 추가 (바로 승인)
+ *  editCandidate {candidateId, category, content} — 후보 수정만 (승인 안 함)
+ *  add {category, content}                    — 직접 작성 후보 추가 (승인은 따로). 같은 문장 있으면 409
+ *  editTip {tipId, category, content}         — 승인 팁 수정 (코스 팁도 같이)
+ *  demote {tipId} / deleteTip {tipId}         — 승인 팁을 후보로 내림 / 삭제 (코스 팁에서 빠짐)
  *  paste {text}                               — 가게 공지·메뉴판 붙여넣기 → 후보 다시 만들기
  *  recollect                                  — 자료 다시 모으기 + 후보 다시 만들기
  */
@@ -58,12 +62,35 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     try {
         switch (body.action) {
             case "approve":
-            case "add":
                 return NextResponse.json(
                     await approveTip(placeId, { category: String(body.category ?? ""), content: String(body.content ?? "") }, body.candidateId ?? undefined)
                 );
+            case "add": {
+                const content = String(body.content ?? "").trim();
+                const category = (TIP_CATEGORY_VALUES as readonly string[]).includes(body.category) ? body.category : "ETC";
+                if (!content) return NextResponse.json({ error: "팁 내용이 비어 있어요" }, { status: 400 });
+                if (await hasSameTip(placeId, content)) return NextResponse.json({ error: "같은 문장이 이미 있어요" }, { status: 409 });
+                const candidate = await prisma.tipCandidate.create({ data: { place_id: placeId, category, content, status: MANUAL_STATUS, source_ids: [] } });
+                await prisma.place.update({ where: { id: placeId }, data: { tip_status: "review" } });
+                return NextResponse.json({ candidate });
+            }
+            case "editCandidate": {
+                const content = String(body.content ?? "").trim();
+                const category = (TIP_CATEGORY_VALUES as readonly string[]).includes(body.category) ? body.category : "ETC";
+                if (!content) return NextResponse.json({ error: "팁 내용이 비어 있어요" }, { status: 400 });
+                const candidate = await prisma.tipCandidate.update({ where: { id: Number(body.candidateId), place_id: placeId }, data: { category, content } });
+                return NextResponse.json({ candidate });
+            }
+            case "editTip":
+                return NextResponse.json(await updateApprovedTip(placeId, Number(body.tipId), { category: String(body.category ?? ""), content: String(body.content ?? "") }));
+            case "demote":
+            case "deleteTip": {
+                const r = await removeApprovedTip(placeId, Number(body.tipId), body.action === "demote");
+                await refreshTipStatus(placeId);
+                return NextResponse.json(r);
+            }
             case "reject":
-                await prisma.tipCandidate.update({ where: { id: Number(body.candidateId) }, data: { status: "rejected", decided_at: new Date() } });
+                await prisma.tipCandidate.update({ where: { id: Number(body.candidateId), place_id: placeId }, data: { status: "rejected", decided_at: new Date() } });
                 await refreshTipStatus(placeId);
                 return NextResponse.json({ ok: true });
             case "paste": {
