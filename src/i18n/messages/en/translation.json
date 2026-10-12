@@ -517,6 +517,8 @@
         "updated": "Last updated",
         "placeHours": "Opening hours by place",
         "hoursUnknown": "Hours not available",
+        "officialTip": "Official",
+        "instagram": "Instagram",
         "closedWeekly": "Closed every {days}",
         "reservationNeeded": "Reservation required",
         "reservationNotNeeded": "No reservation needed"

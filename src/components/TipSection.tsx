@@ -1,6 +1,7 @@
 "use client";
 
 import { type TipItem } from "@/types/tip";
+import { useLocale } from "@/context/LocaleContext";
 
 const iconClass = "w-5 h-5 shrink-0 text-current";
 
@@ -151,6 +152,7 @@ interface TipSectionProps {
 }
 
 export function TipSection({ tips, variant, className = "", compact = false }: TipSectionProps) {
+    const { t: tr } = useLocale();
     if (!tips || tips.length === 0) return null;
 
     const isFree = variant === "free";
@@ -186,6 +188,11 @@ export function TipSection({ tips, variant, className = "", compact = false }: T
                                 compact ? "" : "whitespace-pre-wrap"
                             }`}
                         >
+                            {t.official && (
+                                <span className="mr-1 px-1.5 py-px rounded bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-200 text-[10px] font-semibold align-middle">
+                                    {tr("courseDetail.info.officialTip")}
+                                </span>
+                            )}
                             {t.content}
                         </p>
                     </div>

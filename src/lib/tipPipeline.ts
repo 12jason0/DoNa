@@ -490,6 +490,8 @@ export async function approveTip(placeId: number, tip: { category: string; conte
     const category = ((TIP_CATEGORY_VALUES as readonly string[]).includes(tip.category) ? tip.category : "ETC") as TipCategory;
     const ko: TipItem = { category, content: tip.content.trim() };
     if (!ko.content) throw new Error("팁 내용이 비어 있어요");
+    const candidate = candidateId ? await prisma.tipCandidate.findUnique({ where: { id: candidateId }, select: { content: true, category: true, status: true } }) : null;
+    if (candidate?.status === "official") ko.official = true;
     const t0 = new Date();
     const tr = await translateTips([ko]);
     const en = tr.tips_en?.[0], ja = tr.tips_ja?.[0], zh = tr.tips_zh?.[0];
@@ -509,7 +511,7 @@ export async function approveTip(placeId: number, tip: { category: string; conte
         }
         // 번역 칸이 비어 있으면 앱이 한국어로 대신 보여줌 → 비어 있던 칸은 그대로 둠 (한국어 쪽에 추가되므로 같이 보임)
         const add = (col: string | null, item?: { content: string }) =>
-            col?.trim() && item ? tipsToJson([...parseTipsFromDb(col), { category, content: item.content }]) : col;
+            col?.trim() && item ? tipsToJson([...parseTipsFromDb(col), { category, content: item.content, ...(ko.official ? { official: true } : {}) }]) : col;
         updates.push(
             prisma.coursePlace.update({
                 where: { id: cp.id },
@@ -524,7 +526,6 @@ export async function approveTip(placeId: number, tip: { category: string; conte
     }
 
     const now = new Date();
-    const candidate = candidateId ? await prisma.tipCandidate.findUnique({ where: { id: candidateId }, select: { content: true, category: true, status: true } }) : null;
     // "수정 저장"으로 먼저 고친 후보(edited)를 그대로 승인해도 수정 후 승인 (통계용)
     const edited = !!candidate && (candidate.status === EDITED_STATUS || candidate.content !== ko.content || candidate.category !== category);
     const log = await prisma.tipWorkLog.findFirst({ where: { place_id: placeId }, orderBy: { opened_at: "desc" } });

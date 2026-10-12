@@ -23,6 +23,7 @@ export interface TipItem {
     category: TipCategory;
     content: string;
     priority?: number; // 1~5, 3 = 카드뉴스 노출 대상
+    official?: boolean; // 가게 공식 후보(가게 공지·메뉴판 근거)를 승인한 팁 → 앱·웹에 "가게 공식" 배지
 }
 
 /** 유효 카테고리 값 목록 (어드민 select·검증용) */
@@ -133,6 +134,7 @@ export function parseTipsFromDb(value: string | null | undefined): TipItem[] {
                         category: valid ? mapped : ("ETC" as TipCategory),
                         content: String(x.content || "").trim(),
                         ...(typeof x.priority === "number" ? { priority: x.priority } : {}),
+                        ...(x.official === true ? { official: true } : {}),
                     };
                 })
                 .filter((x) => x.content.length > 0);

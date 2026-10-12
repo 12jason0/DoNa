@@ -514,6 +514,8 @@
         "updated": "最後更新",
         "placeHours": "各地點營業時間",
         "hoursUnknown": "暫無營業時間資訊",
+        "officialTip": "店家官方",
+        "instagram": "店家 Instagram",
         "closedWeekly": "每週{days}休息",
         "reservationNeeded": "需要預約",
         "reservationNotNeeded": "無需預約"

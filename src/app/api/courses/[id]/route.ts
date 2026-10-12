@@ -119,6 +119,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                                 parking_available: true,
                                 reservation_required: true,
                                 reservationUrl: true, // 🟢 예약 주소 추가
+                                instagram_handle: true, // 앱 장소 상세 "가게 인스타" 버튼
                                 start_date: true, // 팝업·전시 기간 (null = 상설)
                                 end_date: true,
                                 status: true, // 폐업 처리한 선택지 숨김 (isExpiredOption)

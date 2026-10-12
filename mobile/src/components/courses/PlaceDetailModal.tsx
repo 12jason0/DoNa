@@ -228,7 +228,12 @@ export function PlaceDetailModal({
                                         <View style={{ marginTop: 1 }}>
                                             <TipCategoryIcon category={tip.category} color={t.isDark ? "#9ca3af" : "#4b5563"} />
                                         </View>
-                                        <Text style={[s.placeTipSectionBody, { color: t.text, flex: 1 }]}>{tip.content}</Text>
+                                        <Text style={[s.placeTipSectionBody, { color: t.text, flex: 1 }]}>
+                                            {tip.official ? (
+                                                <Text style={[s.officialBadge, { color: t.isDark ? "#bfdbfe" : "#1d4ed8" }]}>{i18n("courseDetail.info.officialTip")}  </Text>
+                                            ) : null}
+                                            {tip.content}
+                                        </Text>
                                     </View>
                                 ))}
                             </View>
@@ -288,6 +293,17 @@ export function PlaceDetailModal({
                                         ? i18n("courses.reserveOtherDay")
                                         : i18n("courses.reserve")}
                                 </Text>
+                            </TouchableOpacity>
+                        ) : null}
+
+                        {place.instagram_handle ? (
+                            <TouchableOpacity
+                                style={[s.detailReserveBtnWeb, s.detailInstaBtn, { borderColor: t.border }]}
+                                onPress={() => Linking.openURL(`https://www.instagram.com/${encodeURIComponent(place.instagram_handle!)}/`)}
+                                activeOpacity={0.9}
+                            >
+                                <Ionicons name="logo-instagram" size={18} color={t.text} />
+                                <Text style={[s.detailReserveBtnWebText, { color: t.text }]}>{i18n("courseDetail.info.instagram")}</Text>
                             </TouchableOpacity>
                         ) : null}
 
@@ -422,6 +438,7 @@ const s = StyleSheet.create({
     placeTipSection: { borderRadius: 12, padding: 14, borderWidth: 1, marginBottom: 12 },
     placeTipSectionLabel: { fontSize: 12, fontWeight: "600", marginBottom: 8 },
     placeTipSectionBody: { fontSize: 14, lineHeight: 21, fontWeight: "500" },
+    officialBadge: { fontSize: 11, fontWeight: "700" },
     detailReserveBtnWeb: {
         flexDirection: "row",
         alignItems: "center",
@@ -434,6 +451,7 @@ const s = StyleSheet.create({
         marginTop: 4,
     },
     detailReserveBtnWebText: { color: "#fff", fontSize: 14, fontWeight: "500" },
+    detailInstaBtn: { backgroundColor: "transparent", borderWidth: 1 },
     detailCloseTextWeb: { fontSize: 13, fontWeight: "500", textAlign: "center" },
     detailCloseTextBtn: { paddingVertical: 10, alignItems: "center" },
     detailStatusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, alignSelf: "flex-start" },

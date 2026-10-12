@@ -27,6 +27,7 @@ export interface PlaceData {
     parking_available?: boolean;
     reservation_required?: boolean;
     reservationUrl?: string | null;
+    instagram_handle?: string | null;
     reservation_url?: string | null;
     maps_link?: string | null;
     mapUrl?: string | null;

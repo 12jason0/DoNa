@@ -31,5 +31,14 @@ ${JSON.stringify(tips, null, 2)}`;
     const raw = message.content[0].type === "text" ? message.content[0].text : "";
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("번역 응답 파싱 실패: " + raw.slice(0, 200));
-    return { ...JSON.parse(jsonMatch[0]), usage: { input: message.usage.input_tokens, output: message.usage.output_tokens } };
+    const parsed = JSON.parse(jsonMatch[0]);
+    // 번역은 category·content만 돌아옴 → 같은 순서의 원문 팁에서 "가게 공식" 표시를 옮겨 붙임
+    const keepOfficial = (list?: TipItem[]) => list?.map((t, i) => (tips[i]?.official ? { ...t, official: true } : t));
+    return {
+        ...parsed,
+        tips_en: keepOfficial(parsed.tips_en),
+        tips_ja: keepOfficial(parsed.tips_ja),
+        tips_zh: keepOfficial(parsed.tips_zh),
+        usage: { input: message.usage.input_tokens, output: message.usage.output_tokens },
+    };
 }
