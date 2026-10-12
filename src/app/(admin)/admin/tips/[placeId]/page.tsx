@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import ko from "@/i18n/messages/ko/translation.json";
 import { TIP_CATEGORY_VALUES, TIP_STATUS_LABEL, type TipItem } from "@/types/tip";
+import { contentPriceMismatch, hasPrice, type TipPrice } from "@/lib/tipPrice";
 
 type Source = {
     id: number;
@@ -25,6 +26,7 @@ type Candidate = {
     source_ids: number[];
     source_count: number;
     latest_source_at: string | null;
+    price?: TipPrice | null;
 };
 type ApprovedTip = { id: number; category: string; content: string; candidate_id: number | null; approved_at: string };
 type Detail = {
@@ -97,6 +99,31 @@ function SourceCard({ s, citedBy }: { s: Source; citedBy?: number[] }) {
     );
 }
 
+/** 활동 팁 가격: 쓴 가격·근거, 다른 근거의 다른 가격, 못 찾았으면 "가격 확인 필요" */
+function PriceLine({ price, content }: { price: TipPrice; content: string }) {
+    const need = !price.value && !hasPrice(content);
+    return (
+        <div className="text-xs mb-2 space-y-0.5">
+            {price.value ? (
+                <div className="text-gray-700">
+                    💰 가격 {price.value} <span className="text-gray-400">(#{price.source_id}, {day(price.written_at)})</span>
+                    {contentPriceMismatch(content, price) && <span className="ml-1 text-red-600 font-semibold">문장 가격이 이것과 다름</span>}
+                </div>
+            ) : (
+                <span className={`px-2 py-0.5 rounded-full font-semibold ${need ? "bg-orange-100 text-orange-800" : "bg-gray-100 text-gray-600"}`}>
+                    {need ? "가격 확인 필요" : "가격 직접 넣음 (근거 없음)"}
+                </span>
+            )}
+            {price.others.length > 0 && (
+                <div className="text-amber-700">다른 가격: {price.others.map((o) => `${o.value} (#${o.source_id}, ${day(o.written_at)})`).join(" · ")}</div>
+            )}
+            {price.unverified.length > 0 && (
+                <div className="text-gray-400">근거 글에서 숫자를 못 찾아 뺀 가격: {price.unverified.map((o) => `${o.value} (#${o.source_id})`).join(" · ")}</div>
+            )}
+        </div>
+    );
+}
+
 /** 카테고리·문장 편집 칸 (후보·승인 팁 공통) */
 function TipEditor({ category, content, setCategory, setContent }: { category: string; content: string; setCategory: (v: string) => void; setContent: (v: string) => void }) {
     return (
@@ -146,6 +173,7 @@ function CandidateCard({
                     </span>
                 )}
             </div>
+            {c.price && <PriceLine price={c.price} content={content} />}
             <TipEditor category={category} content={content} setCategory={setCategory} setContent={setContent} />
             {sameCategory.length > 0 && (
                 <p className="text-xs text-amber-700 mt-1">

@@ -1,16 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { verifyAdminJwt } from "@/lib/auth";
+import { claudeUsd, USD_KRW } from "@/lib/tipStats";
 
 export const dynamic = "force-dynamic";
 
-// claude-sonnet-4-6 단가 (USD / 100만 토큰)
-const PRICE_IN = 3;
-const PRICE_OUT = 15;
-// ponytail: 고정 환율. 원화 비용을 정확히 맞춰야 하면 환율 API나 환경변수로 교체
-const USD_KRW = 1400;
-
-const won = (input: number, output: number) => ((input * PRICE_IN + output * PRICE_OUT) / 1e6) * USD_KRW;
+const won = (input: number, output: number) => claudeUsd(input, output) * USD_KRW;
 const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
 const median = (xs: number[]) => {
     if (!xs.length) return null;

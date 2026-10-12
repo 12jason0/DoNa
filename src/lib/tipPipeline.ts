@@ -6,6 +6,7 @@ import type { Prisma } from "@prisma/client";
 import { fetchGooglePlaceDetails, findGooglePlace } from "@/lib/googlePlaces";
 import { sendTelegram } from "@/lib/telegram";
 import { translateTips } from "@/lib/translateTips";
+import { pickTipPrice, type TipPrice } from "@/lib/tipPrice";
 import { parseTipsFromDb, tipsToJson, TIP_CATEGORY_VALUES, type TipCategory, type TipItem } from "@/types/tip";
 
 const RECENT_MS = 183 * 24 * 60 * 60 * 1000; // 최근 6개월
@@ -151,7 +152,9 @@ export async function collectTipSources(placeId: number) {
     const hasLocation = !!place.address || place.latitude != null;
 
     let googleId = place.google_place_id;
+    let googleCalls = 0; // 유료 호출 수 (tip_runs.google_calls)
     if (!googleId && hasLocation) {
+        googleCalls++;
         const found = await findGooglePlace(place.name, place.address ?? "");
         if (found) {
             googleId = found.place_id;
@@ -159,6 +162,7 @@ export async function collectTipSources(placeId: number) {
         }
     }
 
+    if (googleId) googleCalls++;
     const query = place.tip_query || `${place.name} ${regionOf(place.address)}`.trim();
     const [google, naver, kakaoBlog, kakaoCafe] = await Promise.all([
         googleId ? fetchGooglePlaceDetails(googleId, true) : null,
@@ -202,7 +206,7 @@ export async function collectTipSources(placeId: number) {
         prisma.tipSource.createMany({ data: rows.map((s) => ({ ...s, place_id: placeId })) }),
     ]);
     const filtered = rows.filter((r) => !r.relevant).length;
-    return { google: !!google, hasLocation, count: rows.length - filtered, filtered };
+    return { google: !!google, hasLocation, count: rows.length - filtered, filtered, googleCalls };
 }
 
 /** 근거 개수: 같은 작성자(플랫폼+작성자)의 글은 1개로. 작성자 모르면 링크, 그것도 없으면 행 하나 */
@@ -231,7 +235,16 @@ export function judgeCandidate(distinctCount: number, latest: Date | null, confl
     return distinctCount >= MIN_SOURCES && recent ? "candidate" : "needs_check";
 }
 
-type AiTip = { category: string; content: string; source_ids: number[]; conflict?: boolean; owner_fact?: boolean; owner_question?: string };
+type AiTip = {
+    category: string;
+    content: string;
+    source_ids: number[];
+    conflict?: boolean;
+    owner_fact?: boolean;
+    owner_question?: string;
+    activity?: boolean;
+    prices?: { value: string; source_id: number }[];
+};
 type AiPlaceInfo = { field: string; content: string; source_ids: number[] };
 
 /** 새 팁 후보가 쓰는 카테고리 (예전 팁의 WALKING·PHOTO_ZONE 등은 승인·화면에서 그대로 유지) */
@@ -275,17 +288,19 @@ export async function generateTipCandidates(placeId: number) {
   나쁨: "월요일 휴무"  좋음: "오후 1시 오픈 — 오전 첫 코스로 넣으면 문 닫혀 있음"
 
 형식:
-- content는 한국어 한 줄, 50자 안팎. 구조: "사실 — 그래서 데이트에서 생기는 일 / 해야 할 행동"
-- 두 사람이 데이트하는 시점으로 쓰세요. 감정 표현은 괜찮지만 앞의 '사실'은 반드시 자료에 근거가 있어야 합니다.
+- content는 한국어 한 줄, 30자 안팎, 최대 35자(띄어쓰기 포함). 앱 화면 두 줄 안에 끝나야 합니다.
+- 구조: "사실 — 해야 할 행동 / 그래서 생기는 일". 수식어·접속사는 빼고 짧게.
+- 날짜("2025년 기준", "9월 방문 시")는 문장에 넣지 마세요. 날짜는 근거 자료에만 있으면 됩니다.
+- 두 사람이 데이트하는 시점으로 쓰세요. 앞의 '사실'은 반드시 자료에 근거가 있어야 합니다.
 - category는 다음 중 하나: ${TIP_GEN_CATEGORIES.join(", ")}
 - 장소당 3~${MAX_TIPS}개. 좋은 팁이 없으면 적게(0개도 됨). 억지로 채우지 마세요.
 
-예시 (필름카메라 대여·사진관 한 곳, 형식 참고용):
+예시 (필름카메라 대여·사진관 한 곳, 형식 참고용. 가격·숫자는 이 가게 것이 아니니 베끼지 마세요):
 좋음:
-- CAUTION: 건물에 간판 없음 — 삼각지역 3번 출구 앞 건물 3층 301호로 바로 올라갈 것
-- CAUTION: 대여 재고 한정 — 주말엔 DM으로 가능 여부 먼저 확인
-- GOOD_TO_KNOW: 가게 안 인생네컷은 디카 감성 버전 — 일반 네컷이랑 결과물이 다름
-- GOOD_TO_KNOW: 반납할 때 실물 인화 가능 — 사이트 다운로드도 돼서 둘 다 챙길 수 있음
+- CAUTION: 간판 없음 — 삼각지역 3번 출구 앞 건물 3층
+- CAUTION: 대여 재고 한정 — 주말엔 DM으로 먼저 확인
+- GOOD_TO_KNOW: 필름카메라 대여 1만원(필름 별도) — 24시간이라 다음날 반납
+- GOOD_TO_KNOW: 반납 때 실물 인화 가능 — 파일 다운로드도 같이
 나쁨:
 - "월요일은 정기휴무, 화~금 오후 1~7시 운영" → 기본 정보 (place_info)
 - "필름카메라 대여·현상·스캔 서비스와 폴라로이드 셀프 촬영" → 서비스 목록 (place_info)
@@ -299,11 +314,18 @@ export async function generateTipCandidates(placeId: number) {
   평가·분위기·추천 문장이거나 owner_text가 근거가 아니면 owner_fact: false.
 - 각 팁마다 사장님께 사실 확인용으로 물을 짧은 질문을 owner_question에 쓰세요.
 
+활동 가격:
+- 체험·대여·클래스·부스·만들기처럼 "여기서 ~할 수 있음" 팁이면 activity: true, 아니면 false.
+- activity 팁은 그 활동 가격이 적힌 자료를 전부 찾아 prices에 자료마다 하나씩 넣으세요: {"value": 자료에 적힌 그대로의 가격, "source_id": 그 자료 번호}.
+- 자료에 숫자로 적힌 가격만. 추측·계산(1인 가격×2 등)·반올림 금지. 가격이 없으면 prices는 [].
+- "무료"는 자료에 무료라고 적혀 있을 때만.
+- 자료마다 가격이 다르면 content에는 가장 최근 날짜 자료의 가격을 쓰세요. 가격을 못 찾았으면 content에 가격을 쓰지 마세요.
+
 place_info: 팁이 아닌 기본 정보 중 자료에 근거가 있는 것. field는 다음 중 하나: ${PLACE_INFO_FIELDS.join(", ")}
 (access = 역·출구·거리 같은 찾아가는 길, service = 서비스 목록). content는 자료에 적힌 그대로 한 줄.
 
 다른 텍스트 없이 JSON만:
-{"tips":[{"category":"CAUTION","content":"...","source_ids":[1,2],"conflict":false,"owner_fact":false,"owner_question":"..."}],"place_info":[{"field":"opening_hours","content":"...","source_ids":[3]}]}
+{"tips":[{"category":"GOOD_TO_KNOW","content":"...","source_ids":[1,2],"conflict":false,"owner_fact":false,"owner_question":"...","activity":true,"prices":[{"value":"...","source_id":2}]}],"place_info":[{"field":"opening_hours","content":"...","source_ids":[3]}]}
 
 자료:
 ${material}`;
@@ -330,7 +352,10 @@ ${material}`;
         source_count: number;
         latest_source_at: Date | null;
         owner_question: string;
+        price: TipPrice | null;
     }[] = [];
+    // 가격 확인용: 근거 번호 → 제목+본문, 작성일 (AI가 댄 가격 숫자가 그 글에 실제로 있는지 코드가 확인)
+    const priceText = new Map(sources.map((s) => [s.id, { text: `${s.title ?? ""} ${s.content ?? ""}`, written_at: s.written_at }]));
     for (const t of aiTips) {
         // AI가 없는 번호를 댄 경우 버림 → 근거 0개면 후보에서 제외
         const used = [...new Set(t.source_ids ?? [])].map((id) => byId.get(id)).filter((s) => s != null);
@@ -349,6 +374,7 @@ ${material}`;
             source_count: count,
             latest_source_at: latest,
             owner_question: t.owner_question?.trim() ?? "",
+            price: t.activity === true ? pickTipPrice(Array.isArray(t.prices) ? t.prices : [], priceText) : null,
         });
         if (rows.length >= MAX_TIPS) break;
     }
@@ -379,7 +405,9 @@ ${material}`;
 
     await prisma.$transaction([
         prisma.tipCandidate.deleteMany({ where: { place_id: placeId, status: { in: [...PENDING_STATUSES, PLACE_INFO_STATUS] } } }),
-        prisma.tipCandidate.createMany({ data: [...rows.map(({ owner_question, ...r }) => ({ ...r, place_id: placeId })), ...infoRows] }),
+        prisma.tipCandidate.createMany({
+            data: [...rows.map(({ owner_question, price, ...r }) => ({ ...r, place_id: placeId, ...(price ? { price } : {}) })), ...infoRows],
+        }),
         prisma.place.update({ where: { id: placeId }, data: { tip_status: rows.length || kept.length ? "review" : "recheck" } }),
     ]);
 
@@ -424,6 +452,7 @@ export async function runTipPipeline(placeId: number, chatId?: number, startedAt
             needs_check: r.needsCheck,
             input_tokens: r.tokens.input,
             output_tokens: r.tokens.output,
+            google_calls: collected.googleCalls,
         });
         if (!chatId) return r;
         const questions = r.ownerQuestions.length
@@ -443,6 +472,7 @@ export async function runTipPipeline(placeId: number, chatId?: number, startedAt
             started_at: startedAt,
             source_count: collected?.count,
             filtered_count: collected?.filtered,
+            google_calls: collected?.googleCalls,
             error: String(e).slice(0, 500),
         });
         await prisma.place.update({ where: { id: placeId }, data: { tip_status: "recheck" } });
@@ -493,8 +523,9 @@ export async function approveTip(placeId: number, tip: { category: string; conte
     }
 
     const now = new Date();
-    const candidate = candidateId ? await prisma.tipCandidate.findUnique({ where: { id: candidateId }, select: { content: true, category: true } }) : null;
-    const edited = !!candidate && (candidate.content !== ko.content || candidate.category !== category);
+    const candidate = candidateId ? await prisma.tipCandidate.findUnique({ where: { id: candidateId }, select: { content: true, category: true, status: true } }) : null;
+    // "수정 저장"으로 먼저 고친 후보(edited)를 그대로 승인해도 수정 후 승인 (통계용)
+    const edited = !!candidate && (candidate.status === EDITED_STATUS || candidate.content !== ko.content || candidate.category !== category);
     const log = await prisma.tipWorkLog.findFirst({ where: { place_id: placeId }, orderBy: { opened_at: "desc" } });
     const [created] = await prisma.$transaction([
         prisma.placeTip.create({

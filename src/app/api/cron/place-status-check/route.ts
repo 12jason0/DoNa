@@ -4,6 +4,7 @@ import { Resend } from "resend";
 import { captureApiError } from "@/lib/sentry";
 import { sendTelegram } from "@/lib/telegram";
 import { telegramAdminIds } from "@/lib/instagramDm";
+import { tipKpis, tipKpiText } from "@/lib/tipStats";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -156,6 +157,10 @@ export async function GET(req: NextRequest) {
         }
 
         await notifyTelegram(now, failReasons).catch((e) => captureApiError(e));
+        // 매주 월요일 팁 파이프라인 누적 숫자 (폐업 점검 알림 뒤)
+        await tipKpis()
+            .then((k) => Promise.all(telegramAdminIds().map((id) => sendTelegram(id, tipKpiText(k)))))
+            .catch((e) => captureApiError(e));
 
         return NextResponse.json({
             success: true,

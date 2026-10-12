@@ -326,6 +326,7 @@ model TipCandidate {
   latest_source_at DateTime?
   created_at       DateTime  @default(now())
   decided_at       DateTime?
+  price            Json? /// 체험·대여·클래스 같은 활동 팁의 가격 (src/lib/tipPrice.ts TipPrice). value null = 가격 확인 필요. 활동 팁이 아니면 null
   place            Place     @relation(fields: [place_id], references: [id], onDelete: Cascade)
 
   @@index([place_id])
@@ -364,6 +365,7 @@ model TipRun {
   needs_check    Int?
   input_tokens   Int       @default(0)
   output_tokens  Int       @default(0)
+  google_calls   Int       @default(0) /// 구글 Places 유료 호출 수 (장소 찾기 + 상세)
   error          String?
   place          Place     @relation(fields: [place_id], references: [id], onDelete: Cascade)
 
