@@ -4,6 +4,7 @@ import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import prisma from "@/lib/db";
 import { defaultCache } from "@/lib/cache";
 import { sendTelegram } from "@/lib/telegram";
+import { openPlaceWhere } from "@/lib/placePeriod";
 import { generateTipCandidates, logTipRun, tipReviewUrl } from "@/lib/tipPipeline";
 
 export const GRAPH = "https://graph.facebook.com/v23.0";
@@ -127,7 +128,7 @@ export async function handleInstagramDm(igsid: string, text: string) {
     const username = await fetchInstagramUsername(igsid);
     const dm: InstagramDm = { igsid, username, text };
     const places = username
-        ? await prisma.place.findMany({ where: { instagram_handle: username }, select: { id: true, name: true }, orderBy: { id: "asc" } })
+        ? await prisma.place.findMany({ where: { instagram_handle: username, ...openPlaceWhere }, select: { id: true, name: true }, orderBy: { id: "asc" } })
         : [];
     if (places.length === 1) return addDmToPlace(places[0].id, dm);
 
