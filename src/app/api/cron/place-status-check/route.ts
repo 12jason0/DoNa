@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { Resend } from "resend";
 import { captureApiError } from "@/lib/sentry";
+import { sendTelegram } from "@/lib/telegram";
+import { telegramAdminIds } from "@/lib/instagramDm";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -23,12 +25,55 @@ function sleep(ms: number) {
     return new Promise((r) => setTimeout(r, ms));
 }
 
-async function fetchBusinessStatus(googlePlaceId: string): Promise<string | null> {
+/** status: 구글 business_status (못 받으면 null), reason: 못 받은 이유 (구글 응답 status 또는 HTTP 코드) */
+async function fetchBusinessStatus(googlePlaceId: string): Promise<{ status: string | null; reason: string }> {
     const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${googlePlaceId}&fields=business_status&key=${GOOGLE_API_KEY}`;
-    const res = await fetch(url);
-    if (!res.ok) return null;
+    const res = await fetch(url).catch(() => null);
+    if (!res?.ok) return { status: null, reason: `HTTP ${res?.status ?? "실패"}` };
     const data = await res.json();
-    return data.result?.business_status ?? null;
+    return { status: data.result?.business_status ?? null, reason: data.status ?? "상태 없음" };
+}
+
+const courseLine = (cps: { course: { id: number; title: string } }[]) =>
+    cps.length ? cps.map((cp) => `${cp.course.id} ${cp.course.title}`).join(", ") : "없음";
+
+/**
+ * 점검 뒤 텔레그램: 구글은 폐업인데 우리는 published인 장소를 해결될 때까지 매주 한 곳씩 [폐업 처리] 버튼과 함께,
+ * 이번에 상태를 못 받은 장소·구글 ID 없는 장소는 목록 한 번에
+ */
+async function notifyTelegram(checkedAt: Date, failReasons: Map<number, string>) {
+    const adminIds = telegramAdminIds();
+    if (adminIds.length === 0) return;
+    const send = (text: string, buttons?: { text: string; data: string }[][]) => Promise.all(adminIds.map((id) => sendTelegram(id, text, buttons)));
+    const courses = { select: { course: { select: { id: true, title: true } } } };
+
+    const gap = await prisma.place.findMany({
+        where: { place_status: "CLOSED_PERMANENTLY", status: "published" },
+        select: { id: true, name: true, address: true, coursePlaces: courses },
+        orderBy: { id: "asc" },
+    });
+    for (const p of gap) {
+        await send(
+            `🔴 구글은 폐업, 우리는 운영 중\nID ${p.id} ${p.name}\n${p.address ?? "주소 없음"}\n코스: ${courseLine(p.coursePlaces)}`,
+            [[{ text: "폐업 처리", data: `close:${p.id}` }]]
+        );
+    }
+
+    // 이번 점검에서 status_checked_at이 안 바뀐 곳 = 구글이 상태를 안 돌려줌 / 구글 ID 없음
+    const unchecked = await prisma.place.findMany({
+        where: { status: "published", OR: [{ google_place_id: null }, { status_checked_at: null }, { status_checked_at: { lt: checkedAt } }] },
+        select: { id: true, name: true, google_place_id: true, status_checked_at: true, coursePlaces: courses },
+        orderBy: { id: "asc" },
+    });
+    if (unchecked.length === 0) return;
+    const lines = unchecked.map((p) => {
+        const why = !p.google_place_id
+            ? "구글 ID 없음"
+            : `${failReasons.get(p.id) ?? "응답 없음"}, 마지막 점검 ${p.status_checked_at ? p.status_checked_at.toISOString().slice(0, 10) : "없음"}`;
+        return `· ${p.id} ${p.name} (${why}) 코스: ${courseLine(p.coursePlaces)}`;
+    });
+    // ponytail: 텔레그램 한 메시지 4096자 → 앞 40곳만, 넘으면 관리자 장소 화면에서
+    await send(`⚪ 폐업 점검을 못 한 장소 ${unchecked.length}곳\n${lines.slice(0, 40).join("\n")}${lines.length > 40 ? `\n…외 ${lines.length - 40}곳` : ""}`);
 }
 
 export async function GET(req: NextRequest) {
@@ -55,10 +100,11 @@ export async function GET(req: NextRequest) {
 
         const now = new Date();
         const changed: { name: string; address: string; prev: string; next: string }[] = [];
+        const failReasons = new Map<number, string>();
 
         for (const place of places) {
-            const newStatus = await fetchBusinessStatus(place.google_place_id);
-            if (!newStatus) { await sleep(DELAY_MS); continue; }
+            const { status: newStatus, reason } = await fetchBusinessStatus(place.google_place_id);
+            if (!newStatus) { failReasons.set(place.id, reason); await sleep(DELAY_MS); continue; }
 
             const prevStatus = place.place_status ?? "OPERATIONAL";
             if (newStatus !== prevStatus) {
@@ -108,6 +154,8 @@ export async function GET(req: NextRequest) {
                 `,
             });
         }
+
+        await notifyTelegram(now, failReasons).catch((e) => captureApiError(e));
 
         return NextResponse.json({
             success: true,

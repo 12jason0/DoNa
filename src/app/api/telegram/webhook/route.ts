@@ -261,6 +261,13 @@ export async function POST(request: NextRequest) {
                 after(() => resolvePendingDm(cbChatId, key, Number(placeId)).catch((e) => console.error("인스타 DM 처리 실패:", e)));
                 return NextResponse.json({ ok: true });
             }
+            // 주간 폐업 점검: [폐업 처리] → status = closed
+            if (String(cb.data ?? "").startsWith("close:")) {
+                const placeId = Number(String(cb.data).slice("close:".length));
+                const { count } = await prisma.place.updateMany({ where: { id: placeId, status: { not: CLOSED_STATUS } }, data: { status: CLOSED_STATUS } });
+                await sendTelegram(cbChatId, count ? `ID ${placeId} 폐업 처리했어요.` : `ID ${placeId}는 이미 폐업 처리됐거나 없는 장소예요.`);
+                return NextResponse.json({ ok: true });
+            }
             // 이미 있는 장소: "팁 다시 모으기" / "취소"
             if (String(cb.data ?? "").startsWith("retip:")) {
                 const placeId = Number(String(cb.data).slice("retip:".length));
