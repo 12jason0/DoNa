@@ -226,13 +226,14 @@ export const REVIEW_STATUSES = [...PENDING_STATUSES, ...HUMAN_STATUSES];
 
 /**
  * 후보 / 가게 공식 / 확인 필요 판정 (AI가 아니라 코드가 정함)
+ * 근거가 전부 6개월보다 오래됐거나 날짜를 모르면(latest = 근거 중 가장 최근 날짜) 가게 공식이어도 확인 필요
  * ownerFact: 가게가 직접 밝힌 사실(메뉴·가격·이용시간·예약·휴무)이고 근거에 붙여넣은 공지·메뉴판이 있음 → 출처 1개로도 인정
  */
 export function judgeCandidate(distinctCount: number, latest: Date | null, conflict: boolean, ownerFact = false, now = Date.now()) {
-    if (conflict) return "needs_check";
-    if (ownerFact) return "official";
     const recent = latest != null && now - latest.getTime() <= RECENT_MS;
-    return distinctCount >= MIN_SOURCES && recent ? "candidate" : "needs_check";
+    if (conflict || !recent) return "needs_check";
+    if (ownerFact) return "official";
+    return distinctCount >= MIN_SOURCES ? "candidate" : "needs_check";
 }
 
 type AiTip = {

@@ -58,6 +58,7 @@ const STATUS_BADGE: Record<string, [string, string]> = {
     edited: ["수정함", "bg-sky-100 text-sky-800"],
 };
 const MAX_LEN = 35;
+const RECENT_MS = 183 * 24 * 60 * 60 * 1000; // 최근 6개월 (src/lib/tipPipeline.ts RECENT_MS와 같게)
 const catLabel = (c: string) => (ko.tipCategory as Record<string, string>)[c] ?? c;
 const day = (d: string | null) => (d ? d.slice(0, 10) : "날짜 모름");
 const norm = (t: string) => t.replace(/\s+/g, "");
@@ -145,6 +146,7 @@ function CandidateCard({
     no,
     c,
     courses,
+    sourceDates,
     onApprove,
     onSave,
     onReject,
@@ -152,6 +154,7 @@ function CandidateCard({
     no: number;
     c: Candidate;
     courses: Detail["courses"];
+    sourceDates: Map<number, string | null>;
     onApprove: (category: string, content: string) => void;
     onSave: (category: string, content: string) => void;
     onReject: () => void;
@@ -169,7 +172,16 @@ function CandidateCard({
                 {c.conflict && <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-semibold">출처끼리 내용 다름</span>}
                 {c.source_ids.length > 0 && (
                     <span className="text-gray-500">
-                        근거 {c.source_count}개 · 최근 {day(c.latest_source_at)} · #{c.source_ids.join(", #")}
+                        근거 {c.source_count}개 ·{" "}
+                        {c.source_ids.map((id, i) => {
+                            const d = sourceDates.get(id) ?? null;
+                            const old = !d || Date.now() - Date.parse(d) > RECENT_MS;
+                            return (
+                                <span key={id} className={old ? "text-gray-300" : "text-gray-600"}>
+                                    {i > 0 && ", "}#{id}({day(d)})
+                                </span>
+                            );
+                        })}
                     </span>
                 )}
             </div>
@@ -389,6 +401,7 @@ export default function AdminTipDetailPage() {
     };
 
     const pending = data.tip_candidates.filter((c) => c.status in STATUS_BADGE);
+    const sourceDates = new Map(data.tip_sources.map((s) => [s.id, s.written_at]));
     const placeInfo = data.tip_candidates.filter((c) => c.status === "place_info");
 
     // 근거 자료: 최신순, 아직 검수 안 한 후보가 인용한 글은 위로, 2년 넘은 글은 접어두기, 관련 없는 글은 개수만
@@ -461,6 +474,7 @@ export default function AdminTipDetailPage() {
                                 no={i + 1}
                                 c={c}
                                 courses={data.courses}
+                                sourceDates={sourceDates}
                                 onApprove={(category, content) => approve(c, category, content)}
                                 onSave={(category, content) => saveCandidate(c, category, content)}
                                 onReject={() => reject(c)}

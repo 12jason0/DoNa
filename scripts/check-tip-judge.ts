@@ -17,7 +17,9 @@ assert.equal(judgeCandidate(2, recent, false, false, now), "needs_check"); // �
 assert.equal(judgeCandidate(5, old, false, false, now), "needs_check"); // 6개월 지남
 assert.equal(judgeCandidate(5, null, false, false, now), "needs_check"); // 날짜 모름
 assert.equal(judgeCandidate(5, recent, true, false, now), "needs_check"); // 출처끼리 다름
-assert.equal(judgeCandidate(1, old, false, true, now), "official"); // 가게 공지·메뉴판의 사실은 1개, 오래돼도 인정
+assert.equal(judgeCandidate(1, recent, false, true, now), "official"); // 가게 공지·메뉴판의 사실은 1개로도 인정
+assert.equal(judgeCandidate(1, old, false, true, now), "needs_check"); // 근거가 전부 6개월 넘으면 가게 공식이어도 확인 필요
+assert.equal(judgeCandidate(1, null, false, true, now), "needs_check"); // 날짜 모르는 근거만 있으면 확인 필요
 assert.equal(judgeCandidate(1, recent, true, true, now), "needs_check"); // 그래도 출처끼리 다르면 확인 필요
 // 가게 이름 핵심 단어: 지점명 빼고, 띄어쓰기 무시
 const kw = coreKeywords("한림칼국수 공항점");
