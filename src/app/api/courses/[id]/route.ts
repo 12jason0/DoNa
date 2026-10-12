@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isExpiredOption, ymd } from "@/lib/placePeriod";
 import prisma from "@/lib/db";
-import { resolveUserId } from "@/lib/auth";
+import { resolveUserId, verifyAdminJwt } from "@/lib/auth";
+import { lockedPlace } from "@/lib/tipAccess";
 import { getMergedTipsFromRow } from "@/types/tip";
 import { captureApiError } from "@/lib/sentry";
 
@@ -190,9 +191,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             courseGrade === "FREE" || // 무료 코스
             userTier === "PREMIUM" || // PREMIUM 유저는 모든 코스 접근
             (userTier === "BASIC" && courseGrade === "BASIC") || // BASIC 유저는 BASIC 코스만 접근
-            hasUnlocked; // 열람권으로 구매한 경우 (FREE 유저도 해당 코스 접근 가능)
+            hasUnlocked || // 열람권으로 구매한 경우 (FREE 유저도 해당 코스 접근 가능)
+            verifyAdminJwt(request); // 관리자(admin_auth 쿠키)
 
-        const hasTipAccess = userTier === "PREMIUM" || userTier === "BASIC" || hasUnlocked || courseGrade === "FREE";
+        const hasTipAccess = hasAccess || userTier === "BASIC";
 
         // 🔒 [서버 사이드 데이터 마스킹] 접근 권한이 없으면 핵심 정보 차단
         const coursePlaces = coursePlacesArray
@@ -201,11 +203,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                     if (!cp || !cp.place) return null;
 
                     if (!hasAccess) {
-                        const latForMap = cp.place?.latitude != null ? Number(cp.place.latitude) : null;
-                        const lngForMap = cp.place?.longitude != null ? Number(cp.place.longitude) : null;
+                        // 잠긴 유료 코스: 순서·구간·카테고리만, 장소는 자리표시 (이름·id·좌표·사진 없음)
                         return {
                             id: cp.id,
-                            place_id: cp.place_id ?? null,
+                            place_id: null,
                             order_index: cp.order_index,
                             order_in_segment: cp.order_in_segment ?? null,
                             segment: cp.segment ?? null,
@@ -216,25 +217,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                             tips_ja: null,
                             tips_zh: null,
                             movement_guide: null,
-                            place: {
-                                id: cp.place.id,
-                                name: cp.place.name,
-                                address: null,
-                                description: null,
-                                category: cp.place.category,
-                                avg_cost_range: null,
-                                opening_hours: null,
-                                phone: null,
-                                parking_available: null,
-                                reservation_required: null,
-                                reservationUrl: null,
-                                latitude: latForMap,
-                                longitude: lngForMap,
-                                imageUrl: cp.place.imageUrl,
-                                closed_days: [],
-                                start_date: ymd(cp.place.start_date),
-                                end_date: ymd(cp.place.end_date),
-                            },
+                            place: lockedPlace(cp.place.category),
                         };
                     }
 

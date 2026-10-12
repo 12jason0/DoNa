@@ -4,7 +4,7 @@ import prisma from "@/lib/db";
 import { resolveUserId, verifyAdminJwt } from "@/lib/auth";
 import { getMergedTipsFromRow } from "@/types/tip";
 import { captureApiError } from "@/lib/sentry";
-import { NO_TIPS, canSeeCourseTips } from "@/lib/tipAccess";
+import { NO_TIPS, canSeeCourseTips, lockedPlace } from "@/lib/tipAccess";
 export const dynamic = "force-dynamic";
 
 // 인증: 유저 JWT 또는 관리자(admin_auth) 허용
@@ -46,6 +46,25 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
         // 팁(모든 언어)은 관리자·열람 권한 있는 사용자만 — 잠긴 유료 코스 팁이 비로그인에게 새던 문제
         const showTips = await canSeeCourseTips(request, Number(courseId));
+        // 장소 정보: FREE 코스는 누구나, 유료 코스는 팁과 같은 권한 — 없으면 순서·카테고리만 (/api/courses/{id}와 같은 자리표시)
+        const course = await prisma.course.findUnique({ where: { id: Number(courseId) }, select: { grade: true } });
+        const showPlaces = showTips || (course?.grade ?? "FREE") === "FREE";
+        if (!showPlaces) {
+            return NextResponse.json(
+                cps.map((cp: any) => ({
+                    id: cp.id,
+                    course_id: cp.course_id,
+                    place_id: null,
+                    order_index: cp.order_index,
+                    segment: cp.segment ?? null,
+                    order_in_segment: cp.order_in_segment ?? null,
+                    estimated_duration: null,
+                    recommended_time: null,
+                    ...NO_TIPS,
+                    place: { ...lockedPlace(cp.place?.category), image_url: null, tags: null },
+                }))
+            );
+        }
         const formatted = cps.map((cp: any) => ({
             id: cp.id,
             course_id: cp.course_id,

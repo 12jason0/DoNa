@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import prisma from "@/lib/db";
 import { isExpiredOption } from "@/lib/placePeriod";
 import { cookies } from "next/headers";
-import { verifyJwtAndGetUserId } from "@/lib/auth";
+import { verifyAdminJwt, verifyJwtAndGetUserId } from "@/lib/auth";
 import CourseDetailClient, { CourseData } from "./CourseDetailClient"; // 🟢 [Fix] CourseData 타입 임포트 추가
 import { unstable_cache } from "next/cache";
 import { COURSE_DETAIL_SENTINELS } from "@/lib/courseDetailSentinels";
@@ -340,19 +340,21 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
             console.warn("[courses/[id]/page.tsx] JWT 검증 실패:", e instanceof Error ? e.message : String(e));
         }
     }
-    // 🔒 [권한 판정 (Gatekeeping)] 4가지 조건 중 하나라도 충족하면 canAccess = true
+    // 🔒 [권한 판정 (Gatekeeping)] 5가지 조건 중 하나라도 충족하면 canAccess = true
     const courseGrade = (courseData.grade || "FREE").toUpperCase();
     const currentUserTier = userTier.toUpperCase();
+    const isAdmin = verifyAdminJwt({ cookies: cookieStore }); // 관리자(admin_auth 쿠키)는 전체 보기
 
     // 🔒 핵심: '열람권 구매(hasUnlocked)'를 가장 먼저 체크하여 등급에 상관없이 허용
     const canAccess =
         courseGrade === "FREE" || // 1. 무료 코스인가?
         hasUnlocked === true || // 2. 열람권으로 구매했는가? (FREE 유저라도 OK) - 최우선 체크
         (currentUserTier === "BASIC" && courseGrade === "BASIC") || // 3. BASIC 유저의 BASIC 코스인가?
-        currentUserTier === "PREMIUM"; // 4. 모든 권한을 가진 PREMIUM 유저인가?
+        currentUserTier === "PREMIUM" || // 4. 모든 권한을 가진 PREMIUM 유저인가?
+        isAdmin; // 5. 관리자인가?
 
-    // FREE 코스 팁은 누구에게나 공개, 유료 코스 팁은 BASIC 이상 또는 열람권 구매자만
-    const hasTipAccess = currentUserTier === "PREMIUM" || currentUserTier === "BASIC" || hasUnlocked || courseGrade === "FREE";
+    // FREE 코스 팁은 누구에게나 공개, 유료 코스 팁은 BASIC 이상 또는 열람권 구매자·관리자만
+    const hasTipAccess = currentUserTier === "PREMIUM" || currentUserTier === "BASIC" || hasUnlocked || courseGrade === "FREE" || isAdmin;
 
     const isLocked = !canAccess;
     const secureCourseData = (() => {

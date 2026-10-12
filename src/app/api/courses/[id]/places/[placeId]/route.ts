@@ -32,9 +32,9 @@ export async function GET(
     if (!existing) {
         return NextResponse.json({ error: "Course place not found" }, { status: 404 });
     }
-    // 행 전체를 돌려주므로 팁(모든 언어)은 관리자·열람 권한 있는 사용자만
+    // 행 전체를 돌려주므로 팁(모든 언어)·place_id(→ /places/{id}에서 이름이 보임)는 관리자·열람 권한 있는 사용자만
     const showTips = await canSeeCourseTips(request, course_id);
-    return NextResponse.json({ ok: true, course_place: showTips ? existing : { ...existing, ...NO_TIPS } });
+    return NextResponse.json({ ok: true, course_place: showTips ? existing : { ...existing, ...NO_TIPS, place_id: null } });
 }
 
 // 코스의 장소(course_place) 수정

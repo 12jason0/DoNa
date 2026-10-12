@@ -26,7 +26,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useThemeColors } from "../../src/hooks/useThemeColors";
 import Svg, { Path, Circle } from "react-native-svg";
-import { BASE_URL } from "../../src/lib/api";
+import { BASE_URL, api, endpoints } from "../../src/lib/api";
 import { useLocale } from "../../src/lib/useLocale";
 import { Ionicons } from "@expo/vector-icons";
 import { useModal } from "../../src/lib/modalContext";
@@ -417,8 +417,8 @@ export default function ExploreScreen() {
         setCoursePath([]);
         setCoursePlaces([]);
         try {
-            const res = await fetch(`${BASE_URL}/api/courses/${cleanId}`);
-            const data = await res.json();
+            // 로그인 토큰을 실어 보내야 열람 권한 있는 유료 코스의 장소·경로가 옴 (권한 없으면 서버가 장소를 비움)
+            const data = await api.get<any>(endpoints.course(cleanId));
             const cps = data?.coursePlaces;
             if (!Array.isArray(cps)) return;
             const sorted = [...cps].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));

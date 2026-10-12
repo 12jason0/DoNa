@@ -91,7 +91,8 @@ export function signAdminToken(): string {
 }
 
 /** 요청 쿠키의 admin_auth JWT가 유효한지 검증합니다. */
-export function verifyAdminJwt(request: NextRequest): boolean {
+/** request: NextRequest 또는 서버 컴포넌트의 cookies() — 쿠키 get만 씀 */
+export function verifyAdminJwt(request: { cookies: { get(name: string): { value: string } | undefined } }): boolean {
     try {
         const token = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
         if (!token) return false;
