@@ -1,6 +1,6 @@
 // 팁 후보 판정 규칙 확인: npx tsx scripts/check-tip-judge.ts
 import assert from "node:assert";
-import { branchOf, coreKeywords, isOtherAddress, countDistinctSources, isRelevant, judgeCandidate, replaceTipInJson } from "../src/lib/tipPipeline";
+import { branchOf, coreKeywords, isOtherAddress, countDistinctSources, isRelevant, judgeCandidate, latestSourceAt, replaceTipInJson } from "../src/lib/tipPipeline";
 import { parseTipsFromDb, tipsToJson } from "../src/types/tip";
 
 const s = (id: number, source_type: string, author: string | null, url: string | null = `u${id}`) => ({ id, source_type, author, url });
@@ -50,6 +50,10 @@ assert.ok(!isOtherAddress("교래리 524-1", ours)); // 우리는 도로명, 글
 assert.ok(isOtherAddress("서울 용산구 한강로3가 12", "서울 용산구 한강로2가 49-1"));
 assert.ok(!isOtherAddress("한강로2가 49-1 위치", "서울 용산구 한강로2가 49-1"));
 assert.ok(!isRelevant(kw, "함덕 맛집 한림칼국수", "[주소] 제주 제주시 조천읍 신북로 584-6 1층", br, ours));
+// 최근 근거 날짜: 구글 장소 정보(수집한 날)는 안 셈
+assert.equal(latestSourceAt([{ source_type: "google_info", written_at: recent }, { source_type: "naver_blog", written_at: old }])?.getTime(), old.getTime());
+assert.equal(latestSourceAt([{ source_type: "google_info", written_at: recent }]), null);
+assert.equal(latestSourceAt([{ source_type: "google_review", written_at: recent }, { source_type: "kakao_blog", written_at: null }])?.getTime(), recent.getTime());
 // "가게 공식" 표시: 파싱·다시 저장·다른 팁 수정을 거쳐도 남음, true일 때만
 const json = tipsToJson([{ category: "ETC", content: "공지 팁", official: true }, { category: "ETC", content: "보통 팁" }]);
 const parsedTips = parseTipsFromDb(json);

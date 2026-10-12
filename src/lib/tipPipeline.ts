@@ -236,6 +236,17 @@ export function judgeCandidate(distinctCount: number, latest: Date | null, confl
     return distinctCount >= MIN_SOURCES ? "candidate" : "needs_check";
 }
 
+/**
+ * 판정용 "가장 최근 근거" 날짜. 구글 장소 정보(영업시간·전화)는 날짜가 수집한 날이라 빼고 셈
+ * → 오래된 글에 구글 정보만 같이 인용된 팁이 "최근 근거 있음"이 되지 않게
+ */
+export function latestSourceAt(sources: { source_type: string; written_at: Date | null }[]) {
+    return sources.reduce<Date | null>(
+        (m, s) => (s.source_type !== "google_info" && s.written_at && (!m || s.written_at > m) ? s.written_at : m),
+        null
+    );
+}
+
 type AiTip = {
     category: string;
     content: string;
@@ -361,7 +372,7 @@ ${material}`;
         // AI가 없는 번호를 댄 경우 버림 → 근거 0개면 후보에서 제외
         const used = [...new Set(t.source_ids ?? [])].map((id) => byId.get(id)).filter((s) => s != null);
         if (used.length === 0 || !t.content?.trim()) continue;
-        const latest = used.reduce<Date | null>((m, s) => (s.written_at && (!m || s.written_at > m) ? s.written_at : m), null);
+        const latest = latestSourceAt(used);
         const count = countDistinctSources(used);
         const conflict = t.conflict === true;
         // AI 표시만 믿지 않고, 근거에 붙여넣은 공지·메뉴판이 실제로 있어야 인정
