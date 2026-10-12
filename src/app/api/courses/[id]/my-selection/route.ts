@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
 import { captureApiError } from "@/lib/sentry";
+import { CLOSED_STATUS, kstToday } from "@/lib/placePeriod";
 
 export const dynamic = "force-dynamic";
 
@@ -99,6 +100,15 @@ export async function POST(
             : [];
         if (selectedPlaceIds.length === 0) {
             return NextResponse.json({ error: "selectedPlaceIds required (non-empty array)" }, { status: 400 });
+        }
+
+        // 폐업 처리했거나 기간이 끝난 장소는 저장 안 함 (옛 앱 "코스 수정"이 예전 선택을 그대로 다시 보내는 경우)
+        const unavailable = await prisma.place.findMany({
+            where: { id: { in: selectedPlaceIds }, OR: [{ status: CLOSED_STATUS }, { end_date: { lt: kstToday() } }] },
+            select: { id: true },
+        });
+        if (unavailable.length > 0) {
+            return NextResponse.json({ error: "PLACE_UNAVAILABLE", placeIds: unavailable.map((p) => p.id) }, { status: 409 });
         }
 
         const userIdNum = Number(userId);

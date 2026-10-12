@@ -285,7 +285,11 @@ export default function CourseDetailScreen() {
         if (mySelection && showSelectionUI) {
             const next: Record<string, number> = {};
             selectionOrderedSteps.forEach((step, i) => {
-                if (step.type === "segment") next[step.segment] = mySelection!.selectedPlaceIds[i] ?? step.options[0]?.place_id ?? 0;
+                if (step.type !== "segment") return;
+                // 저장된 선택지가 폐업·종료로 목록에서 빠졌으면 첫 선택지로 (예전 ID를 그대로 두면 다시 저장됨)
+                const saved = Number(mySelection!.selectedPlaceIds[i]);
+                const ok = step.options.some((o) => Number(o.place_id ?? o.place?.id) === saved);
+                next[step.segment] = ok ? saved : Number(step.options[0]?.place_id ?? step.options[0]?.place?.id ?? 0);
             });
             setSelectedBySegment(next);
             return;
