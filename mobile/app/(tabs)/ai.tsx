@@ -31,6 +31,7 @@ import type { Course } from "../../src/types/api";
 import { useLocale } from "../../src/lib/useLocale";
 import { useModal, type LimitCtx } from "../../src/lib/modalContext";
 import { pickCourseTitle, pickCourseDescription, pickPlaceName } from "../../src/lib/courseLocalized";
+import { lockedCourseSummary, type CourseUiLocale } from "../../../src/lib/courseTranslate";
 import { androidShadow } from "../../src/constants/theme";
 
 type TI18n = (key: string, params?: Record<string, string | number>) => string;
@@ -902,8 +903,21 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
                                     </Text>
                                 </View>
 
+                                {/* 잠긴 유료 코스(업셀): 장소 이름 대신 지역·카테고리·개수 요약 */}
+                                {detailCourse.isLocked && (
+                                    <View style={s.lockedSummary}>
+                                        <Ionicons name="lock-closed" size={22} color={t.textMuted} />
+                                        <Text style={[s.lockedSummaryText, { color: t.text }]}>
+                                            {lockedCourseSummary(detailCourse as any, i18n, locale as CourseUiLocale)}
+                                        </Text>
+                                        <Text style={[s.lockedSummaryHint, { color: t.textMuted }]}>
+                                            {i18n("courseDetail.gradeUnlock", { grade: detailCourse.grade === "PREMIUM" ? "PREMIUM" : "BASIC" })}
+                                        </Text>
+                                    </View>
+                                )}
+
                                 {/* 장소 리스트 */}
-                                {detailCourse.coursePlaces && detailCourse.coursePlaces.length > 0 && (
+                                {!detailCourse.isLocked && detailCourse.coursePlaces && detailCourse.coursePlaces.length > 0 && (
                                     <View style={{ marginTop: 16, paddingHorizontal: 20, gap: 8 }}>
                                         {[...detailCourse.coursePlaces]
                                             .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
@@ -1513,6 +1527,9 @@ const s = StyleSheet.create({
     },
     detailMetaBarText: { fontSize: 12, fontWeight: "500", flexShrink: 1 },
     placeRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 14, borderWidth: 1 },
+    lockedSummary: { alignItems: "center", gap: 8, marginTop: 16, paddingVertical: 24, paddingHorizontal: 20 },
+    lockedSummaryText: { fontSize: 16, fontWeight: "700", textAlign: "center" },
+    lockedSummaryHint: { fontSize: 13, textAlign: "center" },
     placeNum: {
         width: 28,
         height: 28,

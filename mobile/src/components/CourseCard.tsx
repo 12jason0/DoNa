@@ -39,6 +39,8 @@ export type CourseCardCourse = {
     region?: string | null;
     concept?: string | null;
     coursePlaces?: any[];
+    /** 잠긴 코스: 장소가 자리표시라 서버가 미리 계산한 "예약" 배지 값 */
+    hasReservation?: boolean;
     placesCount?: number;
     viewCount?: number;
     reviewCount?: number;
@@ -66,7 +68,7 @@ function CourseCardInner({
     const views = Number((course as any).viewCount ?? 0);
     const reviewCount = Number((course as any).reviewCount ?? 0);
     const rating = Number((course as any).rating ?? 0);
-    const hasReservation = !!course.coursePlaces?.some((cp: any) => cp?.place?.reservationUrl);
+    const hasReservation = course.hasReservation ?? !!course.coursePlaces?.some((cp: any) => cp?.place?.reservationUrl);
 
     const infoLine =
         views >= 1000
