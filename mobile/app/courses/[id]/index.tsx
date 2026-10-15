@@ -25,6 +25,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { WebView } from "react-native-webview";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, endpoints, BASE_URL } from "../../../src/lib/api";
+import { alertFavoriteFailed } from "../../../src/lib/favorites";
 import { useAuth } from "../../../src/hooks/useAuth";
 import { Colors, androidShadow } from "../../../src/constants/theme";
 import { resolveImageUrl } from "../../../src/lib/imageUrl";
@@ -338,7 +339,10 @@ export default function CourseDetailScreen() {
             else await api.delete(`${endpoints.favorites}?courseId=${id}`);
         },
         onMutate: (adding) => setIsFav(adding),
-        onError: (_err, adding) => setIsFav(!adding),
+        onError: (err, adding) => {
+            setIsFav(!adding);
+            alertFavoriteFailed(i18n, adding, err);
+        },
         onSuccess: (_data, adding) => {
             queryClient.invalidateQueries({ queryKey: ["favorites"] });
             queryClient.invalidateQueries({ queryKey: ["users", "favorites"] });

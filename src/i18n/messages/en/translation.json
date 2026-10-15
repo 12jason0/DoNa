@@ -1114,6 +1114,7 @@
     "alertInfoTitle": "Notice",
     "defaultMemberName": "DoNa member",
     "favRemoveFailed": "Couldn't remove from favorites.",
+    "favAddFailed": "Couldn't add to favorites.",
     "currencyWon": "KRW",
     "pageTitle": "My Page",
     "pageSubtitle": "Manage your profile and activity",

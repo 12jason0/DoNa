@@ -1081,6 +1081,7 @@
         "alertInfoTitle": "안내",
         "defaultMemberName": "두나 회원",
         "favRemoveFailed": "찜 해제에 실패했습니다.",
+        "favAddFailed": "찜하기에 실패했습니다.",
         "currencyWon": "원",
         "pageTitle": "마이페이지",
         "pageSubtitle": "내 정보와 활동을 관리해보세요",

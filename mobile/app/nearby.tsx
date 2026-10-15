@@ -28,6 +28,7 @@ import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from "@tansta
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api, endpoints } from "../src/lib/api";
+import { optimisticFavorite, alertFavoriteFailed } from "../src/lib/favorites";
 import { Colors, androidShadow } from "../src/constants/theme";
 import { resolveImageUrl } from "../src/lib/imageUrl";
 import { useThemeColors } from "../src/hooks/useThemeColors";
@@ -365,6 +366,11 @@ export default function NearbyScreen() {
             } else {
                 await api.post(endpoints.favorites, { courseId: id });
             }
+        },
+        onMutate: ({ id, isFav }) => optimisticFavorite(queryClient, id, !isFav),
+        onError: (err, { isFav }, ctx) => {
+            queryClient.setQueryData(["favorites"], ctx?.prev);
+            alertFavoriteFailed(i18n, !isFav, err);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["favorites"] });

@@ -16,6 +16,7 @@ import { useInfiniteQuery, useQuery, useMutation, useQueryClient, type InfiniteD
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { api, endpoints } from "../../src/lib/api";
+import { optimisticFavorite, alertFavoriteFailed } from "../../src/lib/favorites";
 import { Colors, androidShadow } from "../../src/constants/theme";
 import PageLoadingOverlay from "../../src/components/PageLoadingOverlay";
 import { resolveResizedImageUrl } from "../../src/lib/imageUrl";
@@ -314,6 +315,11 @@ export default function CoursesScreen() {
             } else {
                 await api.post(endpoints.favorites, { courseId: id });
             }
+        },
+        onMutate: ({ id, isFav }) => optimisticFavorite(queryClient, id, !isFav),
+        onError: (err, { isFav }, ctx) => {
+            queryClient.setQueryData(["favorites"], ctx?.prev);
+            alertFavoriteFailed(translate, !isFav, err);
         },
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ["favorites"] }),
     });

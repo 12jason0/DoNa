@@ -1111,6 +1111,7 @@
     "alertInfoTitle": "お知らせ",
     "defaultMemberName": "DoNa会員",
     "favRemoveFailed": "お気に入り解除に失敗しました。",
+    "favAddFailed": "お気に入り登録に失敗しました。",
     "currencyWon": "ウォン",
     "pageTitle": "マイページ",
     "pageSubtitle": "プロフィールと活動を管理",
