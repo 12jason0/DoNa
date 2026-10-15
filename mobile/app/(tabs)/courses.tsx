@@ -321,7 +321,10 @@ export default function CoursesScreen() {
             queryClient.setQueryData(["favorites"], ctx?.prev);
             alertFavoriteFailed(translate, !isFav, err);
         },
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ["favorites"] }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["favorites"] });
+            queryClient.invalidateQueries({ queryKey: ["users", "favorites"] });
+        },
     });
 
     // 코스 목록 (무한 스크롤)
@@ -367,7 +370,7 @@ export default function CoursesScreen() {
 
     const renderCourseItem = useCallback(
         ({ item }: { item: Course }) => (
-            <CourseCard course={item as any} isFav={favIds.has(item.id)} onFavToggle={handleFavToggle} />
+            <CourseCard course={item as any} isFav={favIds.has(Number(item.id))} onFavToggle={handleFavToggle} />
         ),
         [favIds, handleFavToggle],
     );

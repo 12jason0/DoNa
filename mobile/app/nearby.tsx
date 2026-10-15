@@ -462,7 +462,7 @@ export default function NearbyScreen() {
         ({ item }: { item: Course }) => (
             <NearbyCard
                 course={item}
-                isFav={favIds.has(item.id)}
+                isFav={favIds.has(Number(item.id))}
                 onFavToggle={handleFavToggle}
             />
         ),

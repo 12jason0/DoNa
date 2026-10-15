@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
         const courseId = Number(body.courseId);
 
-        if (!Number.isFinite(courseId)) {
+        if (!Number.isFinite(courseId) || courseId <= 0) {
             return NextResponse.json({ error: "courseId가 필요합니다." }, { status: 400 });
         }
 
@@ -111,10 +111,13 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
     try {
         const userId = resolveUserId(request);
-        if (!userId) return NextResponse.json({ success: true });
+        // 로그인 못 찾으면 401 (예전엔 200이라 앱에서 실패를 알 수 없었음)
+        if (!userId) return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
         const { searchParams } = new URL(request.url);
         const courseId = Number(searchParams.get("courseId"));
-        if (!Number.isFinite(courseId)) return NextResponse.json({ success: true });
+        if (!Number.isFinite(courseId) || courseId <= 0) {
+            return NextResponse.json({ error: "courseId가 필요합니다." }, { status: 400 });
+        }
         await (prisma as any).userFavorite.deleteMany({ where: { user_id: userId, course_id: courseId } });
         return NextResponse.json({ success: true });
     } catch (error: any) {
