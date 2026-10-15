@@ -3,6 +3,10 @@ import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
 import { isExcludedStatsUser } from "@/lib/statsExclude";
 import { captureApiError } from "@/lib/sentry";
+import { defaultCache } from "@/lib/cache";
+import { getIdentifierFromRequest } from "@/lib/rateLimit";
+
+const VIEW_DEDUPE_MS = 30 * 60 * 1000; // 같은 사람·같은 코스는 30분에 1번만 (웹·앱 공통)
 
 export const dynamic = "force-dynamic";
 
@@ -50,12 +54,25 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             }
         }
 
+        // 같은 사람이 30분 안에 다시 열면 증가·기록 없이 현재 조회수만 (앱은 열 때마다 호출함)
+        // ponytail: get→set이라 동시에 두 번 오면 둘 다 셀 수 있음. 문제 되면 Redis SET NX로
+        const viewer = userId
+            ? `u:${userId}`
+            : `g:${getIdentifierFromRequest(request)}:${(request.headers.get("user-agent") || "").slice(0, 80)}`;
+        const dedupeKey = `course_view:${courseId}:${viewer}`;
+        if (await defaultCache.get<number>(dedupeKey)) {
+            const row = await prisma.course.findUnique({ where: { id: courseId }, select: { id: true, view_count: true } });
+            if (!row) return NextResponse.json({ success: false, error: "Course not found" }, { status: 404 });
+            return NextResponse.json({ success: true, view_count: row.view_count, deduped: true });
+        }
+
         // 1. view_count 증가 (모든 사용자, 제외 계정 제외)
         const updated = await prisma.course.update({
             where: { id: courseId },
             data: { view_count: { increment: 1 } },
             select: { id: true, view_count: true },
         });
+        await defaultCache.set(dedupeKey, 1, VIEW_DEDUPE_MS);
 
         // 2. 로그인 사용자인 경우 user_interactions에도 기록
         if (userId) {
