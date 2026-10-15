@@ -1183,6 +1183,19 @@ export async function GET(req: NextRequest) {
             });
         }
 
+        // 🟢 기념일(100일·생일·연말)이면 연인 대상 코스만. 대상 빈 코스는 남기고, 다 빠지면 기존 목록
+        const isAnniversaryGoal =
+            ["ANNIVERSARY", "기념일", "100일", "생일", "연말"].includes(goal) ||
+            ["100일", "생일", "연말"].includes(goalDetail);
+        if (isAnniversaryGoal) {
+            const coupleOnly = allCourses.filter((c: any) => {
+                const targets = parseCourseTargetAudience(c.target_audience);
+                if (targets.length === 0) return true;
+                return targets.includes("연인") && !targets.some((t) => ["혼자", "가족", "친구"].includes(t));
+            });
+            if (coupleOnly.length > 0) allCourses = coupleOnly;
+        }
+
         if (!userId) {
             const byViews = allCourses.sort((a: any, b: any) => (b.view_count || 0) - (a.view_count || 0));
             const kst = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
