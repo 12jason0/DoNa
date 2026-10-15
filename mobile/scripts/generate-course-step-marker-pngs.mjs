@@ -6,6 +6,8 @@
  * 출력:
  *  assets/map-markers/marker-play-step-{n}.png (+ @2x/@3x)
  *  assets/map-markers/marker-play-step-{n}-selected.png (+ @2x/@3x)
+ *  선택형 후보 "1A"~"9B":
+ *  assets/map-markers/marker-choice-{n}{A|B}[-selected|-alt].png (+ @2x/@3x)
  */
 import sharp from "sharp";
 import fs from "fs";
@@ -23,8 +25,10 @@ const scales = [
 // 논리 크기(dp) — CourseMapModal pinSize와 맞출 것
 const NORMAL_SIZE = 34;
 const SELECTED_SIZE = 44;
+const ALT_SIZE = 30; // 선택 안 된 후보(회색)
+const ALT_GRAY = "#6b7280";
 
-function pinSvg({ size, mul, n, selected }) {
+function pinSvg({ size, mul, n, selected, color }) {
     const base = size;
     const cx = base / 2;
 
@@ -35,11 +39,12 @@ function pinSvg({ size, mul, n, selected }) {
     const tailW = Math.round(base * 0.10);
 
     // 흰 번호가 잘 보이도록 진한 초록 + 흰 테두리 2dp
-    const bg = selected ? "#5347AA" : "#047857";
+    const bg = color ?? (selected ? "#5347AA" : "#047857");
     const strokeW = 2 * mul;
 
     // 텍스트는 iOS에서도 일관되게 보이도록 굵게 + 중앙 정렬
-    const fontSize = Math.round(base * 0.38);
+    // "2A"처럼 두 글자면 원 안에 들어가게 글자 줄임
+    const fontSize = Math.round(base * (String(n).length > 1 ? 0.3 : 0.38));
     const textY = cy + Math.round(fontSize * 0.36);
 
     return `<?xml version="1.0" encoding="UTF-8"?>
@@ -65,10 +70,26 @@ async function genOne({ n }) {
     }
 }
 
+async function genChoice({ label }) {
+    const variants = [
+        { suffix: "", size: NORMAL_SIZE, selected: false },
+        { suffix: "-selected", size: SELECTED_SIZE, selected: true },
+        { suffix: "-alt", size: ALT_SIZE, selected: false, color: ALT_GRAY },
+    ];
+    for (const s of scales) {
+        for (const v of variants) {
+            const out = path.join(OUT, `marker-choice-${label}${v.suffix}${s.suffix}.png`);
+            const svg = Buffer.from(pinSvg({ size: v.size * s.mul, mul: s.mul, n: label, selected: v.selected, color: v.color }));
+            await sharp(svg).png().toFile(out);
+        }
+    }
+}
+
 async function main() {
     fs.mkdirSync(OUT, { recursive: true });
     for (let n = 1; n <= 9; n++) {
         await genOne({ n });
+        for (const letter of ["A", "B"]) await genChoice({ label: `${n}${letter}` });
         console.log("wrote step markers", n);
     }
     console.log("done ->", OUT);

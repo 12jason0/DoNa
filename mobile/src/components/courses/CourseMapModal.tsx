@@ -21,7 +21,7 @@ import { pickPlaceName } from "../../lib/courseLocalized";
 import { BASE_URL } from "../../lib/api";
 import type { CoursePlaceTipsRow } from "../../../../src/types/tip";
 import type { PlaceData, CoursePlace } from "./types";
-import { MAP_PURPLE, NAVER_BTN_GRAY, STEP_PIN_IMAGES } from "./constants";
+import { CHOICE_PIN_IMAGES, MAP_PURPLE, NAVER_BTN_GRAY, STEP_PIN_IMAGES } from "./constants";
 
 /** 지도 마커·경로 색 — 흰 번호가 잘 보이도록 진한 초록 */
 const MARKER_GREEN = "#047857";
@@ -547,31 +547,29 @@ export function CourseMapModal({
                                     const info = effectiveLabelInfos?.[idx];
                                     const isMain = info ? info.isMainPath : true;
 
-                                    // 선택형 코스: View 기반 원형 마커 ("2A"/"2B" — 위 단계 버튼과 같은 라벨)
+                                    // 선택형 코스: PNG 마커 ("2A"/"2B" — 위 단계 버튼과 같은 라벨). iOS에서 View 마커는 크기·글자가 깨져서 이미지로
                                     if (effectiveLabelInfos) {
                                         const label = info?.label ?? String(idx + 1);
                                         const isSel = safeIndex === idx;
-                                        const SZ = !isMain ? 28 : isSel ? 42 : 32;
-                                        const bg = !isMain ? "#6b7280" : isSel ? MAP_PURPLE : MARKER_GREEN;
+                                        const choice = CHOICE_PIN_IMAGES[label];
+                                        // 고정 단계("1","3") 또는 "2C"처럼 이미지 없는 라벨은 숫자 핀
+                                        const step = STEP_PIN_IMAGES[Math.min(parseInt(label, 10) || idx + 1, 9)];
+                                        const img = !isMain
+                                            ? (choice?.alt ?? step.normal)
+                                            : isSel ? (choice?.selected ?? step.selected) : (choice?.normal ?? step.normal);
+                                        const SZ = !isMain ? 30 : isSel ? 44 : 34;
                                         return (
                                             <NaverMapMarkerOverlay
                                                 key={`m-${idx}-${isMain ? "main" : "alt"}-${isSel ? "s" : "n"}`}
                                                 latitude={lat}
                                                 longitude={lng}
+                                                image={img}
                                                 width={SZ}
                                                 height={SZ}
-                                                anchor={{ x: 0.5, y: 0.5 }}
+                                                anchor={{ x: 0.5, y: 1.0 }}
                                                 onTap={() => handleMarkerTap(idx)}
                                                 zIndex={isMain ? (isSel ? 100 : 50) : 5}
-                                            >
-                                                <View style={[s.selMarkerCircle, {
-                                                    width: SZ, height: SZ, borderRadius: SZ / 2,
-                                                    backgroundColor: bg,
-                                                    opacity: isMain ? 1 : 0.9,
-                                                }]}>
-                                                    <Text style={[s.selMarkerLabel, { fontSize: isSel ? 14 : 11 }]}>{label}</Text>
-                                                </View>
-                                            </NaverMapMarkerOverlay>
+                                            />
                                         );
                                     }
 
@@ -984,28 +982,6 @@ const s = StyleSheet.create({
         justifyContent: "center",
     },
     mapLightBtnText: { color: "#fff", fontSize: 16, fontWeight: "500" },
-    selMarkerCircle: {
-        alignItems: "center",
-        justifyContent: "center",
-        borderWidth: 2,
-        borderColor: "#fff",
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        ...androidShadow(4),
-    },
-    selMarkerAlt: {
-        width: 30,
-        height: 30,
-        borderRadius: 15,
-        backgroundColor: "rgba(110,110,110,0.55)",
-        alignItems: "center",
-        justifyContent: "center",
-        borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.4)",
-    },
-    selMarkerLabel: { color: "#fff", fontWeight: "800" },
     mapSelectBtn: {
         height: 46,
         borderRadius: 10,
