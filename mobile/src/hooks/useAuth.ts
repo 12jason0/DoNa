@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, endpoints } from '../lib/api';
 import { saveUserId, loadUserId, saveAuthToken } from '../lib/mmkv';
 import { setRegisteredForUserId } from '../lib/pushRegistrationState';
+import { posthog } from '../lib/posthog';
 
 // ─── 타입 (웹 authClient.ts AuthUser 와 동일) ─────────────────────────────────
 
@@ -43,6 +44,8 @@ export function useAuth() {
     useEffect(() => {
         if (user?.id) {
             saveUserId(String(user.id));
+            // 회원 ID만 (email 등 개인정보는 보내지 않음 — 개인정보 처리방침 제4조)
+            posthog.identify(String(user.id));
         }
     }, [user?.id]);
 
@@ -76,6 +79,7 @@ export async function logout(queryClient: ReturnType<typeof useQueryClient>) {
     // MMKV 초기화
     saveAuthToken(null);
     saveUserId(null);
+    posthog.reset();
 
     // 진행 중인 쿼리 취소 — clear() 직후 마운트된 컴포넌트가 이전 유저 쿠키로
     // 리페치해 캐시를 오염시키는 race condition 방지

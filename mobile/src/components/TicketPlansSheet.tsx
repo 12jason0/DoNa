@@ -28,6 +28,7 @@ import { api } from "../lib/api";
 import { useModal } from "../lib/modalContext";
 import { fetchAllPackages, purchaseErrorInfo } from "../lib/purchases";
 import { androidShadow } from "../constants/theme";
+import { posthog } from "../lib/posthog";
 
 // ─── 플랜 정의 (웹 PLANS 동일) ────────────────────────────────────────────────
 
@@ -138,6 +139,7 @@ export default function TicketPlansSheet() {
 
     useEffect(() => {
         if (!visible) { closingRef.current = false; return; }
+        posthog.capture("paywall_shown", { context, course_id: courseId ?? null, course_grade: courseGrade ?? null });
         setTierLoadFailed(false);
         slide.setValue(SHEET_HEIGHT);
         backdrop.setValue(0);

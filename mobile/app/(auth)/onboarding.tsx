@@ -28,6 +28,7 @@ import { storage } from "../../src/lib/mmkv";
 import { useThemeColors } from "../../src/hooks/useThemeColors";
 import { useLocale } from "../../src/lib/useLocale";
 import { AUTH_QUERY_KEY } from "../../src/hooks/useAuth";
+import { posthog } from "../../src/lib/posthog";
 import {
     VIBE_OPTIONS,
     VALUE_OPTIONS,
@@ -288,6 +289,7 @@ export default function OnboardingScreen() {
         setIsAnalyzing(false);
         setShowResult(true);
         storage.set("onboardingComplete", "1");
+        posthog.capture("onboarding_completed");
         clearOnboardingProgress();
     };
 
