@@ -102,3 +102,7 @@ mobile/dist/
 mobile/build/
 mobile/keys/
 mobile/node_modules/
+# EAS 업로드 제외: Windows eas-cli는 하위 .gitignore(mobile/android/.gitignore)를 못 읽어서 여기 둬야 함
+mobile/android/**/build/
+mobile/android/.gradle/
+mobile/android/**/.cxx/
