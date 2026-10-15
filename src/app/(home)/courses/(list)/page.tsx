@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { interleaveByGrade, MAX_LIST_COURSES } from "@/lib/courseListOrder";
+import { interleaveByGrade, pickHeroByGrade, MAX_LIST_COURSES } from "@/lib/courseListOrder";
 import CoursesClient from "./CoursesClient";
 import { notExpiredCourseWhere } from "@/lib/placePeriod";
 import prisma from "@/lib/db";
@@ -52,16 +52,17 @@ function mapRowToHeroItem(c: {
     };
 }
 
-/** "지금 많이 선택한 코스" — 조회수 상위 공개 코스 (등급 제한 제거, FREE만이면 비는 문제 방지) */
+/** "두나 추천 코스" — 앱과 같은 방식: 기본 목록 순서(최신순·등급 섞기) 첫 20개에서 무료 → 베이직 → 베이직 → 프리미엄 → 무료 */
 const getHeroCourses = unstable_cache(
     async (): Promise<HeroSliderItem[]> => {
         try {
-            const heroRaw = await prisma.course.findMany({
+            const rows = await prisma.course.findMany({
                 where: { isPublic: true, ...notExpiredCourseWhere() },
-                orderBy: [{ view_count: "desc" }, { id: "desc" }],
-                take: 20,
+                orderBy: { id: "desc" },
+                take: MAX_LIST_COURSES,
                 select: {
                     id: true,
+                    grade: true,
                     title: true,
                     title_en: true,
                     title_ja: true,
@@ -76,14 +77,13 @@ const getHeroCourses = unstable_cache(
                     },
                 },
             });
-            const filtered = filterCoursesByImagePolicy(heroRaw as unknown as CourseWithPlaces[], "any");
-            const top = filtered.slice(0, 5);
-            return top.map((c) => mapRowToHeroItem(c as any));
+            const firstPage = interleaveByGrade(rows).slice(0, 20);
+            return pickHeroByGrade(firstPage).map((c) => mapRowToHeroItem(c as any));
         } catch {
             return [];
         }
     },
-    ["hero-courses"],
+    ["hero-courses-v2"],
     { revalidate: 300, tags: ["hero-courses"] }
 );
 

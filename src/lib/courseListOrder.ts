@@ -20,6 +20,26 @@ export function interleaveByGrade<T extends { grade?: string | null }>(courses: 
     return out;
 }
 
+/**
+ * "두나 추천 코스" 히어로 (웹·앱 공통): 무료 → 베이직 → 베이직 → 프리미엄 → 무료.
+ * 그 등급이 모자라면 아직 안 쓴 다른 등급 코스로 채움. 같은 코스는 두 번 넣지 않음.
+ */
+const HERO_SLOTS = ["FREE", "BASIC", "BASIC", "PREMIUM", "FREE"] as const;
+export function pickHeroByGrade<T extends { id: string | number; grade?: string | null }>(courses: T[]): T[] {
+    const used = new Set<string>();
+    const take = (c: T | undefined) => {
+        if (c) used.add(String(c.id));
+        return c;
+    };
+    const out: T[] = [];
+    for (const grade of HERO_SLOTS) {
+        const unused = courses.filter((c) => !used.has(String(c.id)));
+        const c = take(unused.find((x) => (x.grade || "FREE") === grade) ?? unused[0]);
+        if (c) out.push(c);
+    }
+    return out;
+}
+
 // ponytail: 공개 코스를 한 번에 읽어 정렬. 수백 개를 넘으면 DB 쪽 정렬 키로 바꿀 것
 export const MAX_LIST_COURSES = 500;
 
