@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { notExpiredCourseWhere } from "@/lib/placePeriod";
 import { interleaveByGrade, MAX_LIST_COURSES } from "@/lib/courseListOrder";
 import prisma from "@/lib/db";
+import { maskLockedCourse } from "@/lib/tipAccess";
 import { Prisma } from "@prisma/client";
 import { filterCoursesByImagePolicy, type ImagePolicy, type CourseWithPlaces } from "@/lib/imagePolicy";
 import { resolveUserId } from "@/lib/auth";
@@ -123,7 +124,9 @@ export async function GET(request: NextRequest) {
             // FREE 유저는 BASIC, PREMIUM 코스 모두 잠금
             return grade === "BASIC" || grade === "PREMIUM";
         };
-        const withLock = (list: any[]) => list.map((c) => ({ ...c, isLocked: isLockedFor(c.id, c.grade || "FREE") }));
+        // 응답 직전에만 장소 가리기 (캐시에는 가리기 전 데이터)
+        const withLock = (list: any[]) =>
+            list.map((c) => maskLockedCourse({ ...c, isLocked: isLockedFor(c.id, c.grade || "FREE") }));
 
         const formatCourse = (course: any) => {
             if (!course || !course.id) return null;
@@ -258,7 +261,7 @@ export async function GET(request: NextRequest) {
             await defaultCache.set(cacheKey, responseData, 60 * 1000);
         }
 
-        return NextResponse.json(responseData);
+        return NextResponse.json({ ...responseData, data: withLock(formattedCourses) });
     } catch (error: any) {
             captureApiError(error);
         return NextResponse.json({ error: "Server Error", message: error.message }, { status: 500 });

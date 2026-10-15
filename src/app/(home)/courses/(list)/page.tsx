@@ -6,6 +6,7 @@ import prisma from "@/lib/db";
 import { filterCoursesByImagePolicy, type CourseWithPlaces } from "@/lib/imagePolicy";
 import { cookies } from "next/headers";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
+import { maskLockedCourse } from "@/lib/tipAccess";
 import { unstable_cache } from "next/cache";
 import { getTimeOfDayFromKST } from "@/lib/kst";
 import { sortCoursesByTimeMatch } from "@/lib/timeMatch";
@@ -174,7 +175,7 @@ function mapCourses(courses: any[], userTier: string, unlockedCourseIds: number[
                 if (courseGrade === "BASIC" || courseGrade === "PREMIUM") isLocked = true;
             }
 
-            return {
+            return maskLockedCourse({
                 id: String(course.id),
                 title: course.title || "",
                 title_en: course.title_en || null,
@@ -215,7 +216,7 @@ function mapCourses(courses: any[], userTier: string, unlockedCourseIds: number[
                     })) || [],
                 // 🟢 [Fix]: _count에서 장소 개수를 확실하게 가져오기 (take: 1 제한과 무관하게)
                 placesCount: course._count?.coursePlaces ?? (course.coursePlaces?.length || 0),
-            };
+            });
         })
         .filter((course: any) => course !== null);
 }

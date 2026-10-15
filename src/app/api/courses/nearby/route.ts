@@ -5,6 +5,7 @@ import { defaultCache } from "@/lib/cache";
 import { sortCoursesByTimeMatch } from "@/lib/timeMatch";
 import { captureApiError } from "@/lib/sentry";
 import { resolveUserId } from "@/lib/auth";
+import { maskLockedCourse } from "@/lib/tipAccess";
 
 export const dynamic = "force-dynamic";
 
@@ -124,7 +125,7 @@ export async function GET(request: NextRequest) {
     const cached = await defaultCache.get<any[]>(cacheKey);
     if (cached) {
         // 캐시는 등급별 공유 — 구매한 코스 잠금은 요청한 사용자 기준으로 다시 계산
-        return NextResponse.json(cached.map((c: any) => ({ ...c, isLocked: computeIsLocked(Number(c.id), c.grade ?? "FREE") })));
+        return NextResponse.json(cached.map((c: any) => maskLockedCourse({ ...c, isLocked: computeIsLocked(Number(c.id), c.grade ?? "FREE") })));
     }
 
     const courseSelect = {
@@ -198,7 +199,7 @@ export async function GET(request: NextRequest) {
                 isLocked: computeIsLocked(Number(c.id), c.grade ?? "FREE"),
             }));
             await defaultCache.set(cacheKey, interleavedWithLock, 60 * 1000);
-            return NextResponse.json(interleavedWithLock);
+            return NextResponse.json(interleavedWithLock.map(maskLockedCourse));
         }
 
         // 검색/필터 있을 때: 관련도 순서 유지
@@ -243,7 +244,7 @@ export async function GET(request: NextRequest) {
             isLocked: computeIsLocked(Number(c.id), c.grade ?? "FREE"),
         }));
         await defaultCache.set(cacheKey, coursesWithLock, 60 * 1000);
-        return NextResponse.json(coursesWithLock);
+        return NextResponse.json(coursesWithLock.map(maskLockedCourse));
     } catch (error) {
             captureApiError(error);
         console.error("❌ API 오류:", error);

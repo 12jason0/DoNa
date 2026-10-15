@@ -26,6 +26,7 @@ import CourseLockOverlay from "@/components/CourseLockOverlay";
 import TapFeedback from "@/components/TapFeedback";
 import { isIOS } from "@/lib/platform";
 import { pickCourseDescription, pickCourseTitle } from "@/lib/courseLocalized";
+import { lockedCourseSummary, type CourseUiLocale } from "@/lib/courseTranslate";
 import {
     Sparkles,
     MapPin,
@@ -110,6 +111,8 @@ interface Course {
     highlights: string[];
     score?: number;
     grade?: "FREE" | "BASIC" | "PREMIUM";
+    /** 열람 권한 없음 (업셀 코스) — 장소는 서버에서 자리표시로 옴 */
+    isLocked?: boolean;
     imageUrl?: string;
     coursePlaces?: {
         order_index?: number;
@@ -666,6 +669,7 @@ const AIRecommender = () => {
                     score: c.matchScore !== undefined && c.matchScore !== null ? Number(c.matchScore) : 0.5,
                     grade: (["BASIC", "PREMIUM"] as const).find(g => g === String(c.grade || "").toUpperCase()) ?? "FREE",
                     imageUrl: imageUrl || undefined,
+                    isLocked: c.isLocked === true,
                     coursePlaces: c.coursePlaces,
                     matchScore: c.matchScore ?? null,
                     matchReason: typeof c.matchReason === "string" ? c.matchReason : undefined,
@@ -1508,7 +1512,25 @@ const AIRecommender = () => {
                                     </span>
                                 </div>
                                 {/* 스팟 카드 리스트: 번호 + 이름/설명 + 오른쪽 썸네일 */}
-                                {detailModalCourse.coursePlaces && detailModalCourse.coursePlaces.length > 0 && (
+                                {/* 잠긴 유료 코스(업셀): 장소 이름 대신 지역·카테고리·개수 요약 */}
+                                {detailModalCourse.isLocked && (
+                                    <div className="flex flex-col items-center gap-2 py-6 px-4 mb-5 rounded-xl bg-gray-50 dark:bg-gray-800/80 border border-gray-100 dark:border-gray-700 text-center">
+                                        <Lock className="w-5 h-5 text-gray-400" />
+                                        <p className="text-base font-bold text-gray-900 dark:text-white">
+                                            {lockedCourseSummary(
+                                                detailModalCourse,
+                                                t as (k: string, p?: Record<string, string | number>) => string,
+                                                locale as CourseUiLocale,
+                                            )}
+                                        </p>
+                                        <p className="text-[13px] text-gray-500 dark:text-gray-400">
+                                            {t("courseDetail.gradeUnlock", {
+                                                grade: detailModalCourse.grade === "PREMIUM" ? "PREMIUM" : "BASIC",
+                                            })}
+                                        </p>
+                                    </div>
+                                )}
+                                {!detailModalCourse.isLocked && detailModalCourse.coursePlaces && detailModalCourse.coursePlaces.length > 0 && (
                                     <div className="space-y-2 mb-5 max-h-64 overflow-y-auto scrollbar-hide">
                                         {[...detailModalCourse.coursePlaces]
                                             .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { notExpiredCourseWhere } from "@/lib/placePeriod";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
+import { maskLockedCourse } from "@/lib/tipAccess";
 import { getChips, type ChipContext, type DayType } from "@/constants/chipRules";
 import { REGION_GROUPS } from "@/constants/onboardingData";
 import { getRecommendationDailyLimit } from "@/constants/subscription";
@@ -763,6 +764,23 @@ export async function GET(req: NextRequest) {
             const t = user?.subscriptionTier?.toUpperCase?.();
             if (t === "BASIC" || t === "PREMIUM") userTier = t;
         }
+        // 응답 직전: 열람 권한 없는 코스(업셀 등)는 isLocked + 장소 자리표시
+        const lockRecs = async (list: any[]) => {
+            const unlocked = new Set<number>();
+            if (userId && list.length > 0) {
+                const rows = await prisma.courseUnlock.findMany({
+                    where: { userId, courseId: { in: list.map((c: any) => Number(c.id)) } },
+                    select: { courseId: true },
+                });
+                rows.forEach((r) => unlocked.add(r.courseId));
+            }
+            return list.map((c: any) => {
+                const g = String(c.grade || "FREE").toUpperCase();
+                const needsTier = g === "PREMIUM" ? userTier !== "PREMIUM" : g === "BASIC" ? userTier === "FREE" : false;
+                return maskLockedCourse({ ...c, isLocked: needsTier && !unlocked.has(Number(c.id)) });
+            });
+        };
+
         if (userId && mode === "ai") {
             // 🟢 등급별 1일 추천 한도 체크 (FREE 1회, BASIC 5회, PREMIUM 무제한)
             const limit = getRecommendationDailyLimit(userTier);
@@ -1188,7 +1206,7 @@ export async function GET(req: NextRequest) {
                 ),
             }));
             return NextResponse.json({
-                recommendations: popularWithChips,
+                recommendations: await lockRecs(popularWithChips),
                 hasOnboardingData: false,
                 upsellFor: mode === "ai" ? ("BASIC" as const) : undefined,
             });
@@ -1517,7 +1535,7 @@ export async function GET(req: NextRequest) {
         }
 
         return NextResponse.json({
-            recommendations: recommendationsWithChips,
+            recommendations: await lockRecs(recommendationsWithChips),
             hasOnboardingData: hasOnboardingData,
             hasLongTermPreferences,
             upsellFor: upsellFor,

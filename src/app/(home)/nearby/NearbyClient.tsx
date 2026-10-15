@@ -444,6 +444,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
     // 🟢 hasClosedPlace는 useCourseFilter에서 제공됨
 
     const getClosedPlaceCount = (course: Course) => {
+        if (typeof course.closedPlaceCount === "number") return course.closedPlaceCount;
         if (!course.coursePlaces) return 0;
         return course.coursePlaces.filter((cp) => {
             const place = cp.place;

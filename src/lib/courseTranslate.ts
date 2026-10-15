@@ -464,3 +464,17 @@ export function localizeParsedTipsForUi<T extends { category: string; content: s
         content: translateCourseFreeformKoText(row.content, locale, t),
     }));
 }
+
+/** 잠긴 유료 코스 요약: "홍대 · 카페 · 식당 5곳" (장소 이름 없이 지역·카테고리·개수 — 추천 상세 모달용) */
+export function lockedCourseSummary(
+    course: { region?: string | null; location?: string | null; placesCount?: number; coursePlaces?: { place?: { category?: string | null } | null }[] },
+    t: TranslateFn,
+    locale: CourseUiLocale,
+): string {
+    const places = (course.coursePlaces ?? []).filter((cp) => cp?.place);
+    const region = translateCourseRegion(course.region || course.location, t, locale);
+    const categories = [...new Set(places.map((cp) => translatePlaceCategory(cp.place?.category, locale)).filter(Boolean))];
+    const count = t("mobile.courseScreen.lockedPlaceCount", { count: course.placesCount ?? places.length });
+    const head = [region, ...categories].filter(Boolean).join(" · ");
+    return head ? `${head} ${count}` : count;
+}

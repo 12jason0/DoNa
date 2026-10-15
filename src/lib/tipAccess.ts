@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { resolveUserId, verifyAdminJwt } from "@/lib/auth";
 import { userHasCourseAccess } from "@/lib/shareAccess";
+import { getPlaceStatus, PLACE_STATUS_CLOSED } from "@/lib/placeStatus";
 
 /** 팁 필드 4개 언어 모두 비움 */
 export const NO_TIPS = { tips: null, tips_en: null, tips_ja: null, tips_zh: null } as const;
@@ -20,9 +21,9 @@ export function lockedPlace(category: string | null | undefined) {
     return {
         id: null,
         name: LOCKED_PLACE_NAME,
-        name_en: null,
-        name_ja: null,
-        name_zh: null,
+        name_en: "Locked place",
+        name_ja: "ロックされた場所",
+        name_zh: "已鎖定的地點",
         address: null,
         description: null,
         category: category ?? null,
@@ -38,5 +39,27 @@ export function lockedPlace(category: string | null | undefined) {
         closed_days: [],
         start_date: null,
         end_date: null,
+    };
+}
+
+/**
+ * 목록·추천 카드용: isLocked 코스의 장소를 자리표시로. 카드에 필요한 것만 서버에서 먼저 계산해 둠
+ * - imageUrl: 코스 대표 사진이 없으면 첫 장소 사진 (카드 썸네일, 기존 목록 API와 같음)
+ * - hasReservation / closedPlaceCount: "예약"·"영업 종료 N곳" 배지 (장소 이름 없이 값만)
+ * 캐시에는 가리기 전 데이터를 두고 응답 직전에만 부를 것 (잠금은 사용자마다 다름)
+ */
+export function maskLockedCourse<T extends { isLocked?: boolean; imageUrl?: string | null; coursePlaces?: any[] }>(course: T): T {
+    if (!course?.isLocked || !Array.isArray(course.coursePlaces)) return course;
+    const cps = course.coursePlaces;
+    return {
+        ...course,
+        imageUrl: course.imageUrl || cps.find((cp) => cp?.place?.imageUrl)?.place?.imageUrl || course.imageUrl,
+        hasReservation: cps.some((cp) => cp?.place?.reservationUrl || cp?.place?.reservation_required),
+        closedPlaceCount: cps.filter(
+            (cp) =>
+                cp?.place &&
+                getPlaceStatus(cp.place.opening_hours ?? null, cp.place.closed_days ?? []).status === PLACE_STATUS_CLOSED,
+        ).length,
+        coursePlaces: cps.map((cp) => (cp?.place ? { ...cp, place: lockedPlace(cp.place.category) } : cp)),
     };
 }

@@ -4,6 +4,7 @@ import { notExpiredCourseWhere } from "@/lib/placePeriod";
 import prisma from "@/lib/db";
 import { cookies, headers } from "next/headers";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
+import { maskLockedCourse } from "@/lib/tipAccess";
 import { unstable_cache } from "next/cache";
 import { resolveNearbyRegionParam } from "@/constants/nearbyRegionSlug";
 import { getTimeOfDayFromKST } from "@/lib/kst";
@@ -69,7 +70,7 @@ function applyIsLocked(courses: any[], userTier: string, unlockedCourseIds: numb
             if (courseGrade === "BASIC" || courseGrade === "PREMIUM") isLocked = true;
         }
 
-        return { ...course, isLocked };
+        return maskLockedCourse({ ...course, isLocked });
     });
 }
 

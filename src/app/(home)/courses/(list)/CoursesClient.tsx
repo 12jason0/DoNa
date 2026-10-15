@@ -51,6 +51,9 @@ export interface Course {
     coursePlaces?: CoursePlace[];
     grade?: "FREE" | "BASIC" | "PREMIUM";
     isLocked?: boolean;
+    /** 잠긴 코스: 장소가 자리표시라 서버가 미리 계산한 배지 값 */
+    hasReservation?: boolean;
+    closedPlaceCount?: number;
 }
 type HeroSliderItem = {
     id: string;
@@ -476,6 +479,7 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
                                         onToggleFavorite={toggleFavorite}
                                         showNewBadge={true}
                                         hasClosedPlace={(c) =>
+                                            (c.closedPlaceCount ?? 0) > 0 ||
                                             (c.coursePlaces ?? []).some(
                                                 (cp: CoursePlace) =>
                                                     cp.place &&
@@ -486,6 +490,7 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
                                             )
                                         }
                                         getClosedPlaceCount={(c) =>
+                                            c.closedPlaceCount ??
                                             (c.coursePlaces ?? []).filter(
                                                 (cp: CoursePlace) =>
                                                     cp.place &&

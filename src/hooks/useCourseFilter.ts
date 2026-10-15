@@ -27,6 +27,9 @@ export type Course = {
     grade?: "FREE" | "BASIC" | "PREMIUM";
     rating?: number;
     isLocked?: boolean;
+    /** 잠긴 코스: 장소가 자리표시라 서버가 미리 계산한 배지 값 */
+    hasReservation?: boolean;
+    closedPlaceCount?: number;
     tags?: string[];
 };
 
@@ -53,6 +56,7 @@ export function useCourseFilter({
 }: UseCourseFilterOptions) {
     // 🟢 휴무 장소 체크 함수 (메모이제이션)
     const hasClosedPlace = useCallback((course: Course) => {
+        if (typeof course.closedPlaceCount === "number") return course.closedPlaceCount > 0;
         if (!course.coursePlaces) return false;
         return course.coursePlaces.some((cp) => {
             const place = cp.place;

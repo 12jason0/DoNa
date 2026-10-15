@@ -62,9 +62,10 @@ export async function GET(request: NextRequest) {
             });
         }
 
-        // 2) 코스 지역명으로 중심 좌표 유추: region/title 매칭 → 첫 장소 좌표 사용
+        // 2) 코스 지역명으로 중심 좌표 유추: region/title 매칭 → 첫 장소 좌표 사용 (FREE 코스만 — 유료 코스 첫 장소 노출 방지)
         const course = await prisma.course.findFirst({
             where: {
+                grade: "FREE",
                 OR: [
                     { region: { contains: query, mode: "insensitive" } },
                     { title: { contains: query, mode: "insensitive" } },

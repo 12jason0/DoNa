@@ -66,6 +66,8 @@ export interface CourseCardProps {
         createdAt?: string | Date;
         grade?: "FREE" | "BASIC" | "PREMIUM";
         isLocked?: boolean;
+        /** 잠긴 코스: 장소가 자리표시라 서버가 미리 계산한 "예약" 배지 값 */
+        hasReservation?: boolean;
         coursePlaces?: CoursePlace[];
         placesCount?: number; // 🟢 [Fix]: API에서 전달받은 장소 개수
     };
@@ -143,10 +145,10 @@ const CourseCard = memo(
             );
 
             return {
-                hasReservation: !!validPlace,
+                hasReservation: course.hasReservation ?? !!validPlace,
                 reservationUrl: validPlace?.place?.reservationUrl || null,
             };
-        }, [course.coursePlaces]);
+        }, [course.coursePlaces, course.hasReservation]);
 
         // [Optimization] 조회수 포맷팅 및 하단 정보 텍스트 연산 메모이제이션
         const infoDisplay = useMemo(() => {
