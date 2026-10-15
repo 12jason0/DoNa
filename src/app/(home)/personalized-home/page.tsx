@@ -190,7 +190,7 @@ const getQuestionFlow = (t: ReturnType<typeof useLocale>["t"]): Question[] => [
         type: "ai",
         text: t("personalizedHome.qGoalDetail"),
         options: [
-            { text: t("personalizedHome.qGoalDetail100"), value: "day100", next: "companion_today" },
+            { text: t("personalizedHome.qGoalDetail100"), value: "day100", next: "region_today" },
             { text: t("personalizedHome.qGoalDetailBirthday"), value: "birthday", next: "companion_today" },
             { text: t("personalizedHome.qGoalDetailYearEnd"), value: "yearend", next: "companion_today" },
         ],
@@ -623,8 +623,8 @@ const AIRecommender = () => {
 
         setMessages((prev) => [...prev, { type: "user", text: option.text }]);
         const newAnswers = { ...userAnswers, [currentQuestion.id]: option.value };
-        // 기념일(100일/생일/연말) 선택 시 "누구랑 가요" 자동 연인
-        if (currentQuestion.id === "goal_detail") {
+        // 100일은 연인 기념일이라 "누구랑 가요"를 건너뛰고 연인으로 (생일·연말은 질문 유지)
+        if (currentQuestion.id === "goal_detail" && option.value === "day100") {
             newAnswers["companion_today"] = "lover";
         }
         setUserAnswers(newAnswers);

@@ -104,7 +104,7 @@ function buildChatFlow(i18n: TI18n): Question[] {
             id: "goal_detail",
             text: T("qGoalDetail"),
             options: [
-                { text: `💑 ${T("qGoalDetail100")}`, value: "100일", next: "companion_today" },
+                { text: `💑 ${T("qGoalDetail100")}`, value: "100일", next: "region_today" },
                 { text: `🎂 ${T("qGoalDetailBirthday")}`, value: "생일", next: "companion_today" },
                 { text: `🎄 ${T("qGoalDetailYearEnd")}`, value: "연말", next: "companion_today" },
             ],
@@ -488,6 +488,8 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
     async function handleOption(option: FlowOption) {
         setMessages((prev) => [...prev, { type: "user", text: option.text }]);
         const newAnswers = { ...answers, [currentQ.id]: option.value };
+        // 100일은 연인 기념일이라 "누구랑 가요"를 건너뛰고 연인으로 (생일·연말은 질문 유지)
+        if (currentQ.id === "goal_detail" && option.value === "100일") newAnswers.companion_today = "연인";
         setAnswers(newAnswers);
         scrollToEnd();
 
