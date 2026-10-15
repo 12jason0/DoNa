@@ -14,6 +14,7 @@ import { useLocale } from "../lib/useLocale";
 import { useModal } from "../lib/modalContext";
 import { apiFetch } from "../lib/api";
 import { MODAL_ANDROID_PROPS } from "../constants/modalAndroidProps";
+import { androidShadow } from "../constants/theme";
 
 export default function WithdrawalModal() {
     const { isOpen, closeModal } = useModal();
@@ -161,7 +162,7 @@ export default function WithdrawalModal() {
 
 const s = StyleSheet.create({
     dim: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "flex-end" },
-    sheet: { width: "100%", borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, elevation: 16 },
+    sheet: { width: "100%", borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, ...androidShadow(16) },
     handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: "#d1d5db", alignSelf: "center", marginBottom: 16 },
     scrollContent: { padding: 24, paddingBottom: 16 },
     emojiCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: "#dcfce7", alignItems: "center", justifyContent: "center", alignSelf: "center", marginBottom: 14 },

@@ -22,6 +22,7 @@ import {
 } from "react-native";
 import Svg, { Line } from "react-native-svg";
 import { useLocale } from "../lib/useLocale";
+import { androidShadow } from "../constants/theme";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 
@@ -289,7 +290,7 @@ const s = StyleSheet.create({
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.25,
         shadowRadius: 8,
-        elevation: 8,
+        ...androidShadow(8),
     },
     pinEmoji: {
         transform: [{ rotate: "45deg" }],  // 핀 -45도 상쇄

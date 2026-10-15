@@ -31,6 +31,7 @@ import {
     getWalkingMinutes,
     coursePlaceToTipsRow,
 } from "./utils";
+import { androidShadow } from "../../constants/theme";
 
 // 네이버 지도 네이티브 — Expo Go 미지원, 동적 require
 let NaverMapView: any = null;
@@ -926,7 +927,7 @@ const s = StyleSheet.create({
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.45,
         shadowRadius: 6,
-        elevation: 4,
+        ...androidShadow(4),
     },
     mapStepTextWeb: { color: "#fff", fontWeight: "600", fontSize: 13 },
     mapStepArrow: { marginHorizontal: 6, color: "#9ca3af", fontSize: 22, lineHeight: 24 },
@@ -942,7 +943,7 @@ const s = StyleSheet.create({
         shadowOffset: { width: 0, height: -2 },
         shadowOpacity: 0.12,
         shadowRadius: 8,
-        elevation: 8,
+        ...androidShadow(8),
     },
     mapBottomTop: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
     mapBottomThumb: { width: 72, height: 72, borderRadius: 10, backgroundColor: "#e5e7eb" },
@@ -993,7 +994,7 @@ const s = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.3,
         shadowRadius: 4,
-        elevation: 4,
+        ...androidShadow(4),
     },
     selMarkerAlt: {
         width: 30,

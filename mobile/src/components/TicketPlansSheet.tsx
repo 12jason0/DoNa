@@ -27,6 +27,7 @@ import { useAuth, AUTH_QUERY_KEY } from "../hooks/useAuth";
 import { api } from "../lib/api";
 import { useModal } from "../lib/modalContext";
 import { fetchAllPackages, purchaseErrorInfo } from "../lib/purchases";
+import { androidShadow } from "../constants/theme";
 
 // ─── 플랜 정의 (웹 PLANS 동일) ────────────────────────────────────────────────
 
@@ -910,7 +911,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.15,
         shadowRadius: 4,
-        elevation: 3,
+        ...androidShadow(3),
     },
     payBtnText: { color: "#fff", fontSize: 14 },
 });

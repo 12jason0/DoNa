@@ -31,6 +31,7 @@ import type { Course } from "../../src/types/api";
 import { useLocale } from "../../src/lib/useLocale";
 import { useModal, type LimitCtx } from "../../src/lib/modalContext";
 import { pickCourseTitle, pickCourseDescription, pickPlaceName } from "../../src/lib/courseLocalized";
+import { androidShadow } from "../../src/constants/theme";
 
 type TI18n = (key: string, params?: Record<string, string | number>) => string;
 
@@ -1253,7 +1254,7 @@ const s = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 8,
-        elevation: 2,
+        ...androidShadow(2),
     },
     profileCardLeft: { flex: 1, gap: 4 },
     profileCardHint: { fontSize: 11, fontWeight: "500", letterSpacing: 0.2 },
@@ -1288,7 +1289,7 @@ const s = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.06,
         shadowRadius: 16,
-        elevation: 4,
+        ...androidShadow(4),
     },
     heroIconWrap: { marginBottom: 20 },
     heroIconBox: {
@@ -1346,7 +1347,7 @@ const s = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
-        elevation: 4,
+        ...androidShadow(4),
     },
     ctaBtnText: { fontSize: 16, fontWeight: "500", color: "#fff", letterSpacing: -0.3 },
     heroHintRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 12 },
@@ -1424,7 +1425,7 @@ const s = StyleSheet.create({
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.04,
         shadowRadius: 2,
-        elevation: 1,
+        ...androidShadow(1),
     },
     bubbleUser: { backgroundColor: "#111827", borderBottomRightRadius: 4 },
     bubbleText: { fontSize: 15, lineHeight: 22 },
@@ -1442,7 +1443,7 @@ const s = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.08,
         shadowRadius: 8,
-        elevation: 3,
+        ...androidShadow(3),
     },
     resultBody: { padding: 22 },
     matchBadgeNew: {

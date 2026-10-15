@@ -3,7 +3,7 @@ import { View, Text, Animated, StyleSheet, Platform, Pressable } from "react-nat
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import type { EdgeInsets } from "react-native-safe-area-context";
-import { Colors } from "../../constants/theme";
+import { Colors, androidShadow } from "../../constants/theme";
 import { useThemeColors } from "../../hooks/useThemeColors";
 import { useLocale } from "../../lib/useLocale";
 import { textFontForLocale } from "../../lib/textDefaultFont";
@@ -78,7 +78,8 @@ export const PillToast = React.memo(function PillToast({
                         {
                             backgroundColor: t.card,
                             borderColor: t.border,
-                            shadowColor: t.isDark ? "#000" : "#1e2a1a",
+                            // 안드로이드는 androidShadow의 옅은 그림자 색 유지
+                            ...(Platform.OS === "ios" ? { shadowColor: t.isDark ? "#000" : "#1e2a1a" } : null),
                         },
                     ]}
                 >
@@ -121,7 +122,7 @@ const s = StyleSheet.create({
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.18,
         shadowRadius: 20,
-        elevation: 12,
+        ...androidShadow(12),
     },
     pillToastBannerText: {
         flex: 1,

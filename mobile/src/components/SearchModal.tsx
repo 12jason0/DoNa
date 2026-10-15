@@ -26,7 +26,7 @@ import { router } from "expo-router";
 
 import { api } from "../lib/api";
 import { CDN_CONCEPT_ICONS, SEARCH_THEME_TAGS, POPULAR_KEYWORD_COUNT } from "../constants/searchModalCopy";
-import { Colors } from "../constants/theme";
+import { Colors, androidShadow } from "../constants/theme";
 import { useSlideModalAnimation } from "../hooks/useSlideModalAnimation";
 import { useThemeColors } from "../hooks/useThemeColors";
 import { useLocale } from "../lib/useLocale";
@@ -437,7 +437,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: -2 },
         shadowOpacity: 0.12,
         shadowRadius: 8,
-        elevation: 12,
+        ...androidShadow(12),
     },
     sheetInner: {
         flex: 1,
@@ -597,7 +597,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.06,
         shadowRadius: 2,
-        elevation: 2,
+        ...androidShadow(2),
     },
     themeIcon: {
         width: 32,

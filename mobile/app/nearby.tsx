@@ -28,7 +28,7 @@ import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from "@tansta
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api, endpoints } from "../src/lib/api";
-import { Colors } from "../src/constants/theme";
+import { Colors, androidShadow } from "../src/constants/theme";
 import { resolveImageUrl } from "../src/lib/imageUrl";
 import { useThemeColors } from "../src/hooks/useThemeColors";
 import { useAuth } from "../src/hooks/useAuth";
@@ -752,7 +752,7 @@ const s = StyleSheet.create({
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.04,
         shadowRadius: 2,
-        elevation: 2,
+        ...androidShadow(2),
     },
 
     // 검색창
@@ -860,7 +860,7 @@ const s = StyleSheet.create({
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.2,
         shadowRadius: 16,
-        elevation: 10,
+        ...androidShadow(10),
     },
     plusText: {
         fontSize: 28,

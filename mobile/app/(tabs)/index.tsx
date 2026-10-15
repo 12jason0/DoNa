@@ -25,7 +25,7 @@ import { router, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 
-import { Colors } from "../../src/constants/theme";
+import { Colors, androidShadow } from "../../src/constants/theme";
 import PageLoadingOverlay from "../../src/components/PageLoadingOverlay";
 import { api, apiFetch } from "../../src/lib/api";
 import { fetchMyPrivateStories } from "../../src/lib/personalStories";
@@ -747,7 +747,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.08,
         shadowRadius: 12,
-        elevation: 4,
+        ...androidShadow(4),
     },
     activeBannerInner: {
         flexDirection: "row",
@@ -831,7 +831,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.06,
         shadowRadius: 8,
-        elevation: 3,
+        ...androidShadow(3),
         overflow: "hidden",
     },
     featuredImgWrap: {},
@@ -1133,7 +1133,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.08,
         shadowRadius: 14,
-        elevation: 3,
+        ...androidShadow(3),
     },
     memoryAlbumHeader: {
         flexDirection: "row",
@@ -1155,7 +1155,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.12,
         shadowRadius: 10,
-        elevation: 3,
+        ...androidShadow(3),
     },
     memoryAlbumCtaText: { color: "#fff", fontSize: 14, fontWeight: "500" },
     memoryAlbumScroll: { paddingRight: 6 },

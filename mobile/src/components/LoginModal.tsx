@@ -29,7 +29,7 @@ import { useSlideModalAnimation } from '../hooks/useSlideModalAnimation';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { modalBottomPadding } from '../utils/modalSafePadding';
 import { MODAL_ANDROID_PROPS } from '../constants/modalAndroidProps';
-import { Colors, FontSize, BorderRadius } from '../constants/theme';
+import { Colors, FontSize, BorderRadius, androidShadow } from '../constants/theme';
 import { useLocale } from '../lib/useLocale';
 import { useModal } from '../lib/modalContext';
 import { api, BASE_URL } from '../lib/api';
@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: -4 },
         shadowOpacity: 0.12,
         shadowRadius: 12,
-        elevation: 16,
+        ...androidShadow(16),
         maxHeight: '100%',
         position: 'relative',
     },
@@ -385,7 +385,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.3,
         shadowRadius: 16,
-        elevation: 8,
+        ...androidShadow(8),
         position: 'relative',
     },
     sparkle: {
@@ -471,7 +471,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.12,
         shadowRadius: 4,
-        elevation: 3,
+        ...androidShadow(3),
     },
     socialCircleApple: {
         width: 64,
@@ -484,7 +484,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.12,
         shadowRadius: 4,
-        elevation: 3,
+        ...androidShadow(3),
     },
     btnDisabled: {
         opacity: 0.5,

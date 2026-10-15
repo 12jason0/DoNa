@@ -26,7 +26,7 @@ import { WebView } from "react-native-webview";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, endpoints, BASE_URL } from "../../../src/lib/api";
 import { useAuth } from "../../../src/hooks/useAuth";
-import { Colors } from "../../../src/constants/theme";
+import { Colors, androidShadow } from "../../../src/constants/theme";
 import { resolveImageUrl } from "../../../src/lib/imageUrl";
 import { shareFeedTemplate } from "@react-native-kakao/share";
 import { kakaoSdkReady } from "../../_layout";
@@ -1502,7 +1502,7 @@ const s = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.08,
         shadowRadius: 12,
-        elevation: 4,
+        ...androidShadow(4),
         overflow: "hidden",
     },
 
@@ -1519,11 +1519,11 @@ const s = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
         zIndex: 30,
-        elevation: 8,
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.22,
         shadowRadius: 8,
+        ...androidShadow(8),
     },
 
     // Bottom CTA bar
@@ -1565,7 +1565,7 @@ const s = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.08,
         shadowRadius: 8,
-        elevation: 4,
+        ...androidShadow(4),
     },
     ctaMainBtnWide: {
         flex: 1,

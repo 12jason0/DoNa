@@ -26,6 +26,7 @@ import { MODAL_ANDROID_PROPS } from "../constants/modalAndroidProps";
 import type { LocalePreference } from "../lib/appSettingsStorage";
 import { useModal } from "../lib/modalContext";
 import { textFontForLocale } from "../lib/textDefaultFont";
+import { androidShadow } from "../constants/theme";
 
 const LOCALES: LocalePreference[] = ["ko", "en", "ja", "zh"];
 
@@ -213,7 +214,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: -4 },
         shadowOpacity: 0.12,
         shadowRadius: 12,
-        elevation: 16,
+        ...androidShadow(16),
         maxHeight: "100%",
     },
     sheetDark: {

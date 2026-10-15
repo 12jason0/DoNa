@@ -7,6 +7,7 @@ import { useThemeColors } from "../hooks/useThemeColors";
 import { useLocale } from "../lib/useLocale";
 import { useModal } from "../lib/modalContext";
 import { MODAL_ANDROID_PROPS } from "../constants/modalAndroidProps";
+import { androidShadow } from "../constants/theme";
 
 export default function MemoryLimitModal() {
     const { isOpen, closeModal } = useModal();
@@ -86,7 +87,7 @@ const s = StyleSheet.create({
     closeBtn: { position: "absolute", top: 20, right: 20, width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", zIndex: 10 },
     iconWrap: { alignItems: "center", marginBottom: 20, marginTop: 16 },
     iconPulse: { position: "absolute", width: 96, height: 96, borderRadius: 24, opacity: 0.12, transform: [{ rotate: "12deg" }] },
-    iconBox: { width: 80, height: 80, borderRadius: 20, alignItems: "center", justifyContent: "center", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 16, elevation: 8, position: "relative" },
+    iconBox: { width: 80, height: 80, borderRadius: 20, alignItems: "center", justifyContent: "center", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 16, ...androidShadow(8), position: "relative" },
     title: { fontSize: 22, fontWeight: "700", textAlign: "center", marginBottom: 8, letterSpacing: -0.5, lineHeight: 30 },
     sub: { fontSize: 14, textAlign: "center", marginBottom: 20, lineHeight: 20 },
     benefitBox: { borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 1 },
@@ -94,7 +95,7 @@ const s = StyleSheet.create({
     benefitRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 },
     checkCircle: { width: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center", flexShrink: 0 },
     benefitText: { fontSize: 14, fontWeight: "500" },
-    ctaBtn: { borderRadius: 999, paddingVertical: 14, alignItems: "center", justifyContent: "center", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 6 },
+    ctaBtn: { borderRadius: 999, paddingVertical: 14, alignItems: "center", justifyContent: "center", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 12, ...androidShadow(6) },
     ctaText: { color: "#fff", fontSize: 15, fontWeight: "500" },
     cancelBtn: { paddingVertical: 12, alignItems: "center" },
     cancelBtnText: { color: "#9ca3af", fontSize: 13 },

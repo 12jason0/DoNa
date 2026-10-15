@@ -30,7 +30,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 
-import { Colors, FontSize, Spacing, BorderRadius, Shadow } from "../../src/constants/theme";
+import { Colors, FontSize, Spacing, BorderRadius, Shadow, androidShadow } from "../../src/constants/theme";
 import { api, apiFetch, endpoints } from "../../src/lib/api";
 import { fetchMyPrivateStories } from "../../src/lib/personalStories";
 import { useAuth } from "../../src/hooks/useAuth";
@@ -2614,7 +2614,7 @@ const s = StyleSheet.create({
         shadowOpacity: 0.35,
         shadowRadius: 8,
         shadowOffset: { width: 0, height: 4 },
-        elevation: 6,
+        ...androidShadow(6),
     },
     tabLabel: { fontSize: 12 },
 
@@ -2754,7 +2754,7 @@ const s = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 8,
         shadowOffset: { width: 0, height: 4 },
-        elevation: 4,
+        ...androidShadow(4),
         flexShrink: 0,
     },
     avatarInner: {
@@ -3235,7 +3235,7 @@ const s = StyleSheet.create({
         shadowOffset: { width: 0, height: 12 },
         shadowOpacity: 0.35,
         shadowRadius: 24,
-        elevation: 16,
+        ...androidShadow(16),
     },
     coursePreviewImgWrap: {
         width: "100%",
@@ -3562,7 +3562,7 @@ const s = StyleSheet.create({
         shadowOffset: { width: 0, height: -4 },
         shadowOpacity: 0.15,
         shadowRadius: 12,
-        elevation: 16,
+        ...androidShadow(16),
         paddingTop: 12,
     },
     withdrawHandle: {

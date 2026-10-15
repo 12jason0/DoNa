@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 
-import { Colors } from "../constants/theme";
+import { Colors, androidShadow } from "../constants/theme";
 import { useSlideModalAnimation } from "../hooks/useSlideModalAnimation";
 import { useThemeColors } from "../hooks/useThemeColors";
 import { modalBottomPadding } from "../utils/modalSafePadding";
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: -4 },
         shadowOpacity: 0.15,
         shadowRadius: 12,
-        elevation: 16,
+        ...androidShadow(16),
     },
     closeRow: {
         alignItems: "flex-end",
@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.35,
         shadowRadius: 8,
-        elevation: 6,
+        ...androidShadow(6),
     },
     title: {
         fontSize: 20,

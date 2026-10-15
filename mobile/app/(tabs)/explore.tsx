@@ -31,6 +31,7 @@ import { useLocale } from "../../src/lib/useLocale";
 import { Ionicons } from "@expo/vector-icons";
 import { useModal } from "../../src/lib/modalContext";
 import CourseCard from "../../src/components/CourseCard";
+import { androidShadow } from "../../src/constants/theme";
 
 // 네이버 지도 — EAS dev build 필요
 let NaverMapView: any = null;
@@ -197,7 +198,7 @@ function UserLocationMarker() {
             <View style={{
                 width: 22, height: 22, borderRadius: 11,
                 backgroundColor: "#2563EB", borderWidth: 3, borderColor: "#fff",
-                elevation: 6,
+                ...androidShadow(6),
             }} />
         </View>
     );
@@ -944,20 +945,20 @@ const styles = StyleSheet.create({
     backBtn: {
         width: 38, height: 38, borderRadius: 10,
         alignItems: "center", justifyContent: "center", flexShrink: 0,
-        shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
+        shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 8, ...androidShadow(4),
     },
     searchBox: {
         flex: 1, flexDirection: "row", alignItems: "center", gap: 8,
         paddingHorizontal: 12, paddingVertical: 10,
         borderRadius: 12, shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
+        shadowOpacity: 0.12, shadowRadius: 8, ...androidShadow(4),
     },
     searchInput: { flex: 1, fontSize: 13, fontWeight: "500", padding: 0 },
 
     tabRow: { flexDirection: "row", alignItems: "center", gap: 8 },
     tabPill: {
         flexDirection: "row", borderRadius: 20, padding: 3,
-        shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 3,
+        shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 6, ...androidShadow(3),
         position: "relative", overflow: "hidden",
     },
     tabIndicator: {
@@ -969,7 +970,7 @@ const styles = StyleSheet.create({
     tabTextActive: { color: "#fff" },
     areaSearchBtn: {
         paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20,
-        shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 3,
+        shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 6, ...androidShadow(3),
     },
     areaSearchText: { fontSize: 12, fontWeight: "500", color: "#6bb88a" },
 
@@ -977,7 +978,7 @@ const styles = StyleSheet.create({
     toast: {
         position: "absolute", top: 110, alignSelf: "center", zIndex: 60,
         backgroundColor: "rgba(31,41,55,0.95)", paddingHorizontal: 20, paddingVertical: 12,
-        borderRadius: 24, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 8,
+        borderRadius: 24, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12, ...androidShadow(8),
     },
     toastText: { color: "#fff", fontSize: 13, fontWeight: "500" },
 
@@ -986,14 +987,14 @@ const styles = StyleSheet.create({
     locationBtnInner: {
         width: 48, height: 48, borderRadius: 24, borderWidth: 1,
         alignItems: "center", justifyContent: "center",
-        shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 6,
+        shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.15, shadowRadius: 8, ...androidShadow(6),
     },
 
     // 바텀 시트
     panel: {
         position: "absolute", left: 0, right: 0,
         borderTopLeftRadius: 24, borderTopRightRadius: 24,
-        shadowOffset: { width: 0, height: -8 }, shadowOpacity: 0.12, shadowRadius: 20, elevation: 20,
+        shadowOffset: { width: 0, height: -8 }, shadowOpacity: 0.12, shadowRadius: 20, ...androidShadow(20),
         zIndex: 40,
     },
     handleArea: { alignItems: "center", paddingTop: 12, paddingBottom: 4 },
@@ -1028,7 +1029,7 @@ const styles = StyleSheet.create({
     dirBtn: {
         flex: 1, height: 44, backgroundColor: "#6bb88a", borderRadius: 10,
         flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
-        shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 3,
+        shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 6, ...androidShadow(3),
     },
     dirBtnText: { color: "#fff", fontSize: 14, fontWeight: "500" },
 
@@ -1037,7 +1038,7 @@ const styles = StyleSheet.create({
         flexDirection: "row", alignItems: "center", gap: 12,
         paddingHorizontal: 14, paddingVertical: 12, marginBottom: 10,
         borderRadius: 16, borderWidth: 1,
-        shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
+        shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, ...androidShadow(2),
     },
     iconBox: { width: 48, height: 48, borderRadius: 12, alignItems: "center", justifyContent: "center" },
     badgeRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" },

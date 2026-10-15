@@ -16,7 +16,7 @@ import { useInfiniteQuery, useQuery, useMutation, useQueryClient, type InfiniteD
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { api, endpoints } from "../../src/lib/api";
-import { Colors } from "../../src/constants/theme";
+import { Colors, androidShadow } from "../../src/constants/theme";
 import PageLoadingOverlay from "../../src/components/PageLoadingOverlay";
 import { resolveResizedImageUrl } from "../../src/lib/imageUrl";
 import AppHeaderWithModals from "../../src/components/AppHeaderWithModals";
@@ -233,7 +233,7 @@ const heroStyles = StyleSheet.create({
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.22,
         shadowRadius: 14,
-        elevation: 10,
+        ...androidShadow(10),
     },
     img: { width: "100%", height: "100%", resizeMode: "cover" },
     gradient: {
@@ -529,7 +529,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.04,
         shadowRadius: 2,
-        elevation: 2,
+        ...androidShadow(2),
     },
     categoryRow: {
         flexDirection: "row",

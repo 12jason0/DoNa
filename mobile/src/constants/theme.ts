@@ -2,6 +2,7 @@
  * DoNa 앱 디자인 토큰
  * 웹 globals.css + (home)/layout.tsx에서 추출한 값과 동일하게 유지
  */
+import { Platform } from 'react-native';
 
 export const Colors = {
     // ─── 브랜드 컬러 ─────────────────────────────────────────────
@@ -124,26 +125,36 @@ export const BorderRadius = {
     full: 9999,
 } as const;
 
+/**
+ * 그림자 높이. iOS는 elevation을 무시하고 shadow* 값만 쓰므로 iOS 화면은 그대로.
+ * 안드로이드는 elevation만 보고 진하게 그려 회색 테두리처럼 보임 → 높이를 절반으로, 그림자 색을 옅게
+ * (shadowColor 알파가 안드로이드 기본 그림자 진하기에 곱해짐. 스타일에서 shadowColor보다 뒤에 펼칠 것)
+ */
+export function androidShadow(level: number) {
+    if (Platform.OS !== 'android') return { elevation: level };
+    return { elevation: Math.min(Math.ceil(level / 2), 8), shadowColor: 'rgba(0,0,0,0.5)' };
+}
+
 export const Shadow = {
     sm: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,
         shadowRadius: 2,
-        elevation: 1,
+        ...androidShadow(1),
     },
     md: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.08,
         shadowRadius: 4,
-        elevation: 3,
+        ...androidShadow(3),
     },
     lg: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.12,
         shadowRadius: 8,
-        elevation: 5,
+        ...androidShadow(5),
     },
 } as const;

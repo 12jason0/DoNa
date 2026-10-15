@@ -34,6 +34,7 @@ import type { PlaceData } from "./types";
 import { PLACE_OPEN_BADGE_RN } from "./constants";
 import { getPlaceImageUrl, getPlaceReservationUrl, closedDaysForPlaceStatus, isPlaceClosedForReserve } from "./utils";
 import { TipCategoryIcon } from "./TipCategoryIcon";
+import { androidShadow } from "../../constants/theme";
 
 export function PlaceDetailModal({
     place,
@@ -411,7 +412,7 @@ const s = StyleSheet.create({
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.2,
         shadowRadius: 2,
-        elevation: 2,
+        ...androidShadow(2),
     },
     detailImgOverlayWeb: {
         position: "absolute",

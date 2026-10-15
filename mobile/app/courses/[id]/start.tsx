@@ -28,7 +28,7 @@ import { api, endpoints } from "../../../src/lib/api";
 import { useAuth } from "../../../src/hooks/useAuth";
 import { useThemeColors } from "../../../src/hooks/useThemeColors";
 import { useLocale } from "../../../src/lib/useLocale";
-import { Colors } from "../../../src/constants/theme";
+import { Colors, androidShadow } from "../../../src/constants/theme";
 import { pickCourseTitle } from "../../../src/lib/courseLocalized";
 import type { LocalePreference } from "../../../src/lib/appSettingsStorage";
 
@@ -634,7 +634,7 @@ const s = StyleSheet.create({
         maxHeight: SCREEN_HEIGHT * 0.65,
         minHeight: SCREEN_HEIGHT * 0.5,
         shadowColor: "#000", shadowOpacity: 0.12, shadowRadius: 20, shadowOffset: { width: 0, height: -5 },
-        elevation: 12,
+        ...androidShadow(12),
         overflow: "hidden",
         flex: 0,
     },

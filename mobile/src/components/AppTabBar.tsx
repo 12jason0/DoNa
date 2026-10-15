@@ -16,6 +16,7 @@ import { useLocale } from "../lib/useLocale";
 import { useModal } from "../lib/modalContext";
 import { textFontForLocale } from "../lib/textDefaultFont";
 import PersonalizedHomeNavIcon from "./icons/PersonalizedHomeNavIcon";
+import { androidShadow } from "../constants/theme";
 
 type TabConfig = {
     name: string;
@@ -159,7 +160,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.2,
         shadowRadius: 16,
-        elevation: 10,
+        ...androidShadow(10),
     },
     plusText: {
         fontSize: 28,
@@ -171,7 +172,8 @@ const styles = StyleSheet.create({
     pill: {
         flexDirection: "row",
         alignItems: "center",
-        backgroundColor: "rgba(255,255,255,0.82)",
+        // 안드로이드는 블러가 없고 elevation 그림자가 반투명 배경 안으로 비쳐 뒤 글자가 보임 → 불투명
+        backgroundColor: Platform.OS === "android" ? "#ffffff" : "rgba(255,255,255,0.82)",
         borderRadius: 999,
         paddingVertical: 4,
         paddingHorizontal: 4,
@@ -181,7 +183,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.12,
         shadowRadius: 16,
-        elevation: 12,
+        ...androidShadow(12),
         borderWidth: 1,
         borderColor: "rgba(243,244,246,0.8)",
     },
