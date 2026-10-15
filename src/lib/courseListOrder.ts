@@ -21,7 +21,7 @@ export function interleaveByGrade<T extends { grade?: string | null }>(courses: 
 }
 
 /**
- * "두나 추천 코스" 히어로 (웹·앱 공통): 무료 → 베이직 → 베이직 → 프리미엄 → 무료.
+ * "지금 많이 선택한 코스" 히어로 (웹·앱 공통): 무료 → 베이직 → 베이직 → 프리미엄 → 무료.
  * 그 등급이 모자라면 아직 안 쓴 다른 등급 코스로 채움. 같은 코스는 두 번 넣지 않음.
  */
 const HERO_SLOTS = ["FREE", "BASIC", "BASIC", "PREMIUM", "FREE"] as const;

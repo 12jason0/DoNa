@@ -52,7 +52,7 @@ function mapRowToHeroItem(c: {
     };
 }
 
-/** "두나 추천 코스" — 앱과 같은 방식: 기본 목록 순서(최신순·등급 섞기) 첫 20개에서 무료 → 베이직 → 베이직 → 프리미엄 → 무료 */
+/** "지금 많이 선택한 코스" — 앱과 같은 방식: 기본 목록 순서(최신순·등급 섞기) 첫 20개에서 무료 → 베이직 → 베이직 → 프리미엄 → 무료 */
 const getHeroCourses = unstable_cache(
     async (): Promise<HeroSliderItem[]> => {
         try {
