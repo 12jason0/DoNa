@@ -515,6 +515,8 @@
         "placeHours": "スポット別の営業時間",
         "hoursUnknown": "営業時間情報なし",
         "officialTip": "店舗公式",
+        "tipsMore": "さらに表示（{count}件）",
+        "tipsLess": "閉じる",
         "instagram": "お店のInstagram",
         "closedWeekly": "毎週{days}定休",
         "reservationNeeded": "予約必須",

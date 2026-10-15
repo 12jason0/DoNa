@@ -481,6 +481,8 @@
             "placeHours": "장소별 영업시간",
             "hoursUnknown": "영업시간 정보 없음",
             "officialTip": "가게 공식",
+            "tipsMore": "더보기 ({count}개)",
+            "tipsLess": "접기",
             "instagram": "가게 인스타",
             "closedWeekly": "매주 {days} 휴무",
             "reservationNeeded": "예약 필요",

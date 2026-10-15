@@ -36,6 +36,9 @@ import { getPlaceImageUrl, getPlaceReservationUrl, closedDaysForPlaceStatus, isP
 import { TipCategoryIcon } from "./TipCategoryIcon";
 import { androidShadow } from "../../constants/theme";
 
+/** 장소 상세에서 처음에 보여줄 팁 수 (나머지는 더보기) */
+const TIPS_PREVIEW = 3;
+
 export function PlaceDetailModal({
     place,
     tipsRow,
@@ -61,9 +64,12 @@ export function PlaceDetailModal({
     const placeStatusInfo = getPlaceStatus(place.opening_hours, closedDaysForPlaceStatus(place.closed_days));
     const tipItems = useMemo(() => {
         const base = parseTipsFromDbForLocale(tipsRow, locale as CourseUiLocale);
-        return localizeParsedTipsForUi(base, locale as CourseUiLocale, i18n);
+        // 가게 공식 팁을 앞으로 (나머지 순서는 그대로)
+        return localizeParsedTipsForUi(base, locale as CourseUiLocale, i18n).sort((a, b) => Number(!!b.official) - Number(!!a.official));
     }, [tipsRow, locale, i18n]);
     const hasTips = tipItems.length > 0;
+    const [tipsExpanded, setTipsExpanded] = useState(false);
+    const visibleTips = tipsExpanded ? tipItems : tipItems.slice(0, TIPS_PREVIEW);
     const screenH = Dimensions.get("window").height;
     const translateY = useRef(new Animated.Value(0)).current;
 
@@ -224,8 +230,8 @@ export function PlaceDetailModal({
                                     </Text>
                                 </View>
                                 {/* 팁 목록 */}
-                                {tipItems.map((tip, i) => (
-                                    <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, marginBottom: i < tipItems.length - 1 ? 8 : 0 }}>
+                                {visibleTips.map((tip, i) => (
+                                    <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, marginBottom: i < visibleTips.length - 1 ? 8 : 0 }}>
                                         <View style={{ marginTop: 1 }}>
                                             <TipCategoryIcon category={tip.category} color={t.isDark ? "#9ca3af" : "#4b5563"} />
                                         </View>
@@ -237,6 +243,22 @@ export function PlaceDetailModal({
                                         </Text>
                                     </View>
                                 ))}
+                                {tipItems.length > TIPS_PREVIEW ? (
+                                    <TouchableOpacity
+                                        onPress={() => setTipsExpanded((v) => !v)}
+                                        style={s.tipsMoreBtn}
+                                        hitSlop={8}
+                                        activeOpacity={0.7}
+                                        accessibilityRole="button"
+                                    >
+                                        <Text style={[s.tipsMoreText, { color: t.isDark ? "#6ee7b7" : "#047857" }]}>
+                                            {tipsExpanded
+                                                ? i18n("courseDetail.info.tipsLess")
+                                                : i18n("courseDetail.info.tipsMore", { count: tipItems.length - TIPS_PREVIEW })}
+                                        </Text>
+                                        <Ionicons name={tipsExpanded ? "chevron-up" : "chevron-down"} size={14} color={t.isDark ? "#6ee7b7" : "#047857"} />
+                                    </TouchableOpacity>
+                                ) : null}
                             </View>
                         ) : isLoggedIn && tipLocked ? (
                             <TouchableOpacity
@@ -440,6 +462,8 @@ const s = StyleSheet.create({
     placeTipSectionLabel: { fontSize: 12, fontWeight: "600", marginBottom: 8 },
     placeTipSectionBody: { fontSize: 14, lineHeight: 21, fontWeight: "500" },
     officialBadge: { fontSize: 11, fontWeight: "700" },
+    tipsMoreBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, marginTop: 10, paddingVertical: 4 },
+    tipsMoreText: { fontSize: 13, fontWeight: "600" },
     detailReserveBtnWeb: {
         flexDirection: "row",
         alignItems: "center",

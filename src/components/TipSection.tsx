@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { type TipItem } from "@/types/tip";
 import { useLocale } from "@/context/LocaleContext";
 
@@ -151,9 +152,17 @@ interface TipSectionProps {
     compact?: boolean;
 }
 
+/** 처음에 보여줄 팁 수 (나머지는 더보기) */
+const TIPS_PREVIEW = 3;
+
 export function TipSection({ tips, variant, className = "", compact = false }: TipSectionProps) {
     const { t: tr } = useLocale();
+    const [expanded, setExpanded] = useState(false);
     if (!tips || tips.length === 0) return null;
+
+    // 가게 공식 팁을 앞으로 (나머지 순서는 그대로)
+    const sorted = [...tips].sort((a, b) => Number(!!b.official) - Number(!!a.official));
+    const visible = expanded ? sorted : sorted.slice(0, TIPS_PREVIEW);
 
     const isFree = variant === "free";
     const wrapperClass = isFree
@@ -180,7 +189,7 @@ export function TipSection({ tips, variant, className = "", compact = false }: T
                 )}
             </div>
             <div className="flex flex-col gap-2">
-                {tips.map((t, i) => (
+                {visible.map((t, i) => (
                     <div key={i} className="flex gap-2 items-start">
                         <TipCategoryIcon category={t.category} />
                         <p
@@ -198,6 +207,21 @@ export function TipSection({ tips, variant, className = "", compact = false }: T
                     </div>
                 ))}
             </div>
+            {sorted.length > TIPS_PREVIEW && (
+                <button
+                    type="button"
+                    onClick={() => setExpanded((v) => !v)}
+                    aria-expanded={expanded}
+                    className={`mt-2 w-full text-center text-xs font-semibold ${
+                        isFree ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-300"
+                    }`}
+                >
+                    {expanded
+                        ? tr("courseDetail.info.tipsLess")
+                        : tr("courseDetail.info.tipsMore", { count: sorted.length - TIPS_PREVIEW })}
+                    <span aria-hidden="true">{expanded ? " ▲" : " ▼"}</span>
+                </button>
+            )}
         </div>
     );
 }

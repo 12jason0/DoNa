@@ -518,6 +518,8 @@
         "placeHours": "Opening hours by place",
         "hoursUnknown": "Hours not available",
         "officialTip": "Official",
+        "tipsMore": "Show {count} more",
+        "tipsLess": "Show less",
         "instagram": "Instagram",
         "closedWeekly": "Closed every {days}",
         "reservationNeeded": "Reservation required",
