@@ -1172,7 +1172,7 @@ export default function CourseDetailClient({
             } else {
                 const selectedId = selectedBySegment[step.segment];
                 const stepOrder = orderIdx++;
-                for (const cp of step.options) {
+                step.options.forEach((cp, optIdx) => {
                     result.push({
                         id: cp.place.id,
                         name: pickPlaceName(cp.place, locale),
@@ -1184,8 +1184,9 @@ export default function CourseDetailClient({
                         orderIndex: stepOrder,
                         markerVariant: Number(cp.place_id) === Number(selectedId) ? "candidate-selected" : "candidate",
                         segmentKey: step.segment,
+                        markerLabel: `${stepOrder + 1}${String.fromCharCode(65 + optIdx)}`,
                     });
-                }
+                });
             }
         }
         return result;
@@ -2754,6 +2755,8 @@ export default function CourseDetailClient({
                                                     {Array.from({ length: stepCount }, (_, i) => {
                                                         const place = pathPlacesForBar[i];
                                                         const isSelected = modalSelectedPlace?.id === place?.id;
+                                                        const stepLabel =
+                                                            selectionMapPlaces.find((sp) => sp.id === place?.id)?.markerLabel ?? String(i + 1);
                                                         return (
                                                             <React.Fragment key={i}>
                                                                 {i > 0 && (
@@ -2769,10 +2772,10 @@ export default function CourseDetailClient({
                                                                     className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm transition-all ${
                                                                         isSelected
                                                                             ? "bg-[#5347AA] text-white ring-2 ring-[#5347AA] ring-offset-2"
-                                                                            : "bg-[#99c08e] text-white hover:opacity-90"
+                                                                            : "bg-[#047857] text-white hover:opacity-90"
                                                                     }`}
                                                                 >
-                                                                    {i + 1}
+                                                                    {stepLabel}
                                                                 </button>
                                                             </React.Fragment>
                                                         );

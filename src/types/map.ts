@@ -22,6 +22,8 @@ export interface Place {
     markerVariant?: "confirmed" | "candidate-selected" | "candidate";
     /** 후보 선택 시 setSelectedBySegment용 세그먼트 키 */
     segmentKey?: string;
+    /** 선택형 코스 후보 라벨 ("2A"/"2B") — 없으면 orderIndex+1 */
+    markerLabel?: string;
 }
 
 export interface UserLocation {

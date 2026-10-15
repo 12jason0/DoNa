@@ -276,8 +276,8 @@ export default function CourseSharePreviewClient({
             } else {
                 const selectedId = effectiveSelectedBySegment[step.segment];
                 const stepOrder = orderIdx++;
-                for (const cp of step.options) {
-                    if (cp.place?.latitude == null || cp.place?.longitude == null) continue;
+                step.options.forEach((cp, optIdx) => {
+                    if (cp.place?.latitude == null || cp.place?.longitude == null) return;
                     result.push({
                         id: cp.place.id,
                         name: pickPlaceName(cp.place, locale),
@@ -288,8 +288,9 @@ export default function CourseSharePreviewClient({
                         orderIndex: stepOrder,
                         markerVariant: Number(cp.place_id) === Number(selectedId) ? "candidate-selected" : "candidate",
                         segmentKey: step.segment,
+                        markerLabel: `${stepOrder + 1}${String.fromCharCode(65 + optIdx)}`,
                     });
-                }
+                });
             }
         }
         return result;

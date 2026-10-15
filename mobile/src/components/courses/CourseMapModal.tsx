@@ -22,6 +22,10 @@ import { BASE_URL } from "../../lib/api";
 import type { CoursePlaceTipsRow } from "../../../../src/types/tip";
 import type { PlaceData, CoursePlace } from "./types";
 import { MAP_PURPLE, NAVER_BTN_GRAY, STEP_PIN_IMAGES } from "./constants";
+
+/** 지도 마커·경로 색 — 흰 번호가 잘 보이도록 진한 초록 */
+const MARKER_GREEN = "#047857";
+const ROUTE_GREEN = "#3f9a5b";
 import {
     getPlaceImageUrl,
     getPlaceLatLng,
@@ -139,13 +143,13 @@ function buildNaverMapHtml(
         var bg, sz, fs, border, anchor, opacity;
         if (IS_SEL) {
           var isSel2 = SELECTED !== null && idx === SELECTED;
-          if (isMain) { bg=isSel2?'#5347AA':'#5bc770'; sz='30px'; fs='11px'; border='2px solid #fff'; anchor=15; opacity=1; }
-          else        { bg='rgba(110,110,110,0.55)'; sz='30px'; fs='11px'; border='1px solid rgba(255,255,255,0.4)'; anchor=15; opacity=0.75; }
+          if (isMain) { bg=isSel2?'#5347AA':'#047857'; sz=isSel2?'42px':'32px'; fs=isSel2?'15px':'12px'; border='2px solid #fff'; anchor=isSel2?21:16; opacity=1; }
+          else        { bg='#6b7280'; sz='28px'; fs='11px'; border='2px solid #fff'; anchor=14; opacity=0.9; }
         } else {
-          bg = isSel?'#5347AA':'#99c08e'; sz=isSel?'40px':'30px'; fs=isSel?'15px':'13px';
-          border=isSel?'3px solid #fff':'2px solid rgba(255,255,255,0.6)'; anchor=isSel?20:15; opacity=1;
+          bg = isSel?'#5347AA':'#047857'; sz=isSel?'42px':'32px'; fs=isSel?'16px':'13px';
+          border='2px solid #fff'; anchor=isSel?21:16; opacity=1;
         }
-        var content = '<div style="width:'+sz+';height:'+sz+';border-radius:50%;background:'+bg+';color:#fff;font-weight:700;font-size:'+fs+';display:flex;align-items:center;justify-content:center;border:'+border+';box-shadow:0 2px 6px rgba(0,0,0,0.3);cursor:pointer;opacity:'+opacity+';">'+place.label+'</div>';
+        var content = '<div style="width:'+sz+';height:'+sz+';border-radius:50%;background:'+bg+';color:#fff;font-weight:800;font-size:'+fs+';display:flex;align-items:center;justify-content:center;border:'+border+';box-shadow:0 2px 6px rgba(0,0,0,0.3);cursor:pointer;opacity:'+opacity+';">'+place.label+'</div>';
         var marker = new nm.Marker({ position: new nm.LatLng(place.lat, place.lng), map:map, icon:{ content:content, anchor:new nm.Point(anchor,anchor) }, zIndex: isMain ? 100 : 5 });
         (function(i){ nm.Event.addListener(marker,'click',function(e){ if(e&&e.domEvent) try{e.domEvent.stopPropagation();}catch(ex){} postMsg('placeClick:'+i); }); })(idx);
       });
@@ -153,13 +157,13 @@ function buildNaverMapHtml(
       // 폴리라인
       if (IS_SEL) {
         var mainPts = MAIN_PATH.filter(function(p){return p.lat!==null;}).map(function(p){return new nm.LatLng(p.lat,p.lng);});
-        if (mainPts.length >= 2) new nm.Polyline({ map:map, path:mainPts, strokeColor:'#5bc770', strokeWeight:5, strokeOpacity:0.9, strokeLineCap:'round', strokeLineJoin:'round' });
+        if (mainPts.length >= 2) new nm.Polyline({ map:map, path:mainPts, strokeColor:'#3f9a5b', strokeWeight:5, strokeOpacity:1, strokeLineCap:'round', strokeLineJoin:'round' });
         // 비선택 옵션 → 점선
         PLACES.forEach(function(place) {
           if (!place.isMainPath && place.lat!==null) {
             var prevMain=null;
             for(var k=PLACES.indexOf(place)-1;k>=0;k--){ if(PLACES[k]&&PLACES[k].isMainPath&&PLACES[k].lat!==null){prevMain=PLACES[k];break;} }
-            if(prevMain) new nm.Polyline({ map:map, path:[new nm.LatLng(prevMain.lat,prevMain.lng),new nm.LatLng(place.lat,place.lng)], strokeColor:'#9ca3af', strokeWeight:3, strokeOpacity:0.6, strokeStyle:'shortdash', strokeLineCap:'round' });
+            if(prevMain) new nm.Polyline({ map:map, path:[new nm.LatLng(prevMain.lat,prevMain.lng),new nm.LatLng(place.lat,place.lng)], strokeColor:'#6b7280', strokeWeight:3, strokeOpacity:0.8, strokeStyle:'shortdash', strokeLineCap:'round' });
           }
         });
         // 뷰 맞추기
@@ -171,7 +175,7 @@ function buildNaverMapHtml(
         if(ROUTE_COORDS&&ROUTE_COORDS.length>=2) pathPts=ROUTE_COORDS.map(function(c){return new nm.LatLng(c.lat,c.lng);});
         else if(ROUTE_MODE==='full') pathPts=validPlaces.map(function(p){return new nm.LatLng(p.lat,p.lng);});
         else if(SELECTED!==null&&SELECTED>0){ var from=PLACES[SELECTED-1],to=PLACES[SELECTED]; if(from&&from.lat!==null&&to&&to.lat!==null) pathPts=[new nm.LatLng(from.lat,from.lng),new nm.LatLng(to.lat,to.lng)]; }
-        if(pathPts.length>=2) new nm.Polyline({map:map,path:pathPts,strokeColor:'#99c08e',strokeWeight:5,strokeOpacity:0.9,strokeLineCap:'round',strokeLineJoin:'round'});
+        if(pathPts.length>=2) new nm.Polyline({map:map,path:pathPts,strokeColor:'#3f9a5b',strokeWeight:5,strokeOpacity:1,strokeLineCap:'round',strokeLineJoin:'round'});
         if(ROUTE_MODE==='full'&&validPlaces.length>1){ var b=new nm.LatLngBounds(); validPlaces.forEach(function(p){b.extend(new nm.LatLng(p.lat,p.lng));}); try{map.fitBounds(b,{top:50,right:40,bottom:180,left:40});}catch(e){} }
         else if(ROUTE_MODE!=='full'&&pathPts.length>=2){ var b2=new nm.LatLngBounds(); pathPts.forEach(function(pt){b2.extend(pt);}); try{map.fitBounds(b2,{top:80,right:60,bottom:200,left:60});}catch(e){} }
         else if(SELECTED!==null&&PLACES[SELECTED]&&PLACES[SELECTED].lat!==null){ map.setCenter(new nm.LatLng(PLACES[SELECTED].lat,PLACES[SELECTED].lng)); map.setZoom(16); }
@@ -543,14 +547,12 @@ export function CourseMapModal({
                                     const info = effectiveLabelInfos?.[idx];
                                     const isMain = info ? info.isMainPath : true;
 
-                                    // 선택형 코스: View 기반 커스텀 원형 마커 (웹과 동일 — "2A"/"2B" 라벨 표시)
+                                    // 선택형 코스: View 기반 원형 마커 ("2A"/"2B" — 위 단계 버튼과 같은 라벨)
                                     if (effectiveLabelInfos) {
                                         const label = info?.label ?? String(idx + 1);
                                         const isSel = safeIndex === idx;
-                                        const SZ = 30;
-                                        const bg = isMain
-                                            ? (isSel ? "#5347AA" : "#5bc770")
-                                            : "rgba(110,110,110,0.55)";
+                                        const SZ = !isMain ? 28 : isSel ? 42 : 32;
+                                        const bg = !isMain ? "#6b7280" : isSel ? MAP_PURPLE : MARKER_GREEN;
                                         return (
                                             <NaverMapMarkerOverlay
                                                 key={`m-${idx}-${isMain ? "main" : "alt"}-${isSel ? "s" : "n"}`}
@@ -565,32 +567,29 @@ export function CourseMapModal({
                                                 <View style={[s.selMarkerCircle, {
                                                     width: SZ, height: SZ, borderRadius: SZ / 2,
                                                     backgroundColor: bg,
-                                                    opacity: isMain ? 1 : 0.75,
+                                                    opacity: isMain ? 1 : 0.9,
                                                 }]}>
-                                                    <Text style={[s.selMarkerLabel, { fontSize: 10 }]}>{label}</Text>
+                                                    <Text style={[s.selMarkerLabel, { fontSize: isSel ? 14 : 11 }]}>{label}</Text>
                                                 </View>
                                             </NaverMapMarkerOverlay>
                                         );
                                     }
 
-                                    // 일반 코스: 기존 PNG 마커
+                                    // 일반 코스: PNG 번호 마커 (scripts/generate-course-step-marker-pngs.mjs)
                                     if (effectiveRouteMode === "segment" && safeIndex !== null && safeIndex > 0) {
                                         if (idx !== safeIndex - 1 && idx !== safeIndex) return null;
                                     }
                                     const isSel = safeIndex === idx;
-                                    const pinW = isSel ? 42 : 34;
-                                    const pinH = isSel ? 42 : 34;
-                                    const stepNo = Math.min(idx + 1, 5);
-                                    const stepImgs = STEP_PIN_IMAGES[stepNo];
-                                    const markerImg = isSel ? stepImgs.selected : stepImgs.normal;
+                                    const pinSize = isSel ? 44 : 34;
+                                    const stepImgs = STEP_PIN_IMAGES[Math.min(idx + 1, 9)];
                                     return (
                                         <NaverMapMarkerOverlay
                                             key={`m-${idx}-${isSel ? "1" : "0"}`}
                                             latitude={lat}
                                             longitude={lng}
-                                            image={markerImg}
-                                            width={pinW}
-                                            height={pinH}
+                                            image={isSel ? stepImgs.selected : stepImgs.normal}
+                                            width={pinSize}
+                                            height={pinSize}
                                             anchor={{ x: 0.5, y: 1.0 }}
                                             onTap={() => handleMarkerTap(idx)}
                                             zIndex={isSel ? 100 : 10}
@@ -643,16 +642,16 @@ export function CourseMapModal({
                                     });
                                     return (
                                         <>
-                                            {mainCoords.length >= 2 && <NaverMapPolylineOverlay coords={mainCoords} width={5} color="#5bc770" joinType="Round" capType="Round" />}
+                                            {mainCoords.length >= 2 && <NaverMapPolylineOverlay coords={mainCoords} width={5} color={ROUTE_GREEN} joinType="Round" capType="Round" />}
                                             {altDashSegs.map((seg, i) => (
-                                                <NaverMapPolylineOverlay key={`dash-${i}`} coords={seg} width={3} color="rgba(140,140,140,0.65)" joinType="Round" capType="Round" />
+                                                <NaverMapPolylineOverlay key={`dash-${i}`} coords={seg} width={3} color="rgba(107,114,128,0.85)" joinType="Round" capType="Round" />
                                             ))}
                                         </>
                                     );
                                 })()}
                                 {/* 일반 코스: 기존 경로 */}
                                 {!effectiveLabelInfos && routeCoords.length >= 2 && NaverMapPolylineOverlay && (
-                                    <NaverMapPolylineOverlay coords={routeCoords} width={5} color="#99c08e" joinType="Round" capType="Round" />
+                                    <NaverMapPolylineOverlay coords={routeCoords} width={5} color={ROUTE_GREEN} joinType="Round" capType="Round" />
                                 )}
                             </NaverMapView>
                         ) : (
@@ -910,7 +909,7 @@ const s = StyleSheet.create({
         width: 32,
         height: 32,
         borderRadius: 16,
-        backgroundColor: "#99c08e",
+        backgroundColor: MARKER_GREEN,
         alignItems: "center",
         justifyContent: "center",
     },
@@ -929,7 +928,7 @@ const s = StyleSheet.create({
         shadowRadius: 6,
         ...androidShadow(4),
     },
-    mapStepTextWeb: { color: "#fff", fontWeight: "600", fontSize: 13 },
+    mapStepTextWeb: { color: "#fff", fontWeight: "800", fontSize: 13 },
     mapStepArrow: { marginHorizontal: 6, color: "#9ca3af", fontSize: 22, lineHeight: 24 },
     mapBottomSheet: {
         position: "absolute",
@@ -1006,7 +1005,7 @@ const s = StyleSheet.create({
         borderWidth: 1,
         borderColor: "rgba(255,255,255,0.4)",
     },
-    selMarkerLabel: { color: "#fff", fontWeight: "700" },
+    selMarkerLabel: { color: "#fff", fontWeight: "800" },
     mapSelectBtn: {
         height: 46,
         borderRadius: 10,

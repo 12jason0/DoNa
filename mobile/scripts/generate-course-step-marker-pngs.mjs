@@ -1,5 +1,5 @@
 /**
- * 코스 지도용 숫자 마커 생성 (1~5)
+ * 코스 지도용 숫자 마커 생성 (1~9)
  * - 웹처럼: 원형 헤드 + 꼬리 + 중앙 숫자 (깔끔한 번호 핀)
  * - iOS에서 MarkerOverlay children(Text) 렌더 이슈를 피하기 위해 PNG로 생성
  *
@@ -16,26 +16,30 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(__dirname, "..", "assets", "map-markers");
 
 const scales = [
-    { suffix: "", size: 34 },
-    { suffix: "@2x", size: 68 },
-    { suffix: "@3x", size: 102 },
+    { suffix: "", mul: 1 },
+    { suffix: "@2x", mul: 2 },
+    { suffix: "@3x", mul: 3 },
 ];
+// 논리 크기(dp) — CourseMapModal pinSize와 맞출 것
+const NORMAL_SIZE = 34;
+const SELECTED_SIZE = 44;
 
-function pinSvg({ size, n, selected }) {
+function pinSvg({ size, mul, n, selected }) {
     const base = size;
     const cx = base / 2;
 
     // 꼬리를 포함해도 정사각 캔버스 안에 들어가도록 원을 조금 위로 올리고 반지름을 줄임
-    const r = Math.round(base * 0.34);
-    const cy = Math.round(base * 0.38);
+    const r = Math.round(base * 0.36);
+    const cy = Math.round(base * 0.4);
     const tipY = Math.round(base * 0.92);
     const tailW = Math.round(base * 0.10);
 
-    const bg = selected ? "#5347AA" : "#99c08e";
-    const strokeW = Math.max(2, Math.round(base * 0.06));
+    // 흰 번호가 잘 보이도록 진한 초록 + 흰 테두리 2dp
+    const bg = selected ? "#5347AA" : "#047857";
+    const strokeW = 2 * mul;
 
     // 텍스트는 iOS에서도 일관되게 보이도록 굵게 + 중앙 정렬
-    const fontSize = Math.round(base * 0.34);
+    const fontSize = Math.round(base * 0.38);
     const textY = cy + Math.round(fontSize * 0.36);
 
     return `<?xml version="1.0" encoding="UTF-8"?>
@@ -53,8 +57,8 @@ async function genOne({ n }) {
         const normalOut = path.join(OUT, `marker-play-step-${n}${s.suffix}.png`);
         const selOut = path.join(OUT, `marker-play-step-${n}-selected${s.suffix}.png`);
 
-        const normalSvg = Buffer.from(pinSvg({ size: s.size, n, selected: false }));
-        const selSvg = Buffer.from(pinSvg({ size: s.size, n, selected: true }));
+        const normalSvg = Buffer.from(pinSvg({ size: NORMAL_SIZE * s.mul, mul: s.mul, n, selected: false }));
+        const selSvg = Buffer.from(pinSvg({ size: SELECTED_SIZE * s.mul, mul: s.mul, n, selected: true }));
 
         await sharp(normalSvg).png().toFile(normalOut);
         await sharp(selSvg).png().toFile(selOut);
@@ -63,7 +67,7 @@ async function genOne({ n }) {
 
 async function main() {
     fs.mkdirSync(OUT, { recursive: true });
-    for (let n = 1; n <= 5; n++) {
+    for (let n = 1; n <= 9; n++) {
         await genOne({ n });
         console.log("wrote step markers", n);
     }

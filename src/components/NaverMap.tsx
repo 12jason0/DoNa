@@ -342,7 +342,7 @@ export default function NaverMapComponent({
                 path: totalPath,
                 strokeColor: "#5347AA",
                 strokeWeight: 6,
-                strokeOpacity: 0.8,
+                strokeOpacity: 0.95,
                 strokeLineCap: "round",
                 strokeLineJoin: "round",
             });
@@ -371,9 +371,9 @@ export default function NaverMapComponent({
             return new maps.Polyline({
                 map: mapRef.current,
                 path: [new maps.LatLng(from.lat, from.lng), new maps.LatLng(to.lat, to.lng)],
-                strokeColor: "#9ca3af",
+                strokeColor: "#6b7280",
                 strokeWeight: 4,
-                strokeOpacity: 0.5,
+                strokeOpacity: 0.75,
                 strokeLineCap: "round",
                 strokeLineJoin: "round",
                 strokeStyle: "shortdash",
@@ -425,20 +425,17 @@ export default function NaverMapComponent({
 
                 const variant = p.markerVariant ?? "confirmed";
                 const isFaded = variant === "candidate";
-                const bg = isSelected ? "#5347AA" : isFaded ? "rgba(107,114,128,0.6)" : "#99c08e";
-                const size = 42;
+                // 흰 번호가 잘 보이도록 진한 초록, 선택 장소는 크게
+                const bg = isSelected ? "#5347AA" : isFaded ? "#6b7280" : "#047857";
+                const size = isSelected ? 50 : isFaded ? 36 : 40;
 
                 const ord = p.orderIndex ?? (p as { order_index?: number }).order_index;
-                const showNum = !isFaded && numberedMarkers && ord != null;
-                const label = isFaded
-                    ? (numberedMarkers && ord != null ? `${ord + 1}B` : "?")
-                    : showNum
-                      ? String(ord + 1)
-                      : "📍";
-                const fontSize = isFaded ? (label.length > 1 ? 12 : 16) : showNum ? 14 : 20;
+                const showNum = numberedMarkers && ord != null;
+                const label = showNum ? (p.markerLabel ?? String(ord + 1)) : isFaded ? "?" : "📍";
+                const fontSize = showNum ? (label.length > 1 ? (isSelected ? 16 : 13) : isSelected ? 19 : 15) : 18;
 
                 return {
-                    content: `<div style="width:${size}px;height:${size}px;background:${bg};border:3px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;opacity:${isFaded ? 0.7 : 1}"><div style="transform:rotate(45deg);font-size:${fontSize}px;font-weight:700;color:white;${showNum || (isFaded && label !== "?") ? "text-shadow:0 1px 2px rgba(0,0,0,0.3);" : ""}">${label}</div></div>`,
+                    content: `<div style="width:${size}px;height:${size}px;background:${bg};border:2px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.3);opacity:${isFaded ? 0.9 : 1}"><div style="transform:rotate(45deg);font-size:${fontSize}px;font-weight:800;color:white;">${label}</div></div>`,
                     anchor: new maps.Point(size / 2, size),
                 };
             } catch (error) {

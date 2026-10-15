@@ -3,7 +3,7 @@ import type { PlaceStatus as CoursePlaceOpenStatus } from "../../../../src/lib/p
 export const MAP_PURPLE = "#5347AA";
 export const NAVER_BTN_GRAY = "#9ca3af";
 
-// --- 코스 지도 핀 (iOS 안정성 위해 PNG 이미지 마커로 사용: 1~5) ---
+// --- 코스 지도 핀 (iOS 안정성 위해 PNG 이미지 마커로 사용: 1~9, 10번째부터는 9) ---
 export const STEP_PIN_IMAGES: Record<number, { normal: number; selected: number }> = {
     1: {
         normal: require("../../../assets/map-markers/marker-play-step-1.png"),
@@ -24,6 +24,22 @@ export const STEP_PIN_IMAGES: Record<number, { normal: number; selected: number 
     5: {
         normal: require("../../../assets/map-markers/marker-play-step-5.png"),
         selected: require("../../../assets/map-markers/marker-play-step-5-selected.png"),
+    },
+    6: {
+        normal: require("../../../assets/map-markers/marker-play-step-6.png"),
+        selected: require("../../../assets/map-markers/marker-play-step-6-selected.png"),
+    },
+    7: {
+        normal: require("../../../assets/map-markers/marker-play-step-7.png"),
+        selected: require("../../../assets/map-markers/marker-play-step-7-selected.png"),
+    },
+    8: {
+        normal: require("../../../assets/map-markers/marker-play-step-8.png"),
+        selected: require("../../../assets/map-markers/marker-play-step-8-selected.png"),
+    },
+    9: {
+        normal: require("../../../assets/map-markers/marker-play-step-9.png"),
+        selected: require("../../../assets/map-markers/marker-play-step-9-selected.png"),
     },
 };
 
