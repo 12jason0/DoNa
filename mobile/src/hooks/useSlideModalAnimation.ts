@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Animated, Dimensions, Easing } from "react-native";
+import { Animated, Dimensions, Easing, Platform } from "react-native";
 
 const SCREEN_H = Dimensions.get("window").height;
 
@@ -54,6 +54,13 @@ export function useSlideModalAnimation(visible: boolean, slideDistance: number =
             });
         } else {
             setSheetReady(false);
+            // 안드로이드: 투명 Modal은 별도 창이라 닫힘 애니메이션 동안 아래 화면 탭을 먹음 (설정 버튼 2~3번 눌러야 열림) → 바로 내림
+            if (Platform.OS === "android") {
+                translateY.stopAnimation();
+                backdropOpacity.stopAnimation();
+                setRendered(false);
+                return;
+            }
             Animated.parallel([
                 Animated.timing(translateY, {
                     toValue: dist,
