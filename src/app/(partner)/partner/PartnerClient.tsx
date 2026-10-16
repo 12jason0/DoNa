@@ -164,16 +164,24 @@ function InquiryForm() {
 const PRETENDARD_CSS =
     "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css";
 
+export type HeroPhoto = { src: string; region: string };
+
+// 섹션 간격: 모바일 72px, PC 120px. 2단 기준은 md(768px) 하나
+const SECTION = "mx-auto max-w-6xl px-5 py-[72px] md:py-[120px]";
+
 export default function PartnerClient({
     course,
     instagramImage,
+    heroPhotos,
     business,
 }: {
     course: PartnerCourse | null;
     instagramImage: string | null;
+    heroPhotos: HeroPhoto[];
     business: { title: string; lines: string[] };
 }) {
-    const formRef = useRef<HTMLDivElement>(null);
+    const formRef = useRef<HTMLElement>(null);
+    const scrollToForm = () => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
     return (
         <div
@@ -190,7 +198,7 @@ export default function PartnerClient({
                     </Link>
                     <button
                         type="button"
-                        onClick={() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                        onClick={scrollToForm}
                         style={{ backgroundColor: GREEN }}
                         className="h-9 rounded-xl px-4 text-sm font-semibold text-white"
                     >
@@ -199,58 +207,86 @@ export default function PartnerClient({
                 </div>
             </header>
 
-            {/* 2. 첫 화면: PC 왼쪽 제목·설명·코스 카드 / 오른쪽 폼, 모바일 제목 → 폼 → 코스 카드 */}
-            <section className="mx-auto grid max-w-6xl gap-10 px-5 pt-12 pb-20 lg:grid-cols-2 lg:gap-x-16 lg:gap-y-10 lg:pt-20">
-                <div className="lg:col-start-1">
-                    <h1 className="text-[28px] font-bold leading-tight tracking-tight lg:text-[40px]">두나 광고·제휴</h1>
+            {/* 2. 첫 화면: 왼쪽 제목·설명·버튼 / 오른쪽 코스 사진 2x2 */}
+            <section className={`${SECTION} grid items-center gap-12 md:grid-cols-2 md:gap-14`}>
+                <div>
+                    <h1 className="text-[28px] font-bold leading-tight tracking-tight md:text-[40px]">두나 광고·제휴</h1>
                     <p className="mt-5 text-base leading-relaxed text-gray-600">
-                        두나는 서울 데이트 코스를 추천하는 앱·웹 서비스이고, 인스타그램 @dona.date를 운영해요.
-                        <br className="hidden sm:block" /> 팝업·가게·브랜드를 두나의 데이트 코스와 인스타그램에 소개할 수 있어요.
+                        두나는 서울 데이트 코스를 추천하는 앱·웹 서비스이고, 인스타그램 @dona.date를 운영해요. 팝업·가게·브랜드를
+                        두나의 데이트 코스와 인스타그램에 소개할 수 있어요.
                     </p>
-                    <a href={INSTAGRAM_URL} target="_blank" rel="noreferrer" className="mt-5 inline-block text-base font-semibold text-gray-900 hover:underline">
-                        인스타그램 보기 →
-                    </a>
+                    <div className="mt-8 flex flex-wrap gap-3">
+                        <button
+                            type="button"
+                            onClick={scrollToForm}
+                            style={{ backgroundColor: GREEN }}
+                            className="h-12 rounded-xl px-6 text-base font-semibold text-white"
+                        >
+                            문의하기
+                        </button>
+                        <a
+                            href={INSTAGRAM_URL}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex h-12 items-center rounded-xl border border-gray-300 px-6 text-base font-semibold text-gray-900"
+                        >
+                            인스타그램 보기
+                        </a>
+                    </div>
                 </div>
-                <div
-                    ref={formRef}
-                    className="scroll-mt-20 self-start rounded-2xl border border-gray-200 bg-white p-6 sm:p-8 lg:col-start-2 lg:row-span-2 lg:row-start-1"
-                >
-                    <InquiryForm />
-                </div>
-                {course && (
-                    <div className="lg:col-start-1">
-                        <div className="flex justify-center rounded-2xl bg-[#F5F6F7] dark:bg-[#0f1710] px-6 pt-8 pb-5">
-                            <div className="w-full max-w-[340px]">
-                                <CourseCard course={course} showNewBadge={false} />
-                            </div>
-                        </div>
-                        <p className="mt-3 text-sm text-gray-500">두나 앱·웹의 실제 데이트 코스 화면</p>
+                {heroPhotos.length > 0 && (
+                    <div className="grid grid-cols-2 gap-4">
+                        {heroPhotos.map((ph) => (
+                            <figure key={ph.src}>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                    src={ph.src}
+                                    alt={`${ph.region} 데이트 코스`}
+                                    className="aspect-square w-full rounded-xl bg-[#F5F6F7] object-cover"
+                                />
+                                <figcaption className="mt-2 text-sm text-gray-500">{ph.region}</figcaption>
+                            </figure>
+                        ))}
                     </div>
                 )}
             </section>
 
-            {/* 3. 소개되는 곳: 인스타 게시물 이미지 있을 때만 */}
-            {instagramImage && (
-                <section className="mx-auto max-w-6xl px-5 pb-24">
-                    <p className="text-sm font-semibold text-emerald-600">소개되는 곳</p>
-                    <h2 className="mt-2 text-2xl font-bold tracking-tight lg:text-[28px]">인스타그램 @dona.date</h2>
-                    <div className="mt-8 overflow-hidden rounded-2xl border border-gray-200 sm:flex">
-                        <div className="flex justify-center bg-[#F5F6F7] p-6 sm:w-2/5 sm:p-8">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={instagramImage} alt="두나 인스타그램 게시물" className="w-full max-w-[320px] rounded-xl" />
+            {/* 3. 소개되면 이렇게 보여요: 코스 카드 + 인스타 캡처(파일 없으면 그 카드만 숨기고 코스 카드 가운데) */}
+            {course && (
+                <section className={`${SECTION} border-t border-gray-100`}>
+                    <h2 className="text-2xl font-bold tracking-tight md:text-[28px]">두나에 소개되면 이렇게 보여요</h2>
+                    <div className={`mt-10 grid gap-6 ${instagramImage ? "md:grid-cols-2" : "mx-auto max-w-[440px]"}`}>
+                        <div className="overflow-hidden rounded-2xl border border-gray-200">
+                            <div className="flex justify-center bg-[#F5F6F7] px-6 pt-8 pb-4 dark:bg-[#0f1710]">
+                                <div className="w-full max-w-[340px]">
+                                    <CourseCard course={course} showNewBadge={false} />
+                                </div>
+                            </div>
+                            <p className="px-6 py-4 text-base text-gray-600">두나 앱·웹의 데이트 코스 속 장소로 소개돼요.</p>
                         </div>
-                        <div className="flex flex-col justify-center p-6 sm:p-10">
-                            <p className="text-lg font-bold text-gray-900">두나 공식 인스타그램 게시물</p>
-                            <p className="mt-2 text-base leading-relaxed text-gray-600">
-                                팝업·가게·브랜드가 두나 인스타그램 게시물로 소개돼요.
-                            </p>
-                            <a href={INSTAGRAM_URL} target="_blank" rel="noreferrer" className="mt-5 text-base font-semibold text-gray-900 hover:underline">
-                                인스타그램 보기 →
-                            </a>
-                        </div>
+                        {instagramImage && (
+                            <div className="overflow-hidden rounded-2xl border border-gray-200">
+                                <div className="flex justify-center bg-[#F5F6F7] px-6 pt-8 pb-6">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={instagramImage} alt="두나 인스타그램 게시물" className="w-full max-w-[340px] rounded-xl" />
+                                </div>
+                                <p className="px-6 py-4 text-base text-gray-600">인스타그램 @dona.date 게시물로 소개돼요.</p>
+                            </div>
+                        )}
                     </div>
                 </section>
             )}
+
+            {/* 4. 문의 폼 */}
+            <section ref={formRef} className={`${SECTION} scroll-mt-14 border-t border-gray-100`}>
+                <div className="mx-auto max-w-[560px]">
+                    <h2 className="text-center text-2xl font-bold tracking-tight md:text-[28px]">문의하기</h2>
+                    <p className="mt-3 text-center text-base text-gray-600">보내주시면 확인 후 연락드릴게요.</p>
+                    <div className="mt-10 rounded-2xl border border-gray-200 bg-white p-6 sm:p-8">
+                        <InquiryForm />
+                    </div>
+                </div>
+            </section>
 
             {/* 5. 푸터: 사이트 사업자 정보 그대로 */}
             <footer className="bg-[#F5F6F7]">

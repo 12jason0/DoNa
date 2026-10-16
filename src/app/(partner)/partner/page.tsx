@@ -4,7 +4,7 @@ import path from "node:path";
 import prisma from "@/lib/db";
 import { getS3StaticUrlForMetadata } from "@/lib/s3StaticUrl";
 import ko from "@/i18n/messages/ko/translation.json";
-import PartnerClient, { type PartnerCourse } from "./PartnerClient";
+import PartnerClient, { type HeroPhoto, type PartnerCourse } from "./PartnerClient";
 
 // 앱 레이아웃((home)/layout) 밖이라 아이콘·OG를 여기서 직접 지정 (홈과 같은 로고)
 const logoUrl = getS3StaticUrlForMetadata("logo/donalogo_512.png");
@@ -34,6 +34,8 @@ export const revalidate = 3600;
 /** "소개되는 곳" 카드에 실제 CourseCard로 보여줄 코스 */
 const SHOWCASE_COURSE_ID = 6;
 const INSTAGRAM_IMAGE = "/partner/instagram.png";
+/** 첫 화면 2x2 사진: 직접 찍은 사진이 대표 이미지인 코스 4개 (순서대로) */
+const HERO_COURSE_IDS: number[] = [];
 
 /** /api/courses 목록과 같은 모양으로 맞춤 (CourseCard 입력) */
 async function getShowcaseCourse(): Promise<PartnerCourse | null> {
@@ -110,11 +112,29 @@ const BUSINESS = {
     ].map(([label, value]) => `${label} ${value}`),
 };
 
+async function getHeroPhotos(): Promise<HeroPhoto[]> {
+    if (HERO_COURSE_IDS.length === 0) return [];
+    try {
+        const rows = await prisma.course.findMany({
+            where: { id: { in: HERO_COURSE_IDS }, isPublic: true, imageUrl: { not: null } },
+            select: { id: true, imageUrl: true, region: true },
+        });
+        return HERO_COURSE_IDS.flatMap((id) => {
+            const r = rows.find((x) => x.id === id);
+            return r?.imageUrl ? [{ src: r.imageUrl, region: r.region || "" }] : [];
+        });
+    } catch (e) {
+        console.error("/partner 사진 조회 실패:", e);
+        return [];
+    }
+}
+
 export default async function PartnerPage() {
     const hasInstagramImage = fs.existsSync(path.join(process.cwd(), "public", INSTAGRAM_IMAGE));
     return (
         <PartnerClient
             course={await getShowcaseCourse()}
+            heroPhotos={await getHeroPhotos()}
             instagramImage={hasInstagramImage ? INSTAGRAM_IMAGE : null}
             business={BUSINESS}
         />
