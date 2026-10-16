@@ -437,6 +437,8 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
         i18n(`personalizedHome.${ANALYSIS_KEY_CYCLE[0]}`),
     );
     const [courses, setCourses] = useState<Course[]>([]);
+    // 추천이 전부 잠긴 유료 코스일 때 서버가 붙여 주는 무료 코스 1개 ("결제 없이 먼저 써보기")
+    const [freeTrial, setFreeTrial] = useState<Course | null>(null);
     const [progress, setProgress] = useState(0);
     const [revealedCards, setRevealedCards] = useState<Record<string, boolean>>({});
     const [detailCourse, setDetailCourse] = useState<Course | null>(null);
@@ -463,6 +465,7 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
         setAnswers({});
         setIsComplete(false);
         setCourses([]);
+        setFreeTrial(null);
         setRevealedCards({});
         setCurrentQ(flow[0]);
         setProgress(0);
@@ -515,6 +518,7 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
             setIsAnalyzing(true);
             let fetchedCourses: Course[] = [];
             let regionNotice = "";
+            setFreeTrial(null);
             try {
                 // 1순위: /api/recommendations (모든 답변 전달 → AI 매칭)
                 const recParams = new URLSearchParams({
@@ -531,6 +535,7 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
                     const recommendations = recResult?.recommendations;
                     if (Array.isArray(recommendations) && recommendations.length > 0) {
                         fetchedCourses = recommendations;
+                        setFreeTrial(recResult?.freeTrial ?? null);
                         const fb = recResult?.regionFallback as { requested: string; used: string | null } | null;
                         if (fb) {
                             const label = (v: string) =>
@@ -574,6 +579,7 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
                 setCourses(fetchedCourses);
             } catch {
                 setCourses([]);
+        setFreeTrial(null);
             } finally {
                 setAnalysisDone(true); // 오버레이에서 100% 채운 뒤 onDone으로 isAnalyzing=false
                 setIsComplete(true);
@@ -605,6 +611,7 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
         setAnswers({});
         setIsComplete(false);
         setCourses([]);
+        setFreeTrial(null);
         setRevealedCards({});
         setCurrentQ(flow[0]);
         setProgress(0);
@@ -698,6 +705,22 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
                                     i18n={i18n}
                                 />
                             ))}
+                            {freeTrial && (
+                                <>
+                                    <Text style={[s.resultsTitle, { color: t.text, marginTop: 8 }]}>
+                                        {i18n("personalizedHome.freeTrialTitle")}
+                                    </Text>
+                                    <ResultCard
+                                        course={freeTrial}
+                                        nickname={nickname}
+                                        isRevealed={!!revealedCards[String(freeTrial.id)]}
+                                        onReveal={() => setRevealedCards((prev) => ({ ...prev, [String(freeTrial.id)]: true }))}
+                                        onDetail={(course) => setDetailCourse(course)}
+                                        onSelect={(course) => setConfirmCourse(course)}
+                                        i18n={i18n}
+                                    />
+                                </>
+                            )}
                         </View>
                     )}
 

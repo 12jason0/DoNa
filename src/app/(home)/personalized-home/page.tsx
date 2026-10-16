@@ -252,6 +252,8 @@ const AIRecommender = () => {
     const [currentQuestion, setCurrentQuestion] = useState<Question>(questionFlow[0]);
     const [userAnswers, setUserAnswers] = useState<Record<string, string>>({});
     const [recommendedCourses, setRecommendedCourses] = useState<Course[]>([]);
+    // 추천이 전부 잠긴 유료 코스일 때 서버가 붙여 주는 무료 코스 1개 ("결제 없이 먼저 써보기")
+    const [freeTrialCourse, setFreeTrialCourse] = useState<Course | null>(null);
     const [isTyping, setIsTyping] = useState(false);
     const [showRecommendations, setShowRecommendations] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
@@ -487,6 +489,7 @@ const AIRecommender = () => {
         setCurrentQuestion(questionFlow[0]);
         setUserAnswers({});
         setRecommendedCourses([]);
+        setFreeTrialCourse(null);
         setShowRecommendations(false);
         setProgress(0);
         setShowUpsell(false);
@@ -650,6 +653,7 @@ const AIRecommender = () => {
 
     const generateRecommendations = async (answers: Record<string, string>) => {
         let hadNetworkError = false;
+        setFreeTrialCourse(null);
         const buildList = (rows: any[]): Course[] =>
             (rows || []).map((c: any) => {
                 const firstPlaceImage = c.coursePlaces?.[0]?.place?.imageUrl;
@@ -769,6 +773,8 @@ const AIRecommender = () => {
                 const recommendations = (data as any)?.recommendations;
                 const upsell = (data as any)?.upsellFor;
                 const userTier = (data as any)?.userTier || "FREE";
+                const ft = (data as any)?.freeTrial;
+                setFreeTrialCourse(ft ? buildList([ft])[0] ?? null : null);
                 if (recommendations && Array.isArray(recommendations)) {
                     list = buildList(recommendations);
                     // 🟢 자동 저장 제거: 저장은 '코스 시작하기' 클릭 시에만 수행
@@ -831,6 +837,7 @@ const AIRecommender = () => {
         setCurrentQuestion(questionFlow[0]);
         setUserAnswers({});
         setRecommendedCourses([]);
+        setFreeTrialCourse(null);
         setShowRecommendations(false);
         setProgress(0);
         setShowUpsell(false);
@@ -1797,6 +1804,14 @@ const AIRecommender = () => {
                                                         <FlipCard key={course.id} course={course} />
                                                     ))}
                                                 </div>
+                                                {freeTrialCourse && (
+                                                    <div className="mt-6 relative z-20">
+                                                        <p className="mb-3 px-1 text-sm font-bold text-gray-700 dark:text-gray-300">
+                                                            {t("personalizedHome.freeTrialTitle")}
+                                                        </p>
+                                                        <FlipCard course={freeTrialCourse} />
+                                                    </div>
+                                                )}
                                                 <div className="h-20" />
                                             </>
                                         ) : (

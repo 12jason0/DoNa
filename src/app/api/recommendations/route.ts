@@ -1547,8 +1547,52 @@ export async function GET(req: NextRequest) {
                 .catch((err: unknown) => console.error("AiRecommendationUsage create 실패:", err));
         }
 
+        const lockedRecs = await lockRecs(recommendationsWithChips);
+
+        // 🟢 AI 추천이 전부 잠긴 유료 코스면 "결제 없이 먼저 써보기" 무료 코스 1개
+        // 고른 관계가 대상에 들어간 FREE 코스, 고른 지역 우선. 없으면 안 붙임
+        let freeTrial: any = null;
+        if (mode === "ai" && companionToday && lockedRecs.length > 0 && lockedRecs.every((c: any) => c.isLocked)) {
+            const target = companionToday.replace(/\s*상대$/, ""); // "썸 상대" → "썸", "소개팅 상대" → "소개팅"
+            const pool: any[] = await (prisma as any).course.findMany({
+                where: {
+                    isPublic: true,
+                    grade: "FREE",
+                    id: { notIn: [...lockedRecs.map((c: any) => Number(c.id)), ...badCourseIds] },
+                    AND: [notExpiredCourseWhere()],
+                },
+                orderBy: { id: "desc" },
+                take: 200,
+                select: courseSelect,
+            });
+            const matches = pool.filter((c: any) => {
+                const targets = parseCourseTargetAudience(c.target_audience);
+                if (!targets.includes(target)) return false;
+                // 기념일이면 위 추천 필터와 같게 혼자·가족·친구 붙은 코스는 뺌
+                return !isAnniversaryGoal || !targets.some((t) => ["혼자", "가족", "친구"].includes(t));
+            });
+            const requestedRegion = searchParams.get("region_today") || "";
+            const kws = requestedRegion ? regionTodayKeywords(requestedRegion) : [];
+            const pick =
+                matches.find((c: any) => kws.some((k) => String(c.region || "").includes(k))) ?? matches[0];
+            if (pick) {
+                freeTrial = {
+                    ...pick,
+                    id: String(pick.id),
+                    imageUrl: pick.imageUrl || pick.coursePlaces?.[0]?.place?.imageUrl || "",
+                    chips: getChips(
+                        { region: pick.region, concept: pick.concept, mood: pick.mood, goal: pick.goal, coursePlaces: pick.coursePlaces },
+                        chipContext,
+                        3,
+                    ),
+                    isLocked: false,
+                };
+            }
+        }
+
         return NextResponse.json({
-            recommendations: await lockRecs(recommendationsWithChips),
+            recommendations: lockedRecs,
+            freeTrial,
             hasOnboardingData: hasOnboardingData,
             hasLongTermPreferences,
             upsellFor: upsellFor,
