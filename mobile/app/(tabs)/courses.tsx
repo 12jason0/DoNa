@@ -35,7 +35,6 @@ import {
     translateDuration,
     type CourseUiLocale,
 } from "../../../src/lib/courseTranslate";
-import { pickHeroByGrade } from "../../../src/lib/courseListOrder";
 
 const SCREEN_W = Dimensions.get('window').width;
 
@@ -338,10 +337,14 @@ export default function CoursesScreen() {
 
     const courses = useMemo(() => data?.pages.flat() ?? [], [data?.pages]);
 
-    // 히어로: 별도 API 호출 없이 전체 목록 첫 페이지(20개)에서 뽑음. 필터 중엔 히어로를 안 보여줌
-    const heroRaw = activeConcept ? undefined : data?.pages[0];
-    // 무료 → 베이직 → 베이직 → 프리미엄 → 무료, 모자라면 다른 등급으로 (같은 코스 두 번 X, 웹과 공통)
-    const heroData = React.useMemo(() => (heroRaw ? pickHeroByGrade(heroRaw) : []), [heroRaw]);
+    // 히어로 "지금 많이 선택한 코스": 서버가 고름 (최근 30일 고유 회원 수, 모자라면 등급 섞기 — 웹과 같은 함수)
+    const { data: heroData = [] } = useQuery<Course[]>({
+        queryKey: ["courses-hero"],
+        queryFn: async () => {
+            const r = await api.get<{ data?: Course[] }>("/api/courses?hero=1");
+            return r?.data ?? [];
+        },
+    });
 
     const favIdsRef = useRef(favIds);
     useEffect(() => { favIdsRef.current = favIds; }, [favIds]);
@@ -386,9 +389,14 @@ export default function CoursesScreen() {
                             onLockedPress={(c) => openModal("ticket", {
                                 courseId: c.id,
                                 courseGrade: c.grade === "PREMIUM" ? "PREMIUM" : "BASIC",
-                                onUnlocked: () => queryClient.setQueryData<InfiniteData<Course[]>>(["courses-list", ""], (old) =>
-                                    old && { ...old, pages: old.pages.map((page) => page.map((item) => (item.id === c.id ? { ...item, isLocked: false } : item))) }
-                                ),
+                                onUnlocked: () => {
+                                    queryClient.setQueryData<InfiniteData<Course[]>>(["courses-list", ""], (old) =>
+                                        old && { ...old, pages: old.pages.map((page) => page.map((item) => (item.id === c.id ? { ...item, isLocked: false } : item))) }
+                                    );
+                                    queryClient.setQueryData<Course[]>(["courses-hero"], (old) =>
+                                        old?.map((item) => (item.id === c.id ? { ...item, isLocked: false } : item))
+                                    );
+                                },
                             })}
                             onLoginRequired={() => openModal("login")}
                         />
