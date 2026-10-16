@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import prisma from "@/lib/db";
 import { captureApiError } from "@/lib/sentry";
 import { checkRateLimit, getIdentifierFromRequest } from "@/lib/rateLimit";
@@ -8,7 +8,7 @@ import { INQUIRY_TYPES, type InquiryType } from "@/lib/partnerInquiry";
 
 const str = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 
-/** 제휴·광고 문의 접수 → DB 저장 + 텔레그램 알림 (로그인 불필요) */
+/** 제휴·광고 문의 접수 → DB 저장 후 바로 응답, 텔레그램 알림은 응답 뒤 (로그인 불필요) */
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json().catch(() => ({}));
@@ -48,7 +48,8 @@ export async function POST(req: NextRequest) {
             "",
             `관리자: ${siteUrl}/admin/partner?id=${row.id}`,
         ].join("\n");
-        await Promise.all(telegramAdminIds().map((id) => sendTelegram(id, text)));
+        // 응답 먼저 보내고 알림은 뒤에. 실패해도 문의는 이미 저장됨
+        after(() => Promise.all(telegramAdminIds().map((id) => sendTelegram(id, text))));
 
         return NextResponse.json({ ok: true });
     } catch (error) {
