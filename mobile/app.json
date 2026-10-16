@@ -27,7 +27,7 @@
       "backgroundColor": "#6db48c",
       "supportsTablet": false,
       "bundleIdentifier": "kr.io.dona.dona",
-      "buildNumber": "57",
+      "buildNumber": "58",
       "usesAppleSignIn": true,
       "userInterfaceStyle": "light",
       "associatedDomains": [
@@ -53,7 +53,7 @@
         "backgroundColor": "#6db48c"
       },
       "package": "kr.io.dona.dona",
-      "versionCode": 76,
+      "versionCode": 77,
       "userInterfaceStyle": "light",
       "googleServicesFile": "./google-services.json",
       "permissions": [
