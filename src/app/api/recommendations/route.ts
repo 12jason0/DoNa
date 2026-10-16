@@ -1567,7 +1567,9 @@ export async function GET(req: NextRequest) {
             });
             const matches = pool.filter((c: any) => {
                 const targets = parseCourseTargetAudience(c.target_audience);
-                if (!targets.includes(target)) return false;
+                // 소개팅은 대상에 "소개팅"이 거의 없어 "썸" 코스도 인정
+                const accepted = target === "소개팅" ? ["소개팅", "썸"] : [target];
+                if (!targets.some((t) => accepted.includes(t))) return false;
                 // 기념일이면 위 추천 필터와 같게 혼자·가족·친구 붙은 코스는 뺌
                 return !isAnniversaryGoal || !targets.some((t) => ["혼자", "가족", "친구"].includes(t));
             });
