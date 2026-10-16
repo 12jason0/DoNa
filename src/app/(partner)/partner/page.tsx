@@ -2,13 +2,31 @@ import type { Metadata } from "next";
 import fs from "node:fs";
 import path from "node:path";
 import prisma from "@/lib/db";
+import { getS3StaticUrlForMetadata } from "@/lib/s3StaticUrl";
 import ko from "@/i18n/messages/ko/translation.json";
 import PartnerClient, { type PartnerCourse } from "./PartnerClient";
 
+// 앱 레이아웃((home)/layout) 밖이라 아이콘·OG를 여기서 직접 지정 (홈과 같은 로고)
+const logoUrl = getS3StaticUrlForMetadata("logo/donalogo_512.png");
+const TITLE = "두나 광고·제휴";
+const DESCRIPTION = "서울 데이트 코스 추천 앱·웹 두나와 인스타그램 @dona.date에 팝업·가게·브랜드를 소개하는 광고·제휴 문의 페이지예요.";
+
 export const metadata: Metadata = {
-    title: "두나 광고·제휴",
-    description: "서울 데이트 코스 추천 앱·웹 두나와 인스타그램 @dona.date에 팝업·가게·브랜드를 소개하는 광고·제휴 문의 페이지예요.",
+    metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://dona.io.kr"),
+    title: TITLE,
+    description: DESCRIPTION,
     alternates: { canonical: "/partner" },
+    openGraph: {
+        type: "website",
+        siteName: "DoNa",
+        locale: "ko_KR",
+        url: "/partner",
+        title: TITLE,
+        description: DESCRIPTION,
+        images: [{ url: logoUrl, width: 512, height: 512, alt: "DoNa Logo" }],
+    },
+    twitter: { card: "summary", title: TITLE, description: DESCRIPTION, images: [logoUrl] },
+    icons: { icon: logoUrl, apple: logoUrl, shortcut: logoUrl },
 };
 
 export const revalidate = 3600;
