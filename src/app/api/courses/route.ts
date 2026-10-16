@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { composeHotHero, getHotCourseIds } from "@/lib/hotCourses";
 import { notExpiredCourseWhere } from "@/lib/placePeriod";
 import { interleaveByGrade, MAX_LIST_COURSES } from "@/lib/courseListOrder";
 import prisma from "@/lib/db";
@@ -27,6 +28,7 @@ export async function GET(request: NextRequest) {
         const imagePolicyParam = searchParams.get("imagePolicy");
         const gradeParam = searchParams.get("grade");
         const timeOfDayParam = (searchParams.get("timeOfDay") || "").trim();
+        const heroParam = searchParams.get("hero") === "1"; // "지금 많이 선택한 코스" 5개 (앱)
         const timeOfDay: "점심" | "저녁" | "야간" | null =
             timeOfDayParam === "점심" || timeOfDayParam === "저녁" || timeOfDayParam === "야간"
                 ? timeOfDayParam
@@ -199,6 +201,10 @@ export async function GET(request: NextRequest) {
                 sortCoursesByTimeMatch(ordered, timeOfDay);
                 cached = ordered.map(formatCourse).filter(Boolean);
                 if (!noCache) await defaultCache.set(cacheKey, cached);
+            }
+            if (heroParam) {
+                const hero = composeHotHero(cached!, await getHotCourseIds().catch(() => []));
+                return NextResponse.json({ data: withLock(hero), isRecommendation: false });
             }
             const finalData = withLock(cached!.slice(effectiveOffset, effectiveOffset + effectiveLimit));
             return NextResponse.json({ data: finalData, isRecommendation: false });

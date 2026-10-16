@@ -1,5 +1,6 @@
 import { Suspense } from "react";
-import { interleaveByGrade, pickHeroByGrade, MAX_LIST_COURSES } from "@/lib/courseListOrder";
+import { interleaveByGrade, MAX_LIST_COURSES } from "@/lib/courseListOrder";
+import { composeHotHero, getHotCourseIds } from "@/lib/hotCourses";
 import CoursesClient from "./CoursesClient";
 import { notExpiredCourseWhere } from "@/lib/placePeriod";
 import prisma from "@/lib/db";
@@ -52,7 +53,7 @@ function mapRowToHeroItem(c: {
     };
 }
 
-/** "지금 많이 선택한 코스" — 앱과 같은 방식: 기본 목록 순서(최신순·등급 섞기) 첫 20개에서 무료 → 베이직 → 베이직 → 프리미엄 → 무료 */
+/** "지금 많이 선택한 코스" — 최근 30일 고유 회원 수 상위, 모자라면 등급 섞기로 채움 (앱 /api/courses?hero=1과 같은 composeHotHero) */
 const getHeroCourses = unstable_cache(
     async (): Promise<HeroSliderItem[]> => {
         try {
@@ -77,13 +78,13 @@ const getHeroCourses = unstable_cache(
                     },
                 },
             });
-            const firstPage = interleaveByGrade(rows).slice(0, 20);
-            return pickHeroByGrade(firstPage).map((c) => mapRowToHeroItem(c as any));
+            const hero = composeHotHero(interleaveByGrade(rows), await getHotCourseIds().catch(() => []));
+            return hero.map((c) => mapRowToHeroItem(c as any));
         } catch {
             return [];
         }
     },
-    ["hero-courses-v2"],
+    ["hero-courses-v3"],
     { revalidate: 300, tags: ["hero-courses"] }
 );
 
