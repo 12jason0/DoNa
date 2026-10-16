@@ -72,8 +72,9 @@ export interface CourseCardProps {
         placesCount?: number; // 🟢 [Fix]: API에서 전달받은 장소 개수
     };
     isPriority?: boolean;
-    onToggleFavorite: (e: React.MouseEvent, courseId: string | number) => void;
-    isFavorite: boolean;
+    /** 없으면 하트 버튼을 숨김 (예: /partner 미리보기) */
+    onToggleFavorite?: (e: React.MouseEvent, courseId: string | number) => void;
+    isFavorite?: boolean;
     hasClosedPlace?: (course: any) => boolean;
     getClosedPlaceCount?: (course: any) => number;
     showNewBadge?: boolean;
@@ -270,6 +271,7 @@ const CourseCard = memo(
                 </div>
 
                 {/* 좋아요 버튼 */}
+                {onToggleFavorite && (
                 <button
                     onClick={(e) => {
                         e.preventDefault();
@@ -294,6 +296,7 @@ const CourseCard = memo(
                         />
                     </svg>
                 </button>
+                )}
 
                 {/* 정보 섹션 */}
                 <div className="px-1 pt-1">

@@ -9,7 +9,7 @@ export type PartnerCourse = CourseCardProps["course"];
 
 const INSTAGRAM_URL = "https://www.instagram.com/dona.date";
 const GREEN = "#1a3a2e";
-// Pretendard 있으면 쓰고, 없으면 관리자 화면 폰트(.admin-system-font)
+// Pretendard(아래 PRETENDARD_CSS로 로드), 실패 시 관리자 화면 폰트(.admin-system-font)
 const FONT_STACK =
     '"Pretendard Variable", Pretendard, system-ui, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif';
 
@@ -160,20 +160,9 @@ function InquiryForm() {
     );
 }
 
-/** 당근비즈니스 상품 카드식: 위 연회색 화면 영역 + 아래 제목·설명 */
-function PlaceCard({ title, desc, href, preview }: { title: string; desc: string; href: string; preview: React.ReactNode | null }) {
-    return (
-        <div className="overflow-hidden rounded-2xl border border-gray-200">
-            {preview && <div className="flex justify-center bg-[#F5F6F7] dark:bg-[#0f1710] px-6 pt-8 pb-6 sm:px-10">{preview}</div>}
-            <div className="p-6">
-                <a href={href} target={href.startsWith("http") ? "_blank" : undefined} rel="noreferrer" className="text-lg font-bold text-gray-900 hover:underline">
-                    {title}
-                </a>
-                <p className="mt-1 text-base text-gray-600">{desc}</p>
-            </div>
-        </div>
-    );
-}
+/** Pretendard 동적 서브셋 (이 페이지에서만 로드, CSP: jsdelivr 허용됨) */
+const PRETENDARD_CSS =
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css";
 
 export default function PartnerClient({
     course,
@@ -191,6 +180,7 @@ export default function PartnerClient({
             className="admin-system-font min-h-screen bg-white text-gray-900"
             style={{ "--font-app": FONT_STACK } as React.CSSProperties}
         >
+            <link rel="stylesheet" href={PRETENDARD_CSS} />
             {/* 1. 헤더 */}
             <header className="sticky top-0 z-30 border-b border-gray-200 bg-white">
                 <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-5">
@@ -209,9 +199,9 @@ export default function PartnerClient({
                 </div>
             </header>
 
-            {/* 2. 첫 화면: PC 좌 제목·설명 / 우 폼, 모바일 제목 → 폼 */}
-            <section className="mx-auto grid max-w-6xl gap-10 px-5 pt-12 pb-20 lg:grid-cols-2 lg:gap-16 lg:pt-20">
-                <div>
+            {/* 2. 첫 화면: PC 왼쪽 제목·설명·코스 카드 / 오른쪽 폼, 모바일 제목 → 폼 → 코스 카드 */}
+            <section className="mx-auto grid max-w-6xl gap-10 px-5 pt-12 pb-20 lg:grid-cols-2 lg:gap-x-16 lg:gap-y-10 lg:pt-20">
+                <div className="lg:col-start-1">
                     <h1 className="text-[28px] font-bold leading-tight tracking-tight lg:text-[40px]">두나 광고·제휴</h1>
                     <p className="mt-5 text-base leading-relaxed text-gray-600">
                         두나는 서울 데이트 코스를 추천하는 앱·웹 서비스이고, 인스타그램 @dona.date를 운영해요.
@@ -221,41 +211,46 @@ export default function PartnerClient({
                         인스타그램 보기 →
                     </a>
                 </div>
-                <div ref={formRef} className="scroll-mt-20 rounded-2xl border border-gray-200 bg-white p-6 sm:p-8">
+                <div
+                    ref={formRef}
+                    className="scroll-mt-20 self-start rounded-2xl border border-gray-200 bg-white p-6 sm:p-8 lg:col-start-2 lg:row-span-2 lg:row-start-1"
+                >
                     <InquiryForm />
                 </div>
+                {course && (
+                    <div className="lg:col-start-1">
+                        <div className="flex justify-center rounded-2xl bg-[#F5F6F7] dark:bg-[#0f1710] px-6 pt-8 pb-5">
+                            <div className="w-full max-w-[340px]">
+                                <CourseCard course={course} showNewBadge={false} />
+                            </div>
+                        </div>
+                        <p className="mt-3 text-sm text-gray-500">두나 앱·웹의 실제 데이트 코스 화면</p>
+                    </div>
+                )}
             </section>
 
-            {/* 3. 소개되는 곳 */}
-            <section className="mx-auto max-w-6xl px-5 pb-24">
-                <p className="text-sm font-semibold text-emerald-600">소개되는 곳</p>
-                <h2 className="mt-2 text-2xl font-bold tracking-tight lg:text-[28px]">두나에서 이렇게 보여요</h2>
-                <div className="mt-8 grid gap-6 lg:grid-cols-2">
-                    <PlaceCard
-                        title="인스타그램 @dona.date"
-                        desc="두나 공식 인스타그램 계정의 게시물로 소개돼요."
-                        href={INSTAGRAM_URL}
-                        preview={
-                            instagramImage ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img src={instagramImage} alt="두나 인스타그램 게시물" className="w-full max-w-[320px] rounded-xl" />
-                            ) : null
-                        }
-                    />
-                    <PlaceCard
-                        title="두나 데이트 코스"
-                        desc="두나 앱·웹의 데이트 코스 속 장소로 소개돼요."
-                        href="/courses"
-                        preview={
-                            course ? (
-                                <div className="w-full max-w-[320px]">
-                                    <CourseCard course={course} isFavorite={false} onToggleFavorite={() => {}} showNewBadge={false} />
-                                </div>
-                            ) : null
-                        }
-                    />
-                </div>
-            </section>
+            {/* 3. 소개되는 곳: 인스타 게시물 이미지 있을 때만 */}
+            {instagramImage && (
+                <section className="mx-auto max-w-6xl px-5 pb-24">
+                    <p className="text-sm font-semibold text-emerald-600">소개되는 곳</p>
+                    <h2 className="mt-2 text-2xl font-bold tracking-tight lg:text-[28px]">인스타그램 @dona.date</h2>
+                    <div className="mt-8 overflow-hidden rounded-2xl border border-gray-200 sm:flex">
+                        <div className="flex justify-center bg-[#F5F6F7] p-6 sm:w-2/5 sm:p-8">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={instagramImage} alt="두나 인스타그램 게시물" className="w-full max-w-[320px] rounded-xl" />
+                        </div>
+                        <div className="flex flex-col justify-center p-6 sm:p-10">
+                            <p className="text-lg font-bold text-gray-900">두나 공식 인스타그램 게시물</p>
+                            <p className="mt-2 text-base leading-relaxed text-gray-600">
+                                팝업·가게·브랜드가 두나 인스타그램 게시물로 소개돼요.
+                            </p>
+                            <a href={INSTAGRAM_URL} target="_blank" rel="noreferrer" className="mt-5 text-base font-semibold text-gray-900 hover:underline">
+                                인스타그램 보기 →
+                            </a>
+                        </div>
+                    </div>
+                </section>
+            )}
 
             {/* 5. 푸터: 사이트 사업자 정보 그대로 */}
             <footer className="bg-[#F5F6F7]">
