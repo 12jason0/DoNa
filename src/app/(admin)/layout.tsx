@@ -102,6 +102,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         >
                             💰 환불 관리
                         </Link>
+                        <Link
+                            href="/admin/partner"
+                            className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-green-50 text-gray-700 hover:text-green-700 font-medium transition"
+                        >
+                            🤝 제휴 문의
+                        </Link>
                     </nav>
 
                     {/* 하단 정보 */}

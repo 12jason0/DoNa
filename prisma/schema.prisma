@@ -387,6 +387,22 @@ model TipWorkLog {
   @@map("tip_work_logs")
 }
 
+/// 제휴·광고 문의 (/partner). inquiry_type: popup/place/ad/etc, status: new/contacted/done (DB CHECK)
+model PartnerInquiry {
+  id           Int      @id @default(autoincrement())
+  brand_name   String   @db.VarChar(100)
+  contact_name String   @db.VarChar(50)
+  contact      String   @db.VarChar(100)
+  inquiry_type String   @db.VarChar(20)
+  message      String   @db.VarChar(2000)
+  status       String   @default("new") @db.VarChar(20)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @default(now()) @updatedAt
+
+  @@index([created_at])
+  @@map("partner_inquiries")
+}
+
 model CoursePlace {
   id                 Int      @id @default(autoincrement())
   course_id          Int

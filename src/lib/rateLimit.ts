@@ -6,7 +6,7 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
-export type RateLimitType = "auth_login" | "recommendation" | "payment" | "api_generic" | "review" | "upload";
+export type RateLimitType = "auth_login" | "recommendation" | "payment" | "api_generic" | "review" | "upload" | "partner_inquiry";
 
 let redis: Redis | null = null;
 const limiters: Partial<Record<RateLimitType, Ratelimit>> = {};
@@ -65,6 +65,13 @@ function getLimiter(type: RateLimitType): Ratelimit | null {
                 redis: r,
                 limiter: Ratelimit.slidingWindow(30, "1 m"),
                 prefix: "rl:upload",
+            });
+            break;
+        case "partner_inquiry":
+            limiters[type] = new Ratelimit({
+                redis: r,
+                limiter: Ratelimit.slidingWindow(3, "10 m"),
+                prefix: "rl:partner",
             });
             break;
         default:

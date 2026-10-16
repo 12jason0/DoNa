@@ -906,9 +906,16 @@ const ProfileTab = ({
                             <Link
                                 href="/contact"
                                 prefetch={true}
-                                className="text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors py-1 col-span-2"
+                                className="text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors py-1"
                             >
                                 {t("mypage.profileTab.footerContact")}
+                            </Link>
+                            <Link
+                                href="/partner"
+                                prefetch={true}
+                                className="text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors py-1"
+                            >
+                                {t("mypage.profileTab.footerPartner")}
                             </Link>
                         </div>
                     </div>

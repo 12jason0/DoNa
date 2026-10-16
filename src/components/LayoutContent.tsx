@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState, useRef, useMemo } from "react";
 import Image from "next/image"; // 🟢 img 대신 next/image 사용 (하이드레이션 오류 근본 해결)
+import Link from "next/link";
 import dynamic from "next/dynamic";
 
 const FloatingIcons = dynamic(() => import("@/components/FloatingIcons"), { ssr: false, loading: () => null });
@@ -499,6 +500,12 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                                     <strong>{t("webLanding.businessLabelAddress")}</strong> {t("webLanding.businessValueAddress")}
                                                 </p>
                                             </div>
+                                            <Link
+                                                href="/partner"
+                                                className="mt-3 self-start text-[13px] font-semibold text-gray-600 hover:text-emerald-700 transition-colors"
+                                            >
+                                                {t("mypage.profileTab.footerPartner")} →
+                                            </Link>
                                         </div>
                                     </div>
                                 </div>
