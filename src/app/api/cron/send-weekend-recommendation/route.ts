@@ -7,6 +7,7 @@ import {
     getWeekendWeatherRisk,
     getWeekendTargetDateStr,
 } from "@/lib/weekendRecommendation";
+import { clearWeekendPick, getWeekendPick } from "@/lib/weekendPick";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -99,8 +100,8 @@ function buildNotificationContent(
 
 /**
  * [Vercel Cron] 매주 목요일 20:00 KST 실행 (UTC 11:00)
- * 이번 주말 날씨(비/눈/미세먼지/맑음 등)를 확인하고
- * 날씨에 맞는 데이트 코스 추천 알림 발송
+ * 관리자가 고른 주말 추천 코스가 있으면 그 코스 알림, 없으면
+ * 이번 주말 날씨(비/눈/미세먼지/맑음 등)에 맞는 데이트 코스 추천 알림 발송
  */
 export async function GET(req: NextRequest) {
     try {
@@ -129,20 +130,39 @@ export async function GET(req: NextRequest) {
             });
         }
 
-        // 주말 날씨 조회
-        const apiKey = process.env.KMA_API_KEY ?? "";
-        const targetDateStr = getWeekendTargetDateStr();
-
-        const [fcstItems, airStatus] = await Promise.all([
-            fetchWeekendForecast(SEOUL_NX, SEOUL_NY, apiKey),
-            fetchSeoulAirQuality(),
-        ]);
-
-        const weatherRisk = fcstItems.length > 0
-            ? getWeekendWeatherRisk(fcstItems, targetDateStr)
+        // 관리자가 고른 주말 추천 코스가 있으면 그 코스로, 없으면 날씨 문구
+        const pickId = await getWeekendPick();
+        const pick = pickId
+            ? await prisma.course.findFirst({ where: { id: pickId, isPublic: true }, select: { id: true, title: true } })
             : null;
 
-        const { title, body } = buildNotificationContent(weatherRisk, airStatus, fcstItems, targetDateStr);
+        let content: { title: string; body: string };
+        let data: Record<string, string>;
+        let weather: unknown = null;
+        if (pick) {
+            content = { title: "이번 주말 추천 코스 💚", body: `${pick.title} 어때요? 지금 확인해보세요` };
+            data = { screen: "course_detail", courseId: String(pick.id), url: `/courses/${pick.id}` };
+        } else {
+            // 주말 날씨 조회
+            const apiKey = process.env.KMA_API_KEY ?? "";
+            const targetDateStr = getWeekendTargetDateStr();
+
+            const [fcstItems, airStatus] = await Promise.all([
+                fetchWeekendForecast(SEOUL_NX, SEOUL_NY, apiKey),
+                fetchSeoulAirQuality(),
+            ]);
+
+            const weatherRisk = fcstItems.length > 0
+                ? getWeekendWeatherRisk(fcstItems, targetDateStr)
+                : null;
+
+            content = buildNotificationContent(weatherRisk, airStatus, fcstItems, targetDateStr);
+            data = { screen: "home", url: "/?openMoreCourses=weekend" };
+            weather = { weatherRisk, airStatus, targetDateStr };
+        }
+        // 광고성 정보 표기 (정보통신망법)
+        const title = `(광고) ${content.title}`;
+        const body = content.body;
 
         // 알림 수신 동의 유저 전체 조회
         const tokens = await prisma.pushToken.findMany({
@@ -153,8 +173,6 @@ export async function GET(req: NextRequest) {
         if (tokens.length === 0) {
             return NextResponse.json({ success: true, total: 0, sent: 0, title, body });
         }
-
-        const data = { screen: "home", url: "/?openMoreCourses=weekend" };
 
         let sent = 0;
         const errors: Array<{ userId: number; reason: string }> = [];
@@ -177,13 +195,17 @@ export async function GET(req: NextRequest) {
             }
         }
 
+        // 이번 주 고른 코스는 한 번만 사용
+        if (pickId) await clearWeekendPick();
+
         return NextResponse.json({
             success: true,
             total: tokens.length,
             sent,
             title,
             body,
-            weather: { weatherRisk, airStatus, targetDateStr },
+            pick,
+            weather,
             errors: errors.slice(0, MAX_ERRORS_IN_RESPONSE),
         });
     } catch (error) {

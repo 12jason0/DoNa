@@ -10,7 +10,7 @@ const PUSH_CONCURRENCY = 5;
 const MAX_ERRORS_IN_RESPONSE = 20;
 
 /**
- * [Vercel Cron] 월·수·금 12:10 KST 실행 (UTC 03:10)
+ * [Vercel Cron] 금요일 12:10 KST 실행 (UTC 03:10)
  * 푸시 알림 수신 동의한 모든 유저에게 오늘의 추천 알림 발송
  */
 export async function GET(req: NextRequest) {
@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
             const results = await Promise.all(
                 chunk.map(async ({ userId, user }) => {
                     const userName = user?.username?.trim() || "";
-                    const title = "오늘 오후 데이트 어때요?";
+                    const title = "(광고) 오늘 저녁 데이트 어때요?"; // (광고): 광고성 정보 표기 (정보통신망법)
                     const body = userName
                         ? `${userName}님에게 딱 맞는 코스 골라뒀어요 💚`
                         : "딱 맞는 코스 골라뒀어요 💚";

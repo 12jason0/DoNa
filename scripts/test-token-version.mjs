@@ -72,6 +72,9 @@ const kakaoNative = await load("src/app/api/auth/kakao/native/route.ts");
 const apple = await load("src/app/api/auth/apple/route.ts");
 const appleCallback = await load("src/app/api/auth/apple/callback/route.ts");
 const { middleware } = await load("middleware.ts");
+// 모듈 불러올 때 .env가 읽혀서 운영 Redis 주소가 들어옴 → 비워서 레이트리밋·캐시가 운영 Redis에 안 가게
+delete process.env.UPSTASH_REDIS_REST_URL;
+delete process.env.UPSTASH_REDIS_REST_TOKEN;
 // 미들웨어가 부르는 /api/auth/session은 실제 session 핸들러로 연결
 const realFetch = globalThis.fetch;
 const sessionFetch = (url, init) => String(url).includes("/api/auth/session") ? session.GET(new NextRequest(String(url), init)) : null;
