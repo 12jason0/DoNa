@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
         try {
             const dbUser = await prisma.user.findUnique({
                 where: { id: Number(userId) },
-                select: { id: true, email: true, username: true, profileImageUrl: true, tokenVersion: true },
+                select: { id: true, email: true, username: true, profileImageUrl: true },
             });
             if (dbUser) {
                 // 🟢 username이 있고 user_로 시작하지 않으면 사용 (실제 이름)
@@ -101,8 +101,6 @@ export async function GET(req: NextRequest) {
                     jwtName: payload?.name,
                     displayName,
                     isTemporaryName: dbUser.username?.startsWith("user_"),
-                    tokenTv: payload?.tv ?? null, // 토큰의 token_version (null = tv 없는 예전 토큰)
-                    dbTv: dbUser.tokenVersion,
                 });
             } else {
                 // 🟢 DB에 사용자가 없어도 JWT 정보로 이름 설정
