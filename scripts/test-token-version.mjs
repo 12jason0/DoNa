@@ -1,4 +1,4 @@
-// token_version 로그인 무효화 확인. 실제 라우트 핸들러를 메모리 가짜 DB로 실행 (실 DB·외부 API 안 씀)
+// token_version 로그인 무효화 + 애플 identity token 서명 검증 확인. 실제 라우트 핸들러를 메모리 가짜 DB로 실행 (실 DB·외부 API 안 씀)
 // 실행: node scripts/test-token-version.mjs
 import assert from "node:assert/strict";
 import path from "node:path";
@@ -6,11 +6,13 @@ import { fileURLToPath } from "node:url";
 import { createJiti } from "jiti";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { generateKeyPair, exportJWK, SignJWT } from "jose";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 process.env.JWT_SECRET = "test-secret-test-secret-test-secret-123";
 process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID = "test-kakao";
 process.env.KAKAO_CLIENT_SECRET = "test-kakao-secret";
+process.env.APPLE_CLIENT_ID = "kr.io.dona.dona.sid";
 
 // --- 가짜 prisma: users만 메모리에, select는 실제처럼 골라서 돌려줌 (tokenVersion 빼먹으면 드러나게) ---
 const users = [];
@@ -153,12 +155,19 @@ await test("비밀번호 변경 → +1, 지금 기기는 새 토큰, 예전 토�
     assert.equal(await isValid(before), false);
 });
 
-// 외부 API(카카오) 응답 흉내
+// 애플 공개키(JWKS)는 테스트 키로 흉내, 토큰은 그 키로 서명
+const appleKeys = await generateKeyPair("RS256");
+const appleJwk = { ...(await exportJWK(appleKeys.publicKey)), kid: "test-kid", alg: "RS256", use: "sig" };
+const signApple = (claims, { key = appleKeys.privateKey, aud = "kr.io.dona.dona", exp = "10m", iss = "https://appleid.apple.com" } = {}) =>
+    new SignJWT(claims).setProtectedHeader({ alg: "RS256", kid: "test-kid" }).setIssuer(iss).setAudience(aud).setIssuedAt().setExpirationTime(exp).sign(key);
+
+// 외부 API(카카오·애플 공개키) 응답 흉내
 globalThis.fetch = async (url, init) => {
     const s = await sessionFetch(url, init);
     if (s) return s;
     const u = String(url);
     if (u.includes("kauth.kakao.com")) return Response.json({ access_token: "kakao-at" });
+    if (u === "https://appleid.apple.com/auth/keys") return Response.json({ keys: [appleJwk] });
     if (u.includes("kapi.kakao.com")) return Response.json({ id: 777, properties: { nickname: "카카오" }, kakao_account: { email: "k@test.com" } });
     throw new Error(`unexpected fetch ${u}`);
 };
@@ -185,7 +194,8 @@ await test("카카오 네이티브 로그인 (Bearer)", async () => {
     assert.ok(await isValid(token));
 });
 
-const appleIdToken = jwt.sign({ sub: "apple-1", email: "ap@test.com" }, "x");
+const appleIdToken = await signApple({ sub: "apple-1", email: "ap@test.com" }); // 앱: aud = 번들 ID
+const appleWebIdToken = await signApple({ sub: "apple-1", email: "ap@test.com" }, { aud: "kr.io.dona.dona.sid" }); // 웹: aud = Services ID
 await test("애플 앱 로그인 (identityToken)", async () => {
     const res = await apple.POST(req("/api/auth/apple", { method: "POST", json: { identityToken: appleIdToken } }));
     assert.equal(res.status, 200, JSON.stringify(await res.clone().json()));
@@ -194,14 +204,48 @@ await test("애플 앱 로그인 (identityToken)", async () => {
 });
 
 await test("애플 웹 콜백 (form_post) + 로그아웃 뒤 재로그인", async () => {
-    const res = await appleCallback.POST(req("/api/auth/apple/callback", { method: "POST", text: `id_token=${appleIdToken}&state=/` }));
+    const res = await appleCallback.POST(req("/api/auth/apple/callback", { method: "POST", text: `id_token=${appleWebIdToken}&state=/` }));
     const token = authCookie(res);
     assert.ok(token && (await isValid(token)));
     await logout.POST(req("/api/auth/logout", { method: "POST", cookie: token }));
     assert.equal(await isValid(token), false);
-    const again = authCookie(await appleCallback.POST(req("/api/auth/apple/callback", { method: "POST", text: `id_token=${appleIdToken}&state=/` })));
+    const again = authCookie(await appleCallback.POST(req("/api/auth/apple/callback", { method: "POST", text: `id_token=${appleWebIdToken}&state=/` })));
     assert.equal(tvOf(again), 1);
     assert.ok(await isValid(again));
+});
+
+// 서명·aud·exp가 틀린 애플 토큰 → 앱·웹 콜백·웹 form_post 세 곳 모두 401, 쿠키·계정 안 생김
+const appleEntries = [
+    ["앱", (t) => apple.POST(req("/api/auth/apple", { method: "POST", json: { identityToken: t } }))],
+    ["웹 콜백", (t) => appleCallback.POST(req("/api/auth/apple/callback", { method: "POST", text: `id_token=${t}&state=/` }))],
+    ["웹 form_post", (t) => apple.POST(req("/api/auth/apple", { method: "POST", text: `id_token=${t}&state=/` }))],
+];
+const rejectsApple = async (token) => {
+    const usersBefore = users.length;
+    for (const [where, call] of appleEntries) {
+        const res = await call(token);
+        assert.equal(res.status, 401, `${where}: ${res.status}`);
+        assert.equal(authCookie(res), undefined, `${where}: 쿠키가 발급됨`);
+    }
+    assert.equal(users.length, usersBefore, "계정이 생김");
+};
+
+await test("애플: 가짜 키로 서명한 토큰 → 401", async () => {
+    const { privateKey } = await generateKeyPair("RS256");
+    await rejectsApple(await signApple({ sub: "evil-1", email: "evil@test.com" }, { key: privateKey }));
+});
+
+await test("애플: 다른 audience 토큰 → 401", async () => {
+    await rejectsApple(await signApple({ sub: "evil-2" }, { aud: "com.other.app" }));
+});
+
+await test("애플: 만료된 토큰 → 401", async () => {
+    await rejectsApple(await signApple({ sub: "evil-3" }, { exp: Math.floor(Date.now() / 1000) - 60 }));
+});
+
+await test("애플: 서명 없는 예전 형태(HS256)·다른 issuer 토큰 → 401", async () => {
+    await rejectsApple(jwt.sign({ sub: "evil-4", aud: "kr.io.dona.dona", iss: "https://appleid.apple.com" }, "x", { expiresIn: "10m" }));
+    await rejectsApple(await signApple({ sub: "evil-5" }, { iss: "https://evil.example.com" }));
 });
 
 console.log(results.join("\n"));

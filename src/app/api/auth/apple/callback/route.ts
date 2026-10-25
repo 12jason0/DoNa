@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { saveSignupAttribution } from "@/lib/signupAttribution";
-import jwt from "jsonwebtoken";
 import prisma from "@/lib/db";
 import { setAuthCookie, signAuthToken } from "@/lib/auth";
 import { getSafeRedirectPath } from "@/lib/redirect";
 import { getS3StaticUrl } from "@/lib/s3Static";
 import { captureApiError } from "@/lib/sentry";
+import { verifyAppleIdToken } from "@/lib/appleIdToken";
 
 export const dynamic = "force-dynamic";
 
@@ -28,9 +28,15 @@ export async function POST(request: NextRequest) {
         }
 
         // 🟢 [Fix]: 직접 인증 처리 (중간 요청 제거)
-        const decoded: any = jwt.decode(id_token);
-        const appleUserId = decoded.sub;
-        const email = decoded.email;
+        let apple;
+        try {
+            apple = await verifyAppleIdToken(id_token);
+        } catch (e) {
+            console.warn("[Apple Callback] identity token 검증 실패:", (e as Error).message);
+            return generateHtmlResponse(errorScript("애플 인증 정보가 유효하지 않습니다."), undefined, 401);
+        }
+        const appleUserId = apple.sub;
+        const email = apple.email;
 
         const DEFAULT_PROFILE_IMG = getS3StaticUrl("profileLogo.png");
 
@@ -125,8 +131,13 @@ export async function POST(request: NextRequest) {
             captureApiError(err);
         console.error("[Apple Callback] 오류:", err);
         const errorMsg = err instanceof Error ? err.message : "알 수 없는 오류";
-        return generateHtmlResponse(
-            `(function() {
+        return generateHtmlResponse(errorScript(errorMsg));
+    }
+}
+
+/** 웹 팝업/리다이렉트용 에러 처리 스크립트 */
+function errorScript(errorMsg: string) {
+    return `(function() {
                 try {
                     if (window.opener && !window.opener.closed) {
                         window.opener.postMessage({ type: 'APPLE_LOGIN_ERROR', error: ${JSON.stringify(
@@ -143,17 +154,16 @@ export async function POST(request: NextRequest) {
                     console.error('에러 처리 중 오류:', e);
                     window.location.href = '/login';
                 }
-            })();`
-        );
-    }
+            })();`;
 }
 
 /**
  * 💡 공통 응답 처리 (보안 쿠키 발급)
  */
-function generateHtmlResponse(script: string, token?: string) {
+function generateHtmlResponse(script: string, token?: string, status = 200) {
     const html = `<html><head><meta charset="UTF-8"></head><body><script>${script}</script></body></html>`;
     const response = new NextResponse(html, {
+        status,
         headers: { "Content-Type": "text/html; charset=utf-8" },
     });
 

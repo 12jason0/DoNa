@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { saveSignupAttribution } from "@/lib/signupAttribution";
-import jwt from "jsonwebtoken";
 import prisma from "@/lib/db";
 import { setAuthCookie, signAuthToken } from "@/lib/auth";
 import { getSafeRedirectPath } from "@/lib/redirect";
 import { getS3StaticUrl } from "@/lib/s3Static";
 import { captureApiError } from "@/lib/sentry";
+import { verifyAppleIdToken } from "@/lib/appleIdToken";
 
 export const dynamic = "force-dynamic";
 
@@ -106,9 +106,15 @@ export async function POST(request: NextRequest) {
  */
 async function handleWebAppleAuthLogic(request: NextRequest, idToken: string, next: string) {
     try {
-        const decoded: any = jwt.decode(idToken);
-        const appleUserId = decoded.sub;
-        const email = decoded.email;
+        let apple;
+        try {
+            apple = await verifyAppleIdToken(idToken);
+        } catch (e) {
+            console.warn("[Apple Auth] identity token 검증 실패:", (e as Error).message);
+            return generateHtmlResponse(errorScript("애플 인증 정보가 유효하지 않습니다."), undefined, 401);
+        }
+        const appleUserId = apple.sub;
+        const email = apple.email;
 
         // 🟢 두나 기본 프로필 이미지 설정 (로컬 로그인과 동일)
         const DEFAULT_PROFILE_IMG = getS3StaticUrl("profileLogo.png");
@@ -275,25 +281,7 @@ async function handleWebAppleAuthLogic(request: NextRequest, idToken: string, ne
             console.error("[Apple Auth] Email unique constraint 에러 - email이 이미 다른 사용자에게 할당됨");
         }
         
-        return generateHtmlResponse(
-            `(function() {
-                try {
-                    if (window.opener && !window.opener.closed) {
-                        window.opener.postMessage({ type: 'APPLE_LOGIN_ERROR', error: ${JSON.stringify(
-                            errorMsg
-                        )} }, window.location.origin);
-                        window.close();
-                    } else {
-                        alert('인증 실패: ' + ${JSON.stringify(errorMsg)});
-                        window.location.href = '/login';
-                    }
-                } catch (e) {
-                        captureApiError(e);
-                    console.error('에러 처리 중 오류:', e);
-                    window.location.href = '/login';
-                }
-            })();`
-        );
+        return generateHtmlResponse(errorScript(errorMsg));
     }
 }
 
@@ -308,9 +296,15 @@ async function handleAppAppleAuthLogic(
     authorizationCode?: string
 ) {
     try {
-        const decoded: any = jwt.decode(identityToken);
-        const appleUserId = decoded.sub;
-        const email = appEmail || decoded.email;
+        let apple;
+        try {
+            apple = await verifyAppleIdToken(identityToken);
+        } catch (e) {
+            console.warn("[Apple Auth] identity token 검증 실패:", (e as Error).message);
+            return NextResponse.json({ error: "애플 인증 정보가 유효하지 않습니다." }, { status: 401 });
+        }
+        const appleUserId = apple.sub;
+        const email = appEmail || apple.email;
 
         // 🟢 두나 기본 프로필 이미지 설정 (로컬 로그인과 동일)
         const DEFAULT_PROFILE_IMG = getS3StaticUrl("profileLogo.png");
@@ -466,13 +460,35 @@ async function handleAppAppleAuthLogic(
     }
 }
 
+/** 웹 팝업/리다이렉트용 에러 처리 스크립트 */
+function errorScript(errorMsg: string) {
+    return `(function() {
+                try {
+                    if (window.opener && !window.opener.closed) {
+                        window.opener.postMessage({ type: 'APPLE_LOGIN_ERROR', error: ${JSON.stringify(
+                            errorMsg
+                        )} }, window.location.origin);
+                        window.close();
+                    } else {
+                        alert('인증 실패: ' + ${JSON.stringify(errorMsg)});
+                        window.location.href = '/login';
+                    }
+                } catch (e) {
+                        captureApiError(e);
+                    console.error('에러 처리 중 오류:', e);
+                    window.location.href = '/login';
+                }
+            })();`;
+}
+
 /**
  * 💡 공통 응답 처리 (보안 쿠키 발급)
  */
-function generateHtmlResponse(script: string, token?: string) {
+function generateHtmlResponse(script: string, token?: string, status = 200) {
     // 🟢 [Fix]: 빈 페이지로 표시하고 스크립트만 실행 (팝업에 아무것도 보이지 않도록)
     const html = `<html><head><meta charset="UTF-8"><style>body{display:none;margin:0;padding:0;}</style></head><body><script>${script}</script></body></html>`;
     const response = new NextResponse(html, {
+        status,
         headers: { "Content-Type": "text/html; charset=utf-8" },
     });
 
