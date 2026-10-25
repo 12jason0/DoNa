@@ -7,12 +7,11 @@ export default function AdminNotificationsPage() {
     const [title, setTitle] = useState("");
     const [body, setBody] = useState("");
     const [imageUrl, setImageUrl] = useState("");
-    const [target, setTarget] = useState<"all" | "subscribed">("subscribed");
     const [testEmail, setTestEmail] = useState("");
     const [isSending, setIsSending] = useState(false);
     const [result, setResult] = useState<string | null>(null);
     const router = useRouter();
-    const targetLabel = target === "all" ? "마케팅 수신 동의한 전체 유저" : "알림 구독 유저";
+    const targetLabel = "알림 켜고 마케팅 수신 동의한 전체 유저";
 
     useEffect(() => {
         try {
@@ -20,7 +19,7 @@ export default function AdminNotificationsPage() {
         } catch {}
     }, []);
 
-    const send = async (sendTarget: "all" | "subscribed" | "me") => {
+    const send = async (sendTarget: "everyone" | "me") => {
         if (!title || !body) {
             alert("제목과 내용을 입력해주세요.");
             return;
@@ -75,7 +74,7 @@ export default function AdminNotificationsPage() {
             <form
                 onSubmit={(e) => {
                     e.preventDefault();
-                    send(target);
+                    send("everyone");
                 }} className="space-y-6 bg-white p-8 rounded-2xl shadow-lg">
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">제목 *</label>
@@ -111,31 +110,9 @@ export default function AdminNotificationsPage() {
                     <p className="text-xs text-gray-500 mt-1">알림에 표시할 썸네일 이미지</p>
                 </div>
 
-                {/* 대상 선택 */}
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">발송 대상</label>
-                    <div className="flex items-center gap-6 text-sm">
-                        <label className="flex items-center gap-2">
-                            <input
-                                type="radio"
-                                name="target"
-                                value="all"
-                                checked={target === "all"}
-                                onChange={() => setTarget("all")}
-                            />
-                            <span>전체 (마케팅 수신 동의 유저)</span>
-                        </label>
-                        <label className="flex items-center gap-2">
-                            <input
-                                type="radio"
-                                name="target"
-                                value="subscribed"
-                                checked={target === "subscribed"}
-                                onChange={() => setTarget("subscribed")}
-                            />
-                            <span>구독자만 (알림 수신 동의)</span>
-                        </label>
-                    </div>
+                    <p className="text-sm text-gray-700">{targetLabel}</p>
                 </div>
 
                 {imageUrl && (

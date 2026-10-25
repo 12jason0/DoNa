@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sendPushNotificationToAll, sendPushNotificationToEveryone, sendPushNotificationToUsers } from "@/lib/push-notifications";
+import { sendPushNotificationToAll, sendPushNotificationToUsers } from "@/lib/push-notifications";
 import prisma from "@/lib/db";
 import { verifyAdminJwt } from "@/lib/auth";
 import { captureApiError } from "@/lib/sentry";
@@ -34,10 +34,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: true, sent: r.sent, message: `테스트 발송 완료 (기기 ${r.sent}대)` });
         }
 
-        const useAll = target === "all";
-        const result = useAll
-            ? await sendPushNotificationToEveryone(title, body, payload)
-            : await sendPushNotificationToAll(title, body, payload);
+        const result = await sendPushNotificationToAll(title, body, payload);
 
         return NextResponse.json({
             success: true,

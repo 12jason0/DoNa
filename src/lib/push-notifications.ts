@@ -77,22 +77,13 @@ export async function sendPushNotificationToUsers(userIds: number[], title: stri
     return { success: true, sent };
 }
 
-// 구독자에게만 발송
+// 알림 켠 + 마케팅 수신 동의한 사용자 전체에게 발송
 export async function sendPushNotificationToAll(title: string, body: string, data?: PushData) {
     // 1) 토큰 조회 (구독자만 + 마케팅 수신 동의한 사용자만) - [법적 필수] 정보통신망법 준수
-    let tokens: { token: string; userId: number }[] = [];
-    try {
-        // Prisma Client가 subscribed 필드를 인지하는 경우
-        tokens = await (prisma.pushToken as any).findMany({
-            where: { subscribed: true },
-            select: { token: true, userId: true },
-        });
-    } catch {
-        // 아직 마이그레이션/클라이언트 재생성이 안 된 경우 전체 발송으로 폴백
-        tokens = await prisma.pushToken
-            .findMany({ select: { token: true, userId: true } })
-            .catch(() => [] as { token: string; userId: number }[]);
-    }
+    const tokens = await prisma.pushToken.findMany({
+        where: { subscribed: true },
+        select: { token: true, userId: true },
+    });
 
     // [법적 필수] 마케팅 수신 동의한 사용자만 필터링
     const userIds = tokens.map((t) => t.userId).filter(Boolean);
@@ -138,50 +129,5 @@ export async function sendPushNotificationToAll(title: string, body: string, dat
         }
     }
 
-    return { success: true, sent };
-}
-
-// 모든 사용자에게 발송(구독 여부 무시) - 관리자 홍보용
-// ⚠️ [법적 필수] 마케팅 수신 동의한 사용자에게만 발송 (정보통신망법 준수)
-export async function sendPushNotificationToEveryone(title: string, body: string, data?: PushData) {
-    // 마케팅 수신 동의한 사용자만 조회
-    const marketingAgreedUsers = await prisma.user
-        .findMany({
-            where: { isMarketingAgreed: true },
-            select: { id: true },
-        })
-        .catch(() => [] as { id: number }[]);
-
-    const agreedUserIds = marketingAgreedUsers.map((u) => u.id);
-    if (agreedUserIds.length === 0) return { success: true, sent: 0 };
-
-    // 동의한 사용자 중 알림 켠 토큰만 조회
-    const tokens = await prisma.pushToken
-        .findMany({
-            where: { userId: { in: agreedUserIds }, subscribed: true },
-            select: { token: true },
-        })
-        .catch(() => [] as { token: string }[]);
-
-    const valid = tokens.map((t) => t.token).filter(Boolean);
-    if (valid.length === 0) return { success: true, sent: 0 };
-
-    const batchSize = 100;
-    let sent = 0;
-    for (let i = 0; i < valid.length; i += batchSize) {
-        const slice = valid.slice(i, i + batchSize);
-        const messages = slice.map((token) => ({ to: token, sound: "default", title, body, data: data || {} }));
-        try {
-            const resp = await fetch("https://exp.host/--/api/v2/push/send", {
-                method: "POST",
-                headers: getExpoPushHeaders(),
-                body: JSON.stringify(messages),
-            });
-            sent += slice.length;
-            await resp.json().catch(() => ({}));
-        } catch (err) {
-            console.error("Expo push send failed:", err);
-        }
-    }
     return { success: true, sent };
 }
