@@ -10,7 +10,7 @@ const PUSH_CONCURRENCY = 5;
 const MAX_ERRORS_IN_RESPONSE = 20;
 
 /**
- * [Vercel Cron] 매일 12:10 KST 실행 (UTC 03:10)
+ * [Vercel Cron] 월·수·금 12:10 KST 실행 (UTC 03:10)
  * 푸시 알림 수신 동의한 모든 유저에게 오늘의 추천 알림 발송
  */
 export async function GET(req: NextRequest) {

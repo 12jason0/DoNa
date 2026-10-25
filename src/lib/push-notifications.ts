@@ -155,10 +155,10 @@ export async function sendPushNotificationToEveryone(title: string, body: string
     const agreedUserIds = marketingAgreedUsers.map((u) => u.id);
     if (agreedUserIds.length === 0) return { success: true, sent: 0 };
 
-    // 동의한 사용자의 토큰만 조회
+    // 동의한 사용자 중 알림 켠 토큰만 조회
     const tokens = await prisma.pushToken
         .findMany({
-            where: { userId: { in: agreedUserIds } },
+            where: { userId: { in: agreedUserIds }, subscribed: true },
             select: { token: true },
         })
         .catch(() => [] as { token: string }[]);
