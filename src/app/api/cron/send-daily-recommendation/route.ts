@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
                 chunk.map(async ({ userId, user }) => {
                     const userName = user?.username?.trim() || "";
                     const title = "(광고) 오늘 저녁 데이트 어때요?"; // 광고성 정보 표기·수신거부 방법 안내 (정보통신망법)
-                    const body = `${userName ? `${userName}님에게 ` : ""}딱 맞는 코스 골라뒀어요 💚\n수신거부: 설정 > 알림`;
+                    const body = `${userName ? `${userName}님에게 ` : ""}딱 맞는 코스 골라뒀어요 💚\n수신거부: 마이페이지 > 계정 관리 > 알림 설정`;
                     const result = await sendPushToUser(userId, title, body, data);
                     if (result.ok) return { sent: 1, error: null as { userId: number; reason: string } | null };
                     return { sent: 0, error: { userId, reason: result.reason ?? "알 수 없음" } };

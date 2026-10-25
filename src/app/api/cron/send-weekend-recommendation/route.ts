@@ -162,7 +162,7 @@ export async function GET(req: NextRequest) {
         }
         // 광고성 정보 표기·수신거부 방법 안내 (정보통신망법)
         const title = `(광고) ${content.title}`;
-        const body = `${content.body}\n수신거부: 설정 > 알림`;
+        const body = `${content.body}\n수신거부: 마이페이지 > 계정 관리 > 알림 설정`;
 
         // 알림 수신 동의 유저 전체 조회
         const tokens = await prisma.pushToken.findMany({
