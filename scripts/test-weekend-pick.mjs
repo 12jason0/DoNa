@@ -88,6 +88,7 @@ await test("코스 고르면 목 알림에 (광고)+코스 이름, 코스 상세
     const p = lastPush();
     assert.equal(p.title, "(광고) 이번 주말 추천 코스 💚");
     assert.match(p.body, /성수 카페 투어/);
+    assert.match(p.body, /\n수신거부: 설정 > 알림$/);
     assert.equal(p.data.url, "/courses/1");
     assert.equal((await (await adminPick.GET(adminReq("GET"))).json()).pick, null);
 });
@@ -96,6 +97,7 @@ await test("안 고르면 목 알림은 (광고)+날씨 문구, 홈 주말 코�
     await cron(weekend, "/api/cron/send-weekend-recommendation");
     const p = lastPush();
     assert.match(p.title, /^\(광고\) /);
+    assert.match(p.body, /\n수신거부: 설정 > 알림$/);
     assert.doesNotMatch(p.body, /성수 카페 투어/);
     assert.equal(p.data.url, "/?openMoreCourses=weekend");
 });
@@ -110,6 +112,7 @@ await test("고른 뒤 해제하면 날씨 문구로", async () => {
 await test("금 12:10 알림: (광고) 오늘 저녁 데이트 어때요?", async () => {
     assert.equal((await cron(daily, "/api/cron/send-daily-recommendation")).status, 200);
     assert.equal(lastPush().title, "(광고) 오늘 저녁 데이트 어때요?");
+    assert.equal(lastPush().body, "도나님에게 딱 맞는 코스 골라뒀어요 💚\n수신거부: 설정 > 알림");
 });
 
 await test("vercel.json: 오늘의 추천은 금요일만, 주말 알림은 목 20:00 그대로", async () => {

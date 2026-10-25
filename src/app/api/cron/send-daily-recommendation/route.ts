@@ -63,10 +63,8 @@ export async function GET(req: NextRequest) {
             const results = await Promise.all(
                 chunk.map(async ({ userId, user }) => {
                     const userName = user?.username?.trim() || "";
-                    const title = "(광고) 오늘 저녁 데이트 어때요?"; // (광고): 광고성 정보 표기 (정보통신망법)
-                    const body = userName
-                        ? `${userName}님에게 딱 맞는 코스 골라뒀어요 💚`
-                        : "딱 맞는 코스 골라뒀어요 💚";
+                    const title = "(광고) 오늘 저녁 데이트 어때요?"; // 광고성 정보 표기·수신거부 방법 안내 (정보통신망법)
+                    const body = `${userName ? `${userName}님에게 ` : ""}딱 맞는 코스 골라뒀어요 💚\n수신거부: 설정 > 알림`;
                     const result = await sendPushToUser(userId, title, body, data);
                     if (result.ok) return { sent: 1, error: null as { userId: number; reason: string } | null };
                     return { sent: 0, error: { userId, reason: result.reason ?? "알 수 없음" } };
