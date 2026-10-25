@@ -108,6 +108,17 @@ await test("로그아웃 후 예전 토큰 → 401 (verify·submit-mission·sess
     assert.equal(mw.headers.get("location"), null, "무효 토큰이면 /login에 그대로 들어가야 함");
 });
 
+await test("session: tv 0 토큰·tv 없는 토큰 + DB 1 → 비로그인 (쿠키·Bearer 둘 다)", async () => {
+    const u = create({ email: "s@test.com", username: "s", tokenVersion: 1 });
+    const tv0 = jwt.sign({ userId: u.id, name: "s", tv: 0 }, process.env.JWT_SECRET, { expiresIn: "365d" });
+    const noTv = jwt.sign({ userId: u.id, name: "s" }, process.env.JWT_SECRET, { expiresIn: "365d" });
+    for (const t of [tv0, noTv]) {
+        assert.equal(await sessionOk(t), false);
+        const viaBearer = await (await session.GET(req("/api/auth/session", { token: t }))).json();
+        assert.equal(viaBearer.authenticated, false);
+    }
+});
+
 await test("tv 없는 예전 토큰은 token_version 0이면 통과, 1이면 401", async () => {
     const legacyUser = create({ email: "old@test.com", username: "old" });
     const legacy = jwt.sign({ userId: legacyUser.id, name: "old" }, process.env.JWT_SECRET, { expiresIn: "365d" });
