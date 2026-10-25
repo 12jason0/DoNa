@@ -248,6 +248,23 @@ await test("애플: 서명 없는 예전 형태(HS256)·다른 issuer 토큰 →
     await rejectsApple(await signApple({ sub: "evil-5" }, { iss: "https://evil.example.com" }));
 });
 
+await test("애플 앱: appEmail로 남의 이메일을 보내도 그 계정으로 로그인 안 됨, 이메일도 안 붙음", async () => {
+    const victim = create({ email: "victim@test.com", username: "victim" });
+    const appLogin = async (sub, email) => {
+        const res = await apple.POST(req("/api/auth/apple", { method: "POST", json: { identityToken: await signApple({ sub }), email } }));
+        assert.equal(res.status, 200, JSON.stringify(await res.clone().json()));
+        return (await res.json()).user.id;
+    };
+    // 이미 있는 회원 이메일
+    const id1 = await appLogin("attacker-1", "victim@test.com");
+    assert.notEqual(id1, victim.id);
+    assert.equal(users.find((u) => u.id === id1).email, null);
+    // 아직 가입 안 한 이메일 선점도 안 됨 (나중에 카카오가 이메일로 계정 통합할 때 남의 계정에 붙는 길)
+    const id2 = await appLogin("attacker-2", "notyet@test.com");
+    assert.equal(users.find((u) => u.id === id2).email, null);
+    assert.equal(users.filter((u) => u.email === "notyet@test.com").length, 0);
+});
+
 console.log(results.join("\n"));
 const failed = results.filter((r) => r.startsWith("FAIL")).length;
 console.log(`\n${results.length - failed}/${results.length} passed`);

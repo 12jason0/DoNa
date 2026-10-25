@@ -88,12 +88,13 @@ export async function POST(request: NextRequest) {
 
         // B. 앱 네이티브 (Face ID 인증 데이터 - JSON 방식)
         const body = await request.json();
-        const { identityToken, fullName, email: appEmail, authorizationCode } = body;
+        // body.email은 검증 안 된 값이라 받지 않음 (이메일은 토큰 안의 email만 사용)
+        const { identityToken, fullName, authorizationCode } = body;
 
         if (!identityToken) {
             return NextResponse.json({ error: "인증 토큰 누락" }, { status: 400 });
         }
-        return await handleAppAppleAuthLogic(request, identityToken, fullName, appEmail, authorizationCode);
+        return await handleAppAppleAuthLogic(request, identityToken, fullName, authorizationCode);
     } catch (error) {
             captureApiError(error);
         console.error("Apple POST API 오류:", error);
@@ -292,7 +293,6 @@ async function handleAppAppleAuthLogic(
     request: NextRequest,
     identityToken: string,
     fullName: any,
-    appEmail: string,
     authorizationCode?: string
 ) {
     try {
@@ -304,7 +304,7 @@ async function handleAppAppleAuthLogic(
             return NextResponse.json({ error: "애플 인증 정보가 유효하지 않습니다." }, { status: 401 });
         }
         const appleUserId = apple.sub;
-        const email = appEmail || apple.email;
+        const email = apple.email;
 
         // 🟢 두나 기본 프로필 이미지 설정 (로컬 로그인과 동일)
         const DEFAULT_PROFILE_IMG = getS3StaticUrl("profileLogo.png");
