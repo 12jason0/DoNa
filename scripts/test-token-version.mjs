@@ -69,7 +69,11 @@ const kakao = await load("src/app/api/auth/kakao/route.ts");
 const kakaoNative = await load("src/app/api/auth/kakao/native/route.ts");
 const apple = await load("src/app/api/auth/apple/route.ts");
 const appleCallback = await load("src/app/api/auth/apple/callback/route.ts");
-const { proxy: middleware } = await load("proxy.ts");
+const { middleware } = await load("middleware.ts");
+// 미들웨어가 부르는 /api/auth/session은 실제 session 핸들러로 연결
+const realFetch = globalThis.fetch;
+const sessionFetch = (url, init) => String(url).includes("/api/auth/session") ? session.GET(new NextRequest(String(url), init)) : null;
+globalThis.fetch = async (url, init) => (await sessionFetch(url, init)) ?? realFetch(url, init);
 
 const isValid = async (token) => (await verify.GET(req("/api/auth/verify", { token }))).status === 200;
 const sessionOk = async (cookie) => (await (await session.GET(req("/api/auth/session", { cookie }))).json()).authenticated;
@@ -150,7 +154,9 @@ await test("비밀번호 변경 → +1, 지금 기기는 새 토큰, 예전 토�
 });
 
 // 외부 API(카카오) 응답 흉내
-globalThis.fetch = async (url) => {
+globalThis.fetch = async (url, init) => {
+    const s = await sessionFetch(url, init);
+    if (s) return s;
     const u = String(url);
     if (u.includes("kauth.kakao.com")) return Response.json({ access_token: "kakao-at" });
     if (u.includes("kapi.kakao.com")) return Response.json({ id: 777, properties: { nickname: "카카오" }, kakao_account: { email: "k@test.com" } });

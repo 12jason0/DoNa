@@ -1,9 +1,41 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { resolveUserId } from "@/lib/auth";
+import { jwtVerify } from "jose";
 
-/** src/lib/shareAccess.ts SHARE_DEVICE_COOKIE와 같은 값 */
+/** src/lib/shareAccess.ts SHARE_DEVICE_COOKIE와 같은 값 (미들웨어는 prisma를 import하지 않으려고 복사) */
 const SHARE_DEVICE_COOKIE = "dona_did";
+
+async function resolveUserIdEdge(req: NextRequest): Promise<number | null> {
+    const secret = process.env.JWT_SECRET;
+    if (!secret || secret.length < 32) return null;
+
+    const token =
+        req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ||
+        req.cookies.get("auth")?.value ||
+        req.cookies.get("authorization")?.value ||
+        null;
+    if (!token) return null;
+
+    try {
+        const key = new TextEncoder().encode(secret);
+        const { payload } = await jwtVerify(token, key);
+        const userId = Number((payload as any).userId);
+        if (!Number.isFinite(userId) || userId <= 0) return null;
+        // 서명은 맞아도 로그아웃·비밀번호 변경으로 무효가 된 토큰일 수 있어 token_version은 session API로 확인
+        // (미들웨어는 Edge라 prisma를 못 씀. Node 런타임으로 바꾸면 Next 16이 미들웨어를 등록하지 않음)
+        const res = await fetch(new URL("/api/auth/session", req.url), {
+            headers: {
+                cookie: req.headers.get("cookie") ?? "",
+                authorization: req.headers.get("authorization") ?? "",
+            },
+            cache: "no-store",
+        });
+        const session = (await res.json()) as { authenticated?: boolean };
+        return session.authenticated ? userId : null;
+    } catch {
+        return null;
+    }
+}
 
 async function handleRequest(req: NextRequest): Promise<NextResponse> {
     const { pathname } = req.nextUrl;
@@ -25,6 +57,12 @@ async function handleRequest(req: NextRequest): Promise<NextResponse> {
         return res;
     }
 
+    // Edge Runtime 호환: jose 사용 (jsonwebtoken은 Node.js crypto 미지원)
+    // 로그인 여부는 /login·/signup·/escape 처리에만 쓰므로 그때만 확인 (session API 호출 비용)
+    const needsAuth = pathname === "/login" || pathname === "/signup" || pathname.startsWith("/escape");
+    const resolvedUserId = needsAuth ? await resolveUserIdEdge(req) : null;
+    const isAuth = Boolean(resolvedUserId && resolvedUserId > 0);
+
     // 1. Prefetch 및 RSC 요청 제외
     if (req.headers.get("x-middleware-prefetch") || req.nextUrl.searchParams.has("_rsc")) {
         return NextResponse.next();
@@ -41,10 +79,6 @@ async function handleRequest(req: NextRequest): Promise<NextResponse> {
         cleanUrl.searchParams.delete("logout");
         return NextResponse.redirect(cleanUrl);
     }
-
-    // 로그인 여부(JWT + DB token_version)는 아래 /login·/signup·/escape 처리에만 쓰므로 그때만 확인
-    const needsAuth = pathname === "/login" || pathname === "/signup" || pathname.startsWith("/escape");
-    const isAuth = needsAuth && (await resolveUserId(req)) !== null;
 
     // 🟢 [배포용 최종 Fix]: 로그아웃 후 리다이렉트 루프 방지
     // 로그인/회원가입 페이지 예외 처리 - 타임스탬프 파라미터 무시
@@ -105,7 +139,7 @@ function firstTouchValue(req: NextRequest): string {
     });
 }
 
-export async function proxy(req: NextRequest) {
+export async function middleware(req: NextRequest) {
     const res = await handleRequest(req);
     const isPageVisit =
         req.method === "GET" &&
