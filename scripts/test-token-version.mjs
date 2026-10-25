@@ -69,7 +69,7 @@ const kakao = await load("src/app/api/auth/kakao/route.ts");
 const kakaoNative = await load("src/app/api/auth/kakao/native/route.ts");
 const apple = await load("src/app/api/auth/apple/route.ts");
 const appleCallback = await load("src/app/api/auth/apple/callback/route.ts");
-const { middleware } = await load("middleware.ts");
+const { proxy: middleware } = await load("proxy.ts");
 
 const isValid = async (token) => (await verify.GET(req("/api/auth/verify", { token }))).status === 200;
 const sessionOk = async (cookie) => (await (await session.GET(req("/api/auth/session", { cookie }))).json()).authenticated;

@@ -105,7 +105,7 @@ function firstTouchValue(req: NextRequest): string {
     });
 }
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
     const res = await handleRequest(req);
     const isPageVisit =
         req.method === "GET" &&
@@ -126,8 +126,6 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-    // token_version을 DB(prisma)에서 확인하므로 Node.js 런타임
-    runtime: "nodejs",
     matcher: [
         /*
          * 다음 경로를 제외한 모든 경로에서 미들웨어 실행:
