@@ -8,7 +8,7 @@ import { captureApiError } from "@/lib/sentry";
 
 export async function GET(request: NextRequest) {
     try {
-        const userId = resolveUserId(request); // <-- 수정된 부분
+        const userId = await resolveUserId(request); // <-- 수정된 부분
         if (!userId) {
             return NextResponse.json({ message: "인증이 필요합니다." }, { status: 401 });
         }

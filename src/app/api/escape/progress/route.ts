@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
     try {
-        const userIdStr = resolveUserId(request);
+        const userIdStr = await resolveUserId(request);
         // 로그인하지 않은 사용자는 서버 저장을 건너뜀
         if (!userIdStr) {
             return NextResponse.json({ ok: true, skipped: true });

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { saveSignupAttribution } from "@/lib/signupAttribution";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/db";
-import { getJwtSecret } from "@/lib/auth";
+import { setAuthCookie, signAuthToken } from "@/lib/auth";
 import { getSafeRedirectPath } from "@/lib/redirect";
 import { getS3StaticUrl } from "@/lib/s3Static";
 import { captureApiError } from "@/lib/sentry";
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
 
         const user = result.user;
         if (result.isNew) await saveSignupAttribution(request, user.id);
-        const serviceToken = jwt.sign({ userId: user.id, name: user.username }, getJwtSecret(), { expiresIn: "365d" });
+        const serviceToken = signAuthToken(user);
         // 🟢 [Fix]: next가 없거나 로그인 페이지면 메인으로, 있으면 그곳으로
         const decodedNext =
             next && !next.startsWith("/login") && next !== "/login"
@@ -157,26 +157,6 @@ function generateHtmlResponse(script: string, token?: string) {
         headers: { "Content-Type": "text/html; charset=utf-8" },
     });
 
-    if (token) {
-        // 🟢 [Fix]: 보안 쿠키 설정 강화 (WebView 환경 대응)
-        response.cookies.set("auth", token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            path: "/",
-            maxAge: 60 * 60 * 24 * 365,
-        });
-        
-        // 🟢 [Fix]: WebView에서 쿠키 설정을 확실히 하기 위해 Set-Cookie 헤더 직접 설정
-        const cookieOptions = [
-            `auth=${token}`,
-            "Path=/",
-            "HttpOnly",
-            process.env.NODE_ENV === "production" ? "Secure" : "",
-            "SameSite=Lax",
-            `Max-Age=${60 * 60 * 24 * 365}`,
-        ].filter(Boolean).join("; ");
-        response.headers.set("Set-Cookie", cookieOptions);
-    }
+    if (token) setAuthCookie(response, token);
     return response;
 }

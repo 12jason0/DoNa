@@ -39,7 +39,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             return NextResponse.json({ success: false, error: "Invalid course id" }, { status: 400 });
         }
 
-        const userId = resolveUserId(request);
+        const userId = await resolveUserId(request);
 
         // 제외 대상 로그인 유저면 증가·기록 없이 현재 조회수만 반환
         if (userId) {

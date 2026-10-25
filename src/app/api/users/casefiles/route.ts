@@ -9,7 +9,7 @@ const resolveUserId = resolveUserIdFromAuth;
 
 export async function GET(request: NextRequest) {
     try {
-        const userId = resolveUserId(request);
+        const userId = await resolveUserId(request);
         if (!userId) return NextResponse.json([], { status: 200 });
 
         // 완료된 스토리 진행 내역 조회 (userStoryProgress 기반)

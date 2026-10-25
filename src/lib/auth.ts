@@ -1,8 +1,10 @@
 // src/lib/auth.ts
 
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import { User } from "@prisma/client";
+import prisma from "@/lib/db";
+import { serverConfig } from "@/lib/config";
 
 // --- JWT (사용자 인증) 관련 함수들 ---
 
@@ -17,59 +19,85 @@ export function getJwtSecret(): string {
     return secret;
 }
 
+/** 로그인 JWT 발급. tv = users.token_version (로그아웃·비밀번호 변경으로 +1 되면 이 토큰은 무효) */
+export function signAuthToken(user: { id: number; username: string; email?: string | null; tokenVersion: number }): string {
+    // select에서 tokenVersion을 빼먹으면 tv가 비어 0으로 발급돼 바로 401이 나므로 여기서 막는다
+    if (!Number.isInteger(user.tokenVersion)) throw new Error("signAuthToken: tokenVersion is required");
+    return jwt.sign(
+        { userId: user.id, name: user.username, ...(user.email ? { email: user.email } : {}), tv: user.tokenVersion },
+        getJwtSecret(),
+        { expiresIn: serverConfig.authTokenMaxAgeSec }
+    );
+}
+
+/** auth 쿠키 설정 (예전 authorization 쿠키는 지움) */
+export function setAuthCookie(res: NextResponse, token: string): void {
+    res.cookies.delete("authorization");
+    res.cookies.set("auth", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: serverConfig.authTokenMaxAgeSec,
+    });
+}
+
+/** 서명·만료 확인 후 DB의 token_version과 비교. tv 없는 예전 토큰은 0으로 본다. 통과하면 userId, 아니면 null */
+export async function verifyAuthToken(token: string): Promise<number | null> {
+    let payload: { userId?: number | string; tv?: number };
+    try {
+        payload = jwt.verify(token, getJwtSecret()) as typeof payload;
+    } catch {
+        return null;
+    }
+    const userId = Number(payload?.userId);
+    if (!Number.isInteger(userId) || userId <= 0) return null;
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { tokenVersion: true } });
+    if (!user || user.tokenVersion !== (payload.tv ?? 0)) return null;
+    return userId;
+}
+
 export function extractBearerToken(request: NextRequest): string | null {
     const authHeader = request.headers.get("authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
     return authHeader.substring(7);
 }
 
-export function verifyJwtAndGetUserId(token: string): string {
-    const secret = getJwtSecret();
-    const decoded = jwt.verify(token, secret) as { userId?: string };
-    if (!decoded?.userId) {
-        throw new Error("JWT does not contain userId");
+export async function verifyJwtAndGetUserId(token: string): Promise<string> {
+    const userId = await verifyAuthToken(token);
+    if (!userId) {
+        throw new Error("Invalid or revoked token");
     }
-    return decoded.userId;
+    return String(userId);
 }
 
-export function getUserIdFromRequest(request: NextRequest): string | null {
+export async function getUserIdFromRequest(request: NextRequest): Promise<string | null> {
     try {
         const token = extractBearerToken(request);
         if (!token) return null;
-        return verifyJwtAndGetUserId(token);
+        return await verifyJwtAndGetUserId(token);
     } catch {
         return null;
     }
 }
 
 // 통합 인증 헬퍼: 우선순위 1) Authorization: Bearer 토큰, 2) 'auth' 쿠키(JWT)
-export function resolveUserId(request: NextRequest): number | null {
+export async function resolveUserId(request: NextRequest): Promise<number | null> {
     try {
         // 1) Authorization 헤더 우선
-        const fromHeader = getUserIdFromRequest(request);
-        if (fromHeader && Number.isFinite(Number(fromHeader))) {
-            return Number(fromHeader);
+        const bearer = extractBearerToken(request);
+        if (bearer) {
+            const fromHeader = await verifyAuthToken(bearer);
+            if (fromHeader) return fromHeader;
         }
 
         // 2) auth 또는 authorization 쿠키(JWT) — 미들웨어·레거시 클라이언트와 동일한 우선순위
         const token =
             request.cookies.get("auth")?.value || request.cookies.get("authorization")?.value || null;
         if (!token) return null;
-        
-        try {
-            const payload = jwt.verify(token, getJwtSecret()) as { userId?: number | string };
-            if (payload?.userId) {
-                const userId = Number(payload.userId);
-                if (Number.isFinite(userId) && userId > 0) {
-                    return userId;
-                }
-            }
-        } catch (verifyError) {
-            // JWT 검증 실패 (만료, 잘못된 토큰 등) - 정상적인 경우이므로 null 반환
-            console.warn("[resolveUserId] JWT 검증 실패:", verifyError instanceof Error ? verifyError.message : String(verifyError));
-        }
+        return await verifyAuthToken(token);
     } catch (error) {
-        // 예상치 못한 에러 발생 시 로그만 남기고 null 반환
+        // 예상치 못한 에러(DB 등) 발생 시 로그만 남기고 null 반환
         console.error("[resolveUserId] 예상치 못한 에러:", error);
     }
     return null;

@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 // 🟢 사용자의 알림 관심사 목록 조회
 export async function GET(req: NextRequest) {
     try {
-        const userId = resolveUserId(req);
+        const userId = await resolveUserId(req);
         if (!userId) {
             return NextResponse.json({ error: "인증 실패" }, { status: 401 });
         }

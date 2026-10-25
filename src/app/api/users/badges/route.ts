@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 // 로그인한 사용자의 모든 배지를 가져오는 GET 엔드포인트
 export async function GET(request: NextRequest) {
     try {
-        const userId = resolveUserId(request);
+        const userId = await resolveUserId(request);
         if (!userId) {
             return NextResponse.json({ message: "인증이 필요합니다." }, { status: 401 });
         }
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
 // --- ⬇️ 추가된 부분: 새로운 배지를 수여하는 POST 엔드포인트 ⬇️ ---
 export async function POST(request: NextRequest) {
     try {
-        const userId = resolveUserId(request);
+        const userId = await resolveUserId(request);
         if (!userId) {
             return NextResponse.json({ message: "인증이 필요합니다." }, { status: 401 });
         }

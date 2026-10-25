@@ -20,7 +20,7 @@ const PRODUCT_TO_PLAN: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
     try {
-        const userId = resolveUserId(req);
+        const userId = await resolveUserId(req);
         if (!userId) {
             return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
         }

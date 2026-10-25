@@ -255,7 +255,7 @@ async function getInitialCourses(searchParams: { [key: string]: string | string[
 
     if (token) {
         try {
-            const userIdStr = verifyJwtAndGetUserId(token);
+            const userIdStr = await verifyJwtAndGetUserId(token);
             if (userIdStr) {
                 const userIdNum = Number(userIdStr);
                 const [user, unlocks] = await Promise.all([

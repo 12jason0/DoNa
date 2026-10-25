@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
     try {
-        const userIdStr = resolveUserId(request);
+        const userIdStr = await resolveUserId(request);
         if (!userIdStr) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
         const userId = Number(userIdStr);
         if (!Number.isFinite(userId) || userId <= 0) return NextResponse.json({ error: "BAD_USER" }, { status: 400 });
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
     try {
-        const userIdStr = resolveUserId(request);
+        const userIdStr = await resolveUserId(request);
         if (!userIdStr) return NextResponse.json({ completed: false }, { status: 200 });
         const userId = Number(userIdStr);
         const { searchParams } = new URL(request.url);

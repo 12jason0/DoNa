@@ -41,7 +41,7 @@ const PLAN_DATA: Record<PlanKey, PlanInfo> = {
 export async function POST(req: NextRequest) {
     try {
         // 🟢 [보안] Rate limiting: 결제 API 남용 방지
-        const userIdForRl = resolveUserId(req);
+        const userIdForRl = await resolveUserId(req);
         const identifier = userIdForRl ? `user:${userIdForRl}` : getIdentifierFromRequest(req);
         const rl = await checkRateLimit("payment", identifier);
         if (!rl.success) {
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
         };
 
         // 🔐 [보안] 1. 서버 세션 쿠키에서 userId 추출 (클라이언트가 보낸 userId 맹신 금지)
-        const authenticatedUserId = resolveUserId(req);
+        const authenticatedUserId = await resolveUserId(req);
         if (!authenticatedUserId) {
             return NextResponse.json(
                 { success: false, error: "UNAUTHORIZED", message: "인증이 필요합니다." },

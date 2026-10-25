@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { saveSignupAttribution } from "@/lib/signupAttribution";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/db";
-import { getJwtSecret } from "@/lib/auth";
+import { setAuthCookie, signAuthToken } from "@/lib/auth";
 import { getSafeRedirectPath } from "@/lib/redirect";
 import { captureApiError } from "@/lib/sentry";
 
@@ -35,7 +35,6 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
     try {
         const { code, next } = await request.json();
-        const JWT_SECRET = getJwtSecret();
 
         // 🟢 [2026-01-21] Redirect URI 불일치 해결: 실제 요청 호스트 사용
         // 0.0.0.0을 localhost로 변경하지 않고 실제 호스트 주소 사용
@@ -136,7 +135,7 @@ export async function POST(request: NextRequest) {
                 select: {
                     id: true,
                     email: true,
-                    username: true,
+                    username: true, tokenVersion: true,
                     profileImageUrl: true,
                     ageRange: true,
                     gender: true,
@@ -150,7 +149,7 @@ export async function POST(request: NextRequest) {
                     select: {
                         id: true,
                         email: true,
-                        username: true,
+                        username: true, tokenVersion: true,
                         profileImageUrl: true,
                         ageRange: true,
                         gender: true,
@@ -182,7 +181,7 @@ export async function POST(request: NextRequest) {
                     select: {
                         id: true,
                         email: true,
-                        username: true,
+                        username: true, tokenVersion: true,
                         profileImageUrl: true,
                         ageRange: true,
                         gender: true,
@@ -205,7 +204,7 @@ export async function POST(request: NextRequest) {
                     select: {
                         id: true,
                         email: true,
-                        username: true,
+                        username: true, tokenVersion: true,
                         profileImageUrl: true,
                         ageRange: true,
                         gender: true,
@@ -220,7 +219,7 @@ export async function POST(request: NextRequest) {
         const isNewUser: boolean = result.isNew ?? false;
         if (isNewUser) await saveSignupAttribution(request, user.id);
 
-        const token = jwt.sign({ userId: user.id, name: user.username }, JWT_SECRET, { expiresIn: "365d" });
+        const token = signAuthToken(user);
         // 🟢 [2026-01-21] 응답 payload에 사용자 데이터 추가 (ageRange, gender 포함)
         const message = isNewUser
             ? "카카오 회원가입이 완료되었습니다."
@@ -241,18 +240,7 @@ export async function POST(request: NextRequest) {
             newUser: isNewUser,
         });
 
-        // 🟢 [Fix]: 이전 세션 파편 완전 제거 (로컬/카카오 로그인 통합)
-        res.cookies.delete("auth");
-        res.cookies.delete("authorization");
-        
-        // 🟢 보안 쿠키 설정 (LocalStorage 취약점 해결)
-        res.cookies.set("auth", token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            path: "/",
-            maxAge: 60 * 60 * 24 * 365,
-        });
+        setAuthCookie(res, token);
 
         return res;
     } catch (err) {

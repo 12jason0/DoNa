@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
         const type = (body.type as string) || null;
         const userId =
-            resolveUserId(request) ||
+            await resolveUserId(request) ||
             (body.userId != null ? String(body.userId) : null);
         const courseId = body.courseId != null ? String(body.courseId) : null;
         const escapeId = body.escapeId != null ? String(body.escapeId) : null;

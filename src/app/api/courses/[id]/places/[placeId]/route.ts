@@ -8,8 +8,8 @@ import { NO_TIPS, canSeeCourseTips } from "@/lib/tipAccess";
 export const dynamic = "force-dynamic";
 
 // 인증: 유저 JWT 또는 관리자(admin_auth) 허용
-function isAuthenticated(request: NextRequest): boolean {
-    if (resolveUserId(request)) return true;
+async function isAuthenticated(request: NextRequest): Promise<boolean> {
+    if (await resolveUserId(request)) return true;
     return verifyAdminJwt(request);
 }
 
@@ -43,7 +43,7 @@ export async function PATCH(
     { params }: { params: Promise<RouteParams> }
 ) {
     try {
-        if (!isAuthenticated(request)) {
+        if (!await isAuthenticated(request)) {
             return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
         }
 
@@ -138,7 +138,7 @@ export async function DELETE(
     { params }: { params: Promise<RouteParams> }
 ) {
     try {
-        if (!isAuthenticated(request)) {
+        if (!await isAuthenticated(request)) {
             return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
         }
 

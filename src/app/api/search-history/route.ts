@@ -11,7 +11,7 @@ const MAX_HISTORY = 10;
 /** GET: 현재 사용자의 검색 기록 조회 (최근순, 최대 10건) + isSearchHistoryEnabled */
 export async function GET(request: NextRequest) {
     try {
-        const userId = resolveUserId(request);
+        const userId = await resolveUserId(request);
         if (!userId) {
             return NextResponse.json({ list: [], isSearchHistoryEnabled: true }, { status: 200 });
         }
@@ -55,7 +55,7 @@ async function logSearch(keyword: string, userId: number | null) {
 /** POST: 검색 키워드 저장 (개인 기록은 로그인 + isSearchHistoryEnabled일 때만, 인기 검색어 로그는 모두) */
 export async function POST(request: NextRequest) {
     try {
-        const userId = resolveUserId(request);
+        const userId = await resolveUserId(request);
         const body = await request.json().catch(() => null);
         const keyword = typeof body?.keyword === "string" ? body.keyword.trim() : "";
         if (keyword) await logSearch(keyword, userId);
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
 /** DELETE: 검색 기록 1건 삭제 (id 있을 때) / 전체 삭제 (id 없을 때, 본인 것만) */
 export async function DELETE(request: NextRequest) {
     try {
-        const userId = resolveUserId(request);
+        const userId = await resolveUserId(request);
         if (!userId) {
             return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
         }
@@ -139,7 +139,7 @@ export async function DELETE(request: NextRequest) {
 /** PATCH: 검색 기록 저장 여부 설정 (isSearchHistoryEnabled) */
 export async function PATCH(request: NextRequest) {
     try {
-        const userId = resolveUserId(request);
+        const userId = await resolveUserId(request);
         if (!userId) {
             return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
         }

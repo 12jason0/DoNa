@@ -13,7 +13,7 @@ const ACTIVE_COURSE_TTL_MS = 3 * 24 * 60 * 60 * 1000;
  */
 export async function GET(request: NextRequest) {
     try {
-        const userId = resolveUserId(request);
+        const userId = await resolveUserId(request);
         if (!userId) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
         const active = await prisma.activeCourse.findUnique({
@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
     try {
-        const userId = resolveUserId(request);
+        const userId = await resolveUserId(request);
         if (!userId) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
         const body = await request.json().catch(() => ({}));

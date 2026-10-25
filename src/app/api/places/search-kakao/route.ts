@@ -290,7 +290,7 @@ export async function GET(request: NextRequest) {
         }
 
         // [법적 필수] 위치 로그 저장 (로그인한 사용자만, GPS 좌표는 저장하지 않음)
-        const userId = resolveUserId(request);
+        const userId = await resolveUserId(request);
         if (userId) {
             try {
                 await (prisma as any).locationLog.create({

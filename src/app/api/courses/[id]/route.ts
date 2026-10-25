@@ -19,7 +19,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             return NextResponse.json({ error: "Invalid course ID" }, { status: 400 });
         }
 
-        const userId = resolveUserId(request);
+        const userId = await resolveUserId(request);
         let userTier = "FREE";
         let hasUnlocked = false;
 

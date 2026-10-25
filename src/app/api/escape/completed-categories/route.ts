@@ -8,7 +8,7 @@ export const revalidate = 0;
 
 export async function GET(request: NextRequest) {
     try {
-        const userId = resolveUserId(request);
+        const userId = await resolveUserId(request);
         if (!userId) return NextResponse.json({ message: "인증이 필요합니다." }, { status: 401 });
 
         const { searchParams } = new URL(request.url);

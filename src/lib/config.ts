@@ -13,6 +13,8 @@ export const serverConfig = {
     jwtSecret: process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET,
     kakaoClientId: process.env.KAKAO_CLIENT_ID,
     kakaoClientSecret: process.env.KAKAO_CLIENT_SECRET,
+    /** 로그인 JWT·auth 쿠키 유지 기간(초). 강제 로그아웃은 users.token_version으로 처리 */
+    authTokenMaxAgeSec: 60 * 60 * 24 * 365,
     /** 🟢 [보안] 테스트 계정 이메일 목록 (쉼표 구분). 프로덕션에서는 빈 값 권장. GPS 등 특수 로직 건너뛸 때만 사용 */
     testAccounts: process.env.TEST_ACCOUNTS
         ? process.env.TEST_ACCOUNTS.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean)

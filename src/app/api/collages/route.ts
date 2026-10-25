@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 // GET /api/collages?storyId=123 → 사용자의 해당 스토리 콜라주 목록 (albumCount, albumLimit 포함)
 export async function GET(request: NextRequest) {
     try {
-        const userId = resolveUserId(request);
+        const userId = await resolveUserId(request);
         if (!userId) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
         const user = await prisma.user.findUnique({
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
 // POST /api/collages { storyId, collageUrl, thumbnailUrl?, templateId? }
 export async function POST(request: NextRequest) {
     try {
-        const userId = resolveUserId(request);
+        const userId = await resolveUserId(request);
         if (!userId) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
         const user = await prisma.user.findUnique({

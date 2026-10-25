@@ -11,7 +11,7 @@ export const revalidate = 300; // 5분 캐싱
 // 👇 추가된 GET 핸들러
 export async function GET(request: NextRequest) {
     try {
-        const userId = resolveUserId(request);
+        const userId = await resolveUserId(request);
         // 비로그인 사용자는 빈 배열 반환(클라이언트 에러 방지)
         if (!userId) return NextResponse.json([], { status: 200 });
 
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
     try {
-        const userId = resolveUserId(request);
+        const userId = await resolveUserId(request);
         if (!userId) {
             return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
         }
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
 }
 export async function DELETE(request: NextRequest) {
     try {
-        const userId = resolveUserId(request);
+        const userId = await resolveUserId(request);
         // 로그인 못 찾으면 401 (예전엔 200이라 앱에서 실패를 알 수 없었음)
         if (!userId) return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
         const { searchParams } = new URL(request.url);

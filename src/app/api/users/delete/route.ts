@@ -31,7 +31,7 @@ function getAppleClientSecret() {
 export async function DELETE(request: NextRequest) {
     try {
         // 1. 사용자 인증 확인
-        const userId = resolveUserId(request);
+        const userId = await resolveUserId(request);
         if (!userId) {
             return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
         }

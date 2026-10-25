@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "templateCourseId required" }, { status: 400 });
         }
 
-        const userId = resolveUserId(request);
+        const userId = await resolveUserId(request);
 
         // 같은 코스는 사람당 하루(KST) 5개까지. 초과 시 클라이언트는 코스 URL로 공유 계속
         // ponytail: 동시 요청 몇 개는 한도를 살짝 넘길 수 있음 — 필요해지면 advisory lock

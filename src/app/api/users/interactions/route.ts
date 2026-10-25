@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
         if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         let userIdStr: string;
         try {
-            userIdStr = verifyJwtAndGetUserId(token);
+            userIdStr = await verifyJwtAndGetUserId(token);
         } catch {
             return NextResponse.json({ error: "Invalid token" }, { status: 401 });
         }

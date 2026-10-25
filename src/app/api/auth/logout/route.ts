@@ -1,8 +1,19 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import prisma from "@/lib/db";
+import { resolveUserId } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+    // token_version +1 → 이 사용자에게 발급된 모든 토큰(다른 기기 포함)이 무효. 실패해도 쿠키는 지운다
+    try {
+        const userId = await resolveUserId(request);
+        if (userId) await prisma.user.update({ where: { id: userId }, data: { tokenVersion: { increment: 1 } } });
+    } catch (e) {
+        captureApiError(e);
+    }
+
     const res = NextResponse.json({ success: true });
 
     // 🟢 [Fix]: 로컬/카카오 로그인 통합을 위한 모든 인증 관련 쿠키 완전 삭제

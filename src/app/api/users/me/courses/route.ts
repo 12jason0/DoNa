@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
     try {
         // 🟢 쿠키 기반 인증: resolveUserId 사용
-        const userId = resolveUserId(req);
+        const userId = await resolveUserId(req);
         if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
     try {
         // 🟢 쿠키 기반 인증: resolveUserId 사용
-        const userId = resolveUserId(req);
+        const userId = await resolveUserId(req);
         if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }

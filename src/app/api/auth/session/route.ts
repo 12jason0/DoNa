@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
-import { getJwtSecret } from "@/lib/auth";
+import { verifyAuthToken } from "@/lib/auth";
 import prisma from "@/lib/db";
 import { captureApiError } from "@/lib/sentry";
 
@@ -36,23 +36,12 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ authenticated: false, user: null });
         }
 
-        // 🟢 JWT 검증 (단순 디코드가 아닌 검증)
-        let payload: any;
-        try {
-            payload = jwt.verify(token, getJwtSecret()) as any;
-        } catch (verifyError) {
-
-                captureApiError(verifyError);
-            // 토큰이 만료되었거나 유효하지 않은 경우
-            console.warn("[Session API] JWT 검증 실패:", verifyError);
-            return NextResponse.json({ authenticated: false, user: null });
-        }
-
-        // 🟢 사용자 ID 추출
-        const userId = payload?.userId;
+        // 🟢 JWT 검증 + token_version 비교 (만료·위조·로그아웃된 토큰이면 비로그인)
+        const userId = await verifyAuthToken(token);
         if (!userId) {
             return NextResponse.json({ authenticated: false, user: null });
         }
+        const payload: any = jwt.decode(token);
 
         // 🟢 DB에서 최신 사용자 정보 조회 (선택적, 성능 최적화를 위해 필요한 경우만)
         // 토큰에 이미 정보가 있으므로 DB 조회는 선택적으로 처리

@@ -1,7 +1,6 @@
 import { NextResponse, NextRequest } from "next/server";
 import prisma from "@/lib/db";
-import jwt from "jsonwebtoken";
-import { getJwtSecret, resolveUserId } from "@/lib/auth";
+import { resolveUserId } from "@/lib/auth";
 import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
@@ -31,18 +30,8 @@ export async function POST(request: NextRequest) {
         });
 
         // 통합 인증: Authorization 헤더 또는 auth 쿠키 허용
-        let resolvedUserId = resolveUserId(request);
+        let resolvedUserId = await resolveUserId(request);
         if (!resolvedUserId) {
-            // 구버전 호환: auth 쿠키 직접 파싱
-            const token = request.cookies.get("auth")?.value;
-            if (token) {
-                try {
-                    const payload = jwt.verify(token, getJwtSecret()) as { userId?: number | string };
-                    if (payload?.userId) resolvedUserId = Number(payload.userId);
-                } catch {}
-            }
-        }
-        if (!Number.isFinite(Number(resolvedUserId))) {
             return NextResponse.json({ message: "인증이 필요합니다." }, { status: 401 });
         }
         resolvedUserId = Number(resolvedUserId);
@@ -94,17 +83,8 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
-        let resolvedUserId = resolveUserId(request);
+        let resolvedUserId = await resolveUserId(request);
         if (!resolvedUserId) {
-            const token = request.cookies.get("auth")?.value;
-            if (token) {
-                try {
-                    const payload = jwt.verify(token, getJwtSecret()) as { userId?: number | string };
-                    if (payload?.userId) resolvedUserId = Number(payload.userId);
-                } catch {}
-            }
-        }
-        if (!Number.isFinite(Number(resolvedUserId))) {
             return NextResponse.json({ message: "인증이 필요합니다." }, { status: 401 });
         }
         const chapterIdStr = searchParams.get("chapterId") || searchParams.get("placeId");

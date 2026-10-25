@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 
     try {
         // 🟢 Rate limiting: 분당 30회 (IP 또는 userId 기준)
-        const authUserId = resolveUserId(request);
+        const authUserId = await resolveUserId(request);
         const identifier = authUserId ? String(authUserId) : getIdentifierFromRequest(request);
         const rl = await checkRateLimit("upload", identifier);
         if (!rl.success) {
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
         const typeValue = (form as any).get("type") as FormDataEntryValue | null;
         const type = typeValue instanceof File ? null : typeValue?.toString() || null; // "review" or "escape"
         const userIdValue = (form as any).get("userId") as FormDataEntryValue | null;
-        const userId = resolveUserId(request) || (userIdValue instanceof File ? null : userIdValue?.toString() || null);
+        const userId = await resolveUserId(request) || (userIdValue instanceof File ? null : userIdValue?.toString() || null);
         const courseIdValue = (form as any).get("courseId") as FormDataEntryValue | null;
         const courseId = courseIdValue instanceof File ? null : courseIdValue?.toString() || null;
         const escapeIdValue = (form as any).get("escapeId") as FormDataEntryValue | null;

@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(request: NextRequest) {
     try {
-        const userId = resolveUserId(request);
+        const userId = await resolveUserId(request);
         if (!userId) return NextResponse.json({ ids: [] });
 
         const unlocks = await (prisma as any).courseUnlock.findMany({

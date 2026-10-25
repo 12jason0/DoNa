@@ -9,9 +9,9 @@ import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
-function ensureAdminOrUser(req: NextRequest): boolean {
+async function ensureAdminOrUser(req: NextRequest): Promise<boolean> {
     if (verifyAdminJwt(req)) return true;
-    return resolveUserId(req) !== null;
+    return await resolveUserId(req) !== null;
 }
 
 function normalizeClosedDays(
@@ -39,7 +39,7 @@ function normalizeClosedDays(
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
-        if (!ensureAdminOrUser(request)) {
+        if (!await ensureAdminOrUser(request)) {
             return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
         }
         const { id } = await params;
@@ -98,7 +98,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
-        if (!ensureAdminOrUser(request)) {
+        if (!await ensureAdminOrUser(request)) {
             return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
         }
 
@@ -260,7 +260,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
-        if (!ensureAdminOrUser(request)) {
+        if (!await ensureAdminOrUser(request)) {
             return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
         }
 

@@ -3,7 +3,7 @@ import { saveSignupAttribution } from "@/lib/signupAttribution";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/db";
-import { getJwtSecret } from "@/lib/auth";
+import { setAuthCookie, signAuthToken } from "@/lib/auth";
 import { getSafeRedirectPath } from "@/lib/redirect";
 import { getS3StaticUrl } from "@/lib/s3Static";
 import { captureApiError } from "@/lib/sentry";
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
                     isMarketingAgreed: isMarketingAgreed === true,
                     marketingAgreedAt: isMarketingAgreed === true ? new Date() : null,
                 },
-                select: { id: true, email: true, username: true },
+                select: { id: true, email: true, username: true, tokenVersion: true },
             });
 
             return newUser;
@@ -85,14 +85,7 @@ export async function POST(request: NextRequest) {
         await saveSignupAttribution(request, createdUser.id);
 
         // 8. JWT 토큰 생성
-        const JWT_SECRET = getJwtSecret();
-        if (!JWT_SECRET) throw new Error("JWT_SECRET missing");
-
-        const token = jwt.sign(
-            { userId: createdUser.id, email: createdUser.email, name: createdUser.username },
-            JWT_SECRET,
-            { expiresIn: "365d" }
-        );
+        const token = signAuthToken(createdUser);
 
         // 9. 🟢 JSON 응답 및 보안 쿠키 설정 [cite: 2025-12-24]
         // 클라이언트 fetch에서 credentials: "include"를 사용하므로 쿠키가 저장됩니다.
@@ -102,13 +95,7 @@ export async function POST(request: NextRequest) {
             next: safeNext,
         });
 
-        res.cookies.set("auth", token, {
-            httpOnly: true, // XSS 공격 방지 [cite: 2025-12-24]
-            secure: process.env.NODE_ENV === "production", // HTTPS 환경 강제
-            sameSite: "lax",
-            path: "/",
-            maxAge: 60 * 60 * 24 * 365, // 1년 유지
-        });
+        setAuthCookie(res, token);
 
         return res;
     } catch (error: any) {

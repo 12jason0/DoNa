@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
     try {
-        const userId = resolveUserId(req);
+        const userId = await resolveUserId(req);
         if (!userId) {
             return NextResponse.json({ error: "인증 실패" }, { status: 401 });
         }

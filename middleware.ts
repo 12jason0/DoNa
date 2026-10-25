@@ -1,30 +1,9 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { jwtVerify } from "jose";
+import { resolveUserId } from "@/lib/auth";
 
-/** src/lib/shareAccess.ts SHARE_DEVICE_COOKIE와 같은 값 (미들웨어는 prisma를 import하지 않으려고 복사) */
+/** src/lib/shareAccess.ts SHARE_DEVICE_COOKIE와 같은 값 */
 const SHARE_DEVICE_COOKIE = "dona_did";
-
-async function resolveUserIdEdge(req: NextRequest): Promise<number | null> {
-    const secret = process.env.JWT_SECRET;
-    if (!secret || secret.length < 32) return null;
-
-    const token =
-        req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ||
-        req.cookies.get("auth")?.value ||
-        req.cookies.get("authorization")?.value ||
-        null;
-    if (!token) return null;
-
-    try {
-        const key = new TextEncoder().encode(secret);
-        const { payload } = await jwtVerify(token, key);
-        const userId = Number((payload as any).userId);
-        return Number.isFinite(userId) && userId > 0 ? userId : null;
-    } catch {
-        return null;
-    }
-}
 
 async function handleRequest(req: NextRequest): Promise<NextResponse> {
     const { pathname } = req.nextUrl;
@@ -46,10 +25,6 @@ async function handleRequest(req: NextRequest): Promise<NextResponse> {
         return res;
     }
 
-    // Edge Runtime 호환: jose 사용 (jsonwebtoken은 Node.js crypto 미지원)
-    const resolvedUserId = await resolveUserIdEdge(req);
-    const isAuth = Boolean(resolvedUserId && resolvedUserId > 0);
-
     // 1. Prefetch 및 RSC 요청 제외
     if (req.headers.get("x-middleware-prefetch") || req.nextUrl.searchParams.has("_rsc")) {
         return NextResponse.next();
@@ -66,6 +41,10 @@ async function handleRequest(req: NextRequest): Promise<NextResponse> {
         cleanUrl.searchParams.delete("logout");
         return NextResponse.redirect(cleanUrl);
     }
+
+    // 로그인 여부(JWT + DB token_version)는 아래 /login·/signup·/escape 처리에만 쓰므로 그때만 확인
+    const needsAuth = pathname === "/login" || pathname === "/signup" || pathname.startsWith("/escape");
+    const isAuth = needsAuth && (await resolveUserId(req)) !== null;
 
     // 🟢 [배포용 최종 Fix]: 로그아웃 후 리다이렉트 루프 방지
     // 로그인/회원가입 페이지 예외 처리 - 타임스탬프 파라미터 무시
@@ -147,6 +126,8 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
+    // token_version을 DB(prisma)에서 확인하므로 Node.js 런타임
+    runtime: "nodejs",
     matcher: [
         /*
          * 다음 경로를 제외한 모든 경로에서 미들웨어 실행:

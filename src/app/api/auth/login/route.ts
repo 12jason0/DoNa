@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/db";
 export const dynamic = "force-dynamic";
-import { getJwtSecret } from "@/lib/auth";
+import { setAuthCookie, signAuthToken } from "@/lib/auth";
 import { checkRateLimit, getIdentifierFromRequest } from "@/lib/rateLimit";
 import { captureApiError } from "@/lib/sentry";
 
@@ -54,15 +54,7 @@ export async function POST(request: NextRequest) {
         }
 
         // JWT 토큰 생성
-        const token = jwt.sign(
-            {
-                userId: user.id,
-                email: user.email,
-                name: user.nickname,
-            },
-            getJwtSecret(),
-            { expiresIn: "365d" }
-        );
+        const token = signAuthToken(found);
 
         // [법적 필수] 로그인 로그 저장
         try {
@@ -98,18 +90,7 @@ export async function POST(request: NextRequest) {
             },
         });
         
-        // 🟢 [Fix]: 이전 세션 파편 완전 제거 (로컬/카카오 로그인 통합)
-        res.cookies.delete("auth");
-        res.cookies.delete("authorization");
-        
-        // 새로운 보안 쿠키 설정
-        res.cookies.set("auth", token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            path: "/",
-            maxAge: 60 * 60 * 24 * 365, // 1년
-        });
+        setAuthCookie(res, token);
         
         return res;
     } catch (error) {

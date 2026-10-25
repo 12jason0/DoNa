@@ -189,9 +189,9 @@ export async function GET(request: NextRequest) {
     }
 }
 
-function ensureAdminOrUser(req: NextRequest): boolean {
+async function ensureAdminOrUser(req: NextRequest): Promise<boolean> {
     if (verifyAdminJwt(req)) return true;
-    return resolveUserId(req) !== null;
+    return await resolveUserId(req) !== null;
 }
 
 /** closed_days 배열 정규화: { day_of_week?: number|null, specific_date?: string|null, note?: string|null }[] → DB 입력용 */
@@ -220,7 +220,7 @@ function normalizeClosedDays(
 
 export async function POST(request: NextRequest) {
     try {
-        if (!ensureAdminOrUser(request)) {
+        if (!await ensureAdminOrUser(request)) {
             return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
         }
 

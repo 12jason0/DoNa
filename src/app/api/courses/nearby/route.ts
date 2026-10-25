@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
 
     // 유저 인증 및 tier/열람권 조회
-    const userId = resolveUserId(request);
+    const userId = await resolveUserId(request);
     let userTier = "FREE";
     let unlockedCourseIds: number[] = [];
     if (userId && Number.isFinite(userId)) {

@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import prisma from "@/lib/db";
-import { resolveUserId } from "@/lib/auth";
+import { resolveUserId, setAuthCookie, signAuthToken } from "@/lib/auth";
 import { captureApiError } from "@/lib/sentry";
 export const dynamic = "force-dynamic";
 
 export async function PUT(request: NextRequest) {
     try {
-        const userId = resolveUserId(request);
+        const userId = await resolveUserId(request);
         if (!userId) {
             return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
         }
@@ -27,8 +27,16 @@ export async function PUT(request: NextRequest) {
             return NextResponse.json({ error: "현재 비밀번호가 올바르지 않습니다." }, { status: 401 });
         }
         const hashed = await bcrypt.hash(String(newPassword), 12);
-        await prisma.user.update({ where: { id: Number(userId) }, data: { password: hashed } } as any);
-        return NextResponse.json({ success: true });
+        // token_version +1 → 다른 기기 토큰은 무효. 지금 기기는 새 토큰으로 계속 로그인
+        const updated = await prisma.user.update({
+            where: { id: Number(userId) },
+            data: { password: hashed, tokenVersion: { increment: 1 } },
+            select: { id: true, email: true, username: true, tokenVersion: true },
+        });
+        const token = signAuthToken(updated);
+        const res = NextResponse.json({ success: true, token });
+        setAuthCookie(res, token);
+        return res;
     } catch (e) {
 
             captureApiError(e);

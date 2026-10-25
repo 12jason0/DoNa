@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { saveSignupAttribution } from "@/lib/signupAttribution";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/db";
-import { getJwtSecret } from "@/lib/auth";
+import { setAuthCookie, signAuthToken } from "@/lib/auth";
 import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +14,6 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
     try {
         const { accessToken } = await request.json();
-        const JWT_SECRET = getJwtSecret();
 
         if (!accessToken) {
             return NextResponse.json({ error: "accessToken이 필요합니다." }, { status: 400 });
@@ -62,13 +61,13 @@ export async function POST(request: NextRequest) {
         const result = await (prisma as any).$transaction(async (tx: any) => {
             let user = await tx.user.findFirst({
                 where: { socialId, provider: "kakao" },
-                select: { id: true, email: true, username: true, profileImageUrl: true, ageRange: true, gender: true },
+                select: { id: true, email: true, username: true, tokenVersion: true, profileImageUrl: true, ageRange: true, gender: true },
             });
 
             if (!user && email) {
                 user = await tx.user.findUnique({
                     where: { email },
-                    select: { id: true, email: true, username: true, profileImageUrl: true, ageRange: true, gender: true },
+                    select: { id: true, email: true, username: true, tokenVersion: true, profileImageUrl: true, ageRange: true, gender: true },
                 });
             }
 
@@ -86,13 +85,13 @@ export async function POST(request: NextRequest) {
                 const updated = await tx.user.update({
                     where: { id: user.id },
                     data: updateData,
-                    select: { id: true, email: true, username: true, profileImageUrl: true },
+                    select: { id: true, email: true, username: true, tokenVersion: true, profileImageUrl: true },
                 });
                 return { user: updated, isNew: false };
             } else {
                 const newUser = await tx.user.create({
                     data: { username: nickname, email, profileImageUrl, socialId, provider: "kakao", ageRange, gender },
-                    select: { id: true, email: true, username: true, profileImageUrl: true },
+                    select: { id: true, email: true, username: true, tokenVersion: true, profileImageUrl: true },
                 });
                 return { user: newUser, isNew: true };
             }
@@ -100,7 +99,7 @@ export async function POST(request: NextRequest) {
 
         const user = result.user;
         if (result.isNew) await saveSignupAttribution(request, user.id);
-        const token = jwt.sign({ userId: user.id, name: user.username }, JWT_SECRET, { expiresIn: "365d" });
+        const token = signAuthToken(user);
 
         const res = NextResponse.json({
             success: true,
@@ -108,14 +107,7 @@ export async function POST(request: NextRequest) {
             user: { id: user.id, email: user.email, name: user.username, nickname: user.username },
         });
 
-        res.cookies.delete("auth");
-        res.cookies.set("auth", token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            path: "/",
-            maxAge: 60 * 60 * 24 * 365,
-        });
+        setAuthCookie(res, token);
 
         return res;
     } catch (err) {

@@ -326,7 +326,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
 
     if (token) {
         try {
-            const userIdStr = verifyJwtAndGetUserId(token);
+            const userIdStr = await verifyJwtAndGetUserId(token);
             if (userIdStr) {
                 const userIdNum = Number(userIdStr);
                 if (!isNaN(userIdNum) && userIdNum > 0) {

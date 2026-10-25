@@ -9,7 +9,7 @@ export const revalidate = 0; // 🟢 캐시 완전 비활성화
 
 export async function GET(request: NextRequest) {
     try {
-        const userId = resolveUserId(request);
+        const userId = await resolveUserId(request);
         if (!userId) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
         const user = await prisma.user.findUnique({
@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
     try {
-        const userId = resolveUserId(request);
+        const userId = await resolveUserId(request);
         if (!userId) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
         const body = await request.json().catch(() => null);

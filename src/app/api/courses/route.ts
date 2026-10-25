@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
                 ? timeOfDayParam
                 : null;
 
-        const userId = resolveUserId(request);
+        const userId = await resolveUserId(request);
         let userTier = "FREE";
         let unlockedCourseIds: number[] = [];
 

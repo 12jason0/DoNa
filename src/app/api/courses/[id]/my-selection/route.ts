@@ -16,7 +16,7 @@ export async function GET(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const userId = resolveUserId(request);
+        const userId = await resolveUserId(request);
         if (!userId) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
         const { id } = await params;
@@ -85,7 +85,7 @@ export async function POST(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const userId = resolveUserId(request);
+        const userId = await resolveUserId(request);
         if (!userId) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
         const { id } = await params;

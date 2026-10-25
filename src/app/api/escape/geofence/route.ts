@@ -18,7 +18,7 @@ function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number)
 
 export async function POST(request: NextRequest) {
     try {
-        const userId = resolveUserId(request);
+        const userId = await resolveUserId(request);
         if (!userId) {
             return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
         }

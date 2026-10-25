@@ -333,7 +333,7 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
 
     if (token) {
         try {
-            const userIdStr = verifyJwtAndGetUserId(token);
+            const userIdStr = await verifyJwtAndGetUserId(token);
             if (userIdStr) {
                 const userIdNum = Number(userIdStr);
                 if (Number.isFinite(userIdNum) && userIdNum > 0) {

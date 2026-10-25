@@ -114,7 +114,7 @@ const getCachedUserQueries = unstable_cache(
 
 async function getInitialUserData(token: string): Promise<InitialUserData | null> {
     try {
-        const userIdStr = verifyJwtAndGetUserId(token);
+        const userIdStr = await verifyJwtAndGetUserId(token);
         const userId = Number(userIdStr);
         if (!Number.isFinite(userId)) return null;
 

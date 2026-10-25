@@ -728,7 +728,7 @@ function diversifyCourses(courses: any[], maxPerRegion: number, maxPerConcept: n
 export async function GET(req: NextRequest) {
     try {
         // 🟢 [보안] Rate limiting: 추천 API 남용 방지
-        const userIdForRl = resolveUserId(req);
+        const userIdForRl = await resolveUserId(req);
         const identifier = userIdForRl ? `user:${userIdForRl}` : getIdentifierFromRequest(req);
         const rl = await checkRateLimit("recommendation", identifier);
         if (!rl.success) {

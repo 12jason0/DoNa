@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 /** GET: 가입 직후 질문을 띄울지 — 답이 없고 가입한 지 하루 안 된 사용자만 */
 export async function GET(req: NextRequest) {
-    const userId = resolveUserId(req);
+    const userId = await resolveUserId(req);
     if (!userId) return NextResponse.json({ ask: false });
     try {
         const user = await prisma.user.findUnique({
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
 
 /** POST { answer }: 한 번만 저장 (이미 답했으면 안 덮어씀). 건너뛰기는 "skipped" */
 export async function POST(req: NextRequest) {
-    const userId = resolveUserId(req);
+    const userId = await resolveUserId(req);
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     try {
         const { answer } = await req.json().catch(() => ({}));

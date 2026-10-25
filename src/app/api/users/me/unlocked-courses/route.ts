@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 // 마이페이지 '구매한 코스' — 열람권으로 연 코스 + 구독 상태
 export async function GET(req: NextRequest) {
     try {
-        const userId = resolveUserId(req);
+        const userId = await resolveUserId(req);
         if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
         const [user, unlocks] = await Promise.all([
