@@ -6,6 +6,8 @@ import Script from "next/script";
 import ClientStyleManager from "@/components/ClientStyleManager";
 // import AdSenseScript from "@/components/AdSenseScript"; // 🟢 AdMob/AdSense 비활성화
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import DemoBanner from "@/components/DemoBanner";
+import { isDemoMode } from "@/lib/demo";
 
 // ✅ 1. 페이지 정보 상자 (메타데이터)
 export const metadata: Metadata = {
@@ -27,6 +29,7 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+    const demo = isDemoMode();
     return (
         <html lang="ko" translate="no" suppressHydrationWarning>
             <head>
@@ -34,17 +37,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <link rel="preconnect" href="https://www.catchtable.co.kr" crossOrigin="" />
             </head>
             <body className="antialiased" style={{ backgroundColor: "#7FCC9F" }} suppressHydrationWarning={true}>
+                {/* 체험 데모: 위쪽 띠 + 저장 막힘 안내 */}
+                {demo && <DemoBanner />}
                 {/* Google Tag Manager (noscript) - body 바로 뒤 */}
-                <noscript>
+                {!demo && <noscript>
                     <iframe
                         src="https://www.googletagmanager.com/ns.html?id=GTM-N7NLQRK4"
                         height={0}
                         width={0}
                         style={{ display: "none", visibility: "hidden" }}
                     />
-                </noscript>
+                </noscript>}
                 {/* 🟢 [LCP] GTM을 afterInteractive로 변경해 초기 파싱/실행 블로킹 최소화 */}
-                <Script
+                {/* 체험 데모는 운영 GTM(GA·카카오 픽셀)으로 기록이 섞이지 않게 안 불러옴 */}
+                {!demo && <Script
                     id="gtm"
                     strategy="afterInteractive"
                     dangerouslySetInnerHTML={{
@@ -55,7 +61,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
 })(window,document,'script','dataLayer','GTM-N7NLQRK4');`,
                     }}
-                />
+                />}
                 {/* 🟢 웹뷰 앱 캐시 문제 해결: 빌드 버전 메타 태그 */}
                 <Script
                     id="build-version"

@@ -2,6 +2,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import AdminAuthGuard from "@/components/AdminAuthGuard";
+import { isDemoMode } from "@/lib/demo";
 
 export const metadata: Metadata = {
     title: "DoNa 관리자",
@@ -14,13 +15,15 @@ export const metadata: Metadata = {
 };
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
+    // 체험 데모: 로그인 없이 열고, 위쪽 데모 띠(h-8)만큼 사이드바·모바일 헤더를 내림
+    const demo = isDemoMode();
     return (
         // 관리자 화면은 시스템 기본 폰트 (globals.css .admin-system-font, 로그인 화면 포함)
         <div className="admin-system-font">
-        <AdminAuthGuard>
+        <AdminAuthGuard demo={demo}>
             <div className="flex min-h-screen bg-gray-50 text-gray-900 font-sans">
                 {/* 1. 왼쪽 사이드바 (PC 화면용) */}
-                <aside className="w-64 bg-white border-r border-gray-200 hidden md:flex flex-col fixed h-full z-10">
+                <aside className={`w-64 bg-white border-r border-gray-200 hidden md:flex flex-col fixed z-10 ${demo ? "top-8 bottom-0" : "h-full"}`}>
                     {/* 로고 영역 */}
                     <div className="p-6 border-b border-gray-100">
                         <Link href="/admin">
@@ -88,6 +91,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         >
                             📸 카드뉴스 생성
                         </Link>
+                        {demo && (
+                            <Link
+                                href="/admin/telegram-demo"
+                                className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-green-50 text-gray-700 hover:text-green-700 font-medium transition"
+                            >
+                                🤖 텔레그램 등록 예시
+                            </Link>
+                        )}
 
                         <p className="px-4 text-xs font-semibold text-gray-400 uppercase mt-6 mb-2">운영</p>
                         <Link
@@ -127,7 +138,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 {/* 2. 메인 콘텐츠 영역 (사이드바 너비만큼 왼쪽 여백) */}
                 <div className="flex-1 md:ml-64 flex flex-col min-h-screen">
                     {/* 모바일용 헤더 (화면 작을 때만 보임) */}
-                    <header className="md:hidden bg-white h-16 border-b flex items-center justify-between px-4 sticky top-0 z-20 shadow-sm">
+                    <header className={`md:hidden bg-white h-16 border-b flex items-center justify-between px-4 sticky z-20 shadow-sm ${demo ? "top-8" : "top-0"}`}>
                         <Link href="/admin">
                             <span className="font-bold text-green-700 text-lg">DoNa Admin</span>
                         </Link>

@@ -1,5 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { logger } from "./logger";
+import { isDemoMode } from "./demo";
+import { createDemoPrismaClient } from "./demoDb";
 
 // Prisma 클라이언트 싱글톤 (HMR 대응)
 declare global {
@@ -12,6 +14,8 @@ const databaseUrl = process.env.PRISMA_DATABASE_URL || process.env.DATABASE_URL;
 
 export const prisma: PrismaClient =
     global.__prisma ??
+    // 체험 데모: 데모 DB 전용 읽기 전용 클라이언트 (src/lib/demoDb.ts)
+    (isDemoMode() ? createDemoPrismaClient() : null) ??
     new PrismaClient({
         log: process.env.NODE_ENV === "production" ? ["error"] : ["query", "error", "warn"],
         datasources: {

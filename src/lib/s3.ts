@@ -1,9 +1,11 @@
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { assertNotDemo } from "@/lib/demo";
 
 let _s3: S3Client | null = null;
 
 function getS3Config() {
+    assertNotDemo("S3 업로드");
     // --- 디버깅 로그 시작 ---
     console.log("--- [S3 설정 확인] 환경 변수를 읽는 중입니다 ---");
     const regionFromAws = process.env.AWS_REGION;

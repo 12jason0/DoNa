@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#DFF3E7"/><stop offset="1" stop-color="#2E8B57"/></linearGradient></defs>
+<rect width="800" height="600" fill="url(#g)"/>
+<text x="400" y="290" font-size="160" text-anchor="middle" dominant-baseline="middle">🌳</text>
+<text x="400" y="470" font-size="44" font-weight="700" fill="#ffffff" text-anchor="middle" font-family="sans-serif">석촌호수</text>
+<text x="400" y="530" font-size="26" fill="#ffffff" fill-opacity="0.85" text-anchor="middle" font-family="sans-serif">야외명소 · DoNa 체험 데모 예시 이미지</text>
+</svg>

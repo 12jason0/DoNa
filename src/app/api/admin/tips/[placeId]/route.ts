@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { verifyAdminJwt } from "@/lib/auth";
+import { isDemoMode } from "@/lib/demo";
 import { approveTip, EDITED_STATUS, generateTipCandidates, hasSameTip, HUMAN_STATUSES, logTipRun, MANUAL_STATUS, refreshTipStatus, removeApprovedTip, runTipPipeline, updateApprovedTip } from "@/lib/tipPipeline";
 import { TIP_CATEGORY_VALUES } from "@/types/tip";
 import { parseTipsFromDb } from "@/types/tip";
@@ -32,7 +33,8 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     });
     if (!place) return NextResponse.json({ error: "장소 없음" }, { status: 404 });
 
-    if (req.nextUrl.searchParams.get("open") === "1") {
+    // 체험 데모는 저장을 안 하므로 작업 시간 기록도 건너뜀
+    if (req.nextUrl.searchParams.get("open") === "1" && !isDemoMode()) {
         await prisma.tipWorkLog.create({ data: { place_id: placeId } });
     }
 

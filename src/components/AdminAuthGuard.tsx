@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import { checkAdminPassword } from "@/app/actions/adminAuth";
 
-export default function AdminAuthGuard({ children }: { children: React.ReactNode }) {
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
+/** demo: 체험 데모(DEMO_MODE)면 비밀번호 없이 바로 보여줌 */
+export default function AdminAuthGuard({ children, demo = false }: { children: React.ReactNode; demo?: boolean }) {
+    const [isAuthenticated, setIsAuthenticated] = useState(demo);
     const [inputPassword, setInputPassword] = useState("");
     const [error, setError] = useState("");
     const [isLoading, setIsLoading] = useState(true);

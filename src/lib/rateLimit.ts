@@ -5,6 +5,7 @@
 
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
+import { isDemoMode } from "@/lib/demo";
 
 export type RateLimitType = "auth_login" | "recommendation" | "payment" | "api_generic" | "review" | "upload" | "partner_inquiry";
 
@@ -12,6 +13,7 @@ let redis: Redis | null = null;
 const limiters: Partial<Record<RateLimitType, Ratelimit>> = {};
 
 function getRedis(): Redis | null {
+    if (isDemoMode()) return null; // 체험 데모: 운영 Redis를 쓰지 않고 메모리만
     if (redis !== null) return redis;
     const url = process.env.UPSTASH_REDIS_REST_URL;
     const token = process.env.UPSTASH_REDIS_REST_TOKEN;

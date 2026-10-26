@@ -1,4 +1,5 @@
 import prisma from "@/lib/db";
+import { assertNotDemo } from "@/lib/demo";
 
 type PushData = Record<string, any> | undefined;
 
@@ -20,6 +21,7 @@ function getExpoPushHeaders(): Record<string, string> {
 
 // 지정 사용자들에게만 발송
 export async function sendPushNotificationToUsers(userIds: number[], title: string, body: string, data?: PushData) {
+    assertNotDemo("푸시 발송");
     const uniqueUserIds = Array.from(new Set(userIds.filter((id) => Number.isFinite(Number(id)))));
     if (uniqueUserIds.length === 0) return { success: true, sent: 0 };
 
@@ -79,6 +81,7 @@ export async function sendPushNotificationToUsers(userIds: number[], title: stri
 
 // 알림 켠 + 마케팅 수신 동의한 사용자 전체에게 발송
 export async function sendPushNotificationToAll(title: string, body: string, data?: PushData) {
+    assertNotDemo("푸시 발송");
     // 1) 토큰 조회 (구독자만 + 마케팅 수신 동의한 사용자만) - [법적 필수] 정보통신망법 준수
     const tokens = await prisma.pushToken.findMany({
         where: { subscribed: true },

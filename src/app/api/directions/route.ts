@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { captureApiError } from "@/lib/sentry";
+import { isDemoMode } from "@/lib/demo";
 
 export async function GET(req: NextRequest) {
     try {
@@ -12,6 +13,11 @@ export async function GET(req: NextRequest) {
         // 🟢 네이버 제한 대응: 좌표가 너무 많으면 7개까지만 끊어서 처리 (안정성 확보)
         // 네이버 Driving API는 출발지 + 도착지 + 경유지 5개 = 총 7개까지만 지원
         const limitedPoints = points.length > 7 ? points.slice(0, 7) : points;
+
+        // 체험 데모: 네이버 길찾기를 부르지 않고 장소끼리 직선으로 이음
+        if (isDemoMode()) {
+            return NextResponse.json({ coordinates: limitedPoints.map((p) => p.split(",").map(Number)) });
+        }
 
         const start = limitedPoints[0];
         const goal = limitedPoints[limitedPoints.length - 1];

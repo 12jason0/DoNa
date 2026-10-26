@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import { User } from "@prisma/client";
 import prisma from "@/lib/db";
 import { serverConfig } from "@/lib/config";
+import { isDemoMode } from "@/lib/demo";
 
 // --- JWT (사용자 인증) 관련 함수들 ---
 
@@ -121,6 +122,8 @@ export function signAdminToken(): string {
 /** 요청 쿠키의 admin_auth JWT가 유효한지 검증합니다. */
 /** request: NextRequest 또는 서버 컴포넌트의 cookies() — 쿠키 get만 씀 */
 export function verifyAdminJwt(request: { cookies: { get(name: string): { value: string } | undefined } }): boolean {
+    // 체험 데모: 로그인 없이 관리자 화면 열람 (저장은 데모 미들웨어·DB 클라이언트가 막음)
+    if (isDemoMode()) return true;
     try {
         const token = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
         if (!token) return false;

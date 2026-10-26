@@ -1,6 +1,9 @@
+import { isDemoMode } from "@/lib/demo";
+
 const api = (method: string) => `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/${method}`;
 
 async function call(method: string, body: object) {
+    if (isDemoMode()) return; // 체험 데모: 텔레그램 안 보냄
     await fetch(api(method), {
         method: "POST",
         headers: { "Content-Type": "application/json" },

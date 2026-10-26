@@ -2,6 +2,7 @@
 // 🟢 2순위: Redis 캐시 지원. UPSTASH 미설정 시 기존 메모리 캐시로 폴백 (서버리스 인스턴스 간 일관성 확보)
 
 import { Redis } from "@upstash/redis";
+import { isDemoMode } from "@/lib/demo";
 
 const CACHE_PREFIX = "cache:";
 const DEFAULT_TTL_MS = 5 * 60 * 1000; // 5분
@@ -13,6 +14,7 @@ let redis: Redis | null = null;
 const memoryStore = new Map<string, MemoryEntry>();
 
 function getRedis(): Redis | null {
+    if (isDemoMode()) return null; // 체험 데모: 운영 Redis를 쓰지 않고 메모리만
     if (redis !== null) return redis;
     const url = process.env.UPSTASH_REDIS_REST_URL;
     const token = process.env.UPSTASH_REDIS_REST_TOKEN;

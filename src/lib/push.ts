@@ -1,4 +1,5 @@
 import prisma from "@/lib/db";
+import { DEMO_BLOCKED_MESSAGE, isDemoMode } from "@/lib/demo";
 
 export type SendPushResult = { ok: boolean; reason?: string };
 
@@ -12,6 +13,7 @@ export async function sendPushToUser(
     body: string,
     data?: Record<string, unknown>
 ): Promise<SendPushResult> {
+    if (isDemoMode()) return { ok: false, reason: DEMO_BLOCKED_MESSAGE };
     try {
         const pushToken = await prisma.pushToken.findUnique({
             where: { userId },
