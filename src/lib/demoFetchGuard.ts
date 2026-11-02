@@ -1,6 +1,6 @@
 // 데모 서버의 바깥 호출 차단 (instrumentation.ts가 DEMO_MODE일 때만 설치)
 // fetch를 쓰는 SDK 전부(Claude·토스·텔레그램·Expo 푸시·Resend·Slack·DeepL·카카오·구글·네이버·인스타·Upstash)가 여기서 막힘.
-// 허용: 자기 자신(localhost, Vercel 배포 주소)과 DEMO_ALLOWED_HOSTS(쉼표 구분)에 적은 호스트만
+// 허용: 자기 자신(localhost, Vercel 배포 주소), Vercel 자체 데이터 캐시(*.vercel-infra.com), DEMO_ALLOWED_HOSTS(쉼표 구분)에 적은 호스트만
 import { DemoBlockedError } from "./demo";
 
 type GuardedFetch = typeof fetch & { __donaDemoGuard?: true };
@@ -36,7 +36,7 @@ export function installDemoFetchGuard() {
     const allowed = allowedHosts();
     const guarded: GuardedFetch = (input, init) => {
         const host = hostOf(input);
-        if (host && !allowed.has(host)) {
+        if (host && !allowed.has(host) && !host.endsWith(".vercel-infra.com")) {
             console.warn(`[demo] 바깥 호출 차단: ${host}`);
             return Promise.reject(new DemoBlockedError(`바깥 호출 ${host}`));
         }
