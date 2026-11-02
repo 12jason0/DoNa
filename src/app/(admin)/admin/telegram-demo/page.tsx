@@ -126,9 +126,6 @@ export default async function TelegramDemoPage() {
                                     <Link href={`/admin/tips/${p.id}`} className="rounded-lg bg-green-600 text-white px-3 py-2 text-xs font-semibold">
                                         팁 검수 화면 열기
                                     </Link>
-                                    <Link href="/admin/places" className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700">
-                                        장소 관리 (임시저장 목록)
-                                    </Link>
                                 </div>
                             </div>
                         </section>

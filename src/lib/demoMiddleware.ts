@@ -24,15 +24,26 @@ const BLOCKED_PREFIXES = [
     "/api/translate",
 ];
 
+/** 데모에 공개하는 /admin 하위 화면 (사이드바는 src/app/(admin)/layout.tsx). 나머지 /admin/* 는 대시보드로 보냄 */
+const PUBLIC_ADMIN_PREFIXES = ["/admin/tips", "/admin/courses", "/admin/card-news", "/admin/telegram-demo"];
+
+const isUnder = (pathname: string, prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`);
+
 /** null이면 다음(원래 미들웨어)으로 */
 export function demoGuard(req: NextRequest): Response | null {
     if (!isDemoMode()) return null;
     const { pathname } = req.nextUrl;
-    if (BLOCKED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+    if (BLOCKED_PREFIXES.some((p) => isUnder(pathname, p))) {
         return demoBlockedResponse();
     }
     // 페이지 POST(서버 액션) 포함 모든 저장·수정·삭제 요청
     if (!READ_METHODS.has(req.method)) return demoBlockedResponse();
+    if (pathname.startsWith("/admin/") && !PUBLIC_ADMIN_PREFIXES.some((p) => isUnder(pathname, p))) {
+        const url = req.nextUrl.clone();
+        url.pathname = "/admin";
+        url.search = "";
+        return NextResponse.redirect(url);
+    }
     // /api 읽기는 원래 미들웨어(페이지용)를 거치지 않게 바로 통과
     if (pathname.startsWith("/api/")) return NextResponse.next();
     return null;

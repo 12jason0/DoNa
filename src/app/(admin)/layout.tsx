@@ -40,12 +40,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         >
                             📊 대시보드
                         </Link>
+                        {!demo && (<>
                         <Link
                             href="/admin/metrics"
                             className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-green-50 text-gray-700 hover:text-green-700 font-medium transition"
                         >
                             🔢 핵심 숫자
                         </Link>
+                        </>)}
                         <Link
                             href="/admin/tips"
                             className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-green-50 text-gray-700 hover:text-green-700 font-medium transition"
@@ -60,6 +62,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         >
                             🗺️ 코스 관리
                         </Link>
+                        {!demo && (<>
                         <Link
                             href="/admin/places"
                             className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-green-50 text-gray-700 hover:text-green-700 font-medium transition"
@@ -84,6 +87,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         >
                             🕵️‍♀️ 방탈출 스토리
                         </Link>
+                        </>)}
 
                         <Link
                             href="/admin/card-news"
@@ -100,6 +104,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             </Link>
                         )}
 
+                        {!demo && (<>
                         <p className="px-4 text-xs font-semibold text-gray-400 uppercase mt-6 mb-2">운영</p>
                         <Link
                             href="/admin/notifications"
@@ -119,6 +124,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         >
                             🤝 제휴 문의
                         </Link>
+                        </>)}
                     </nav>
 
                     {/* 하단 정보 */}

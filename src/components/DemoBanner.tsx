@@ -29,7 +29,7 @@ export default function DemoBanner() {
     return (
         <>
             <div className="fixed top-0 inset-x-0 z-[1000] h-8 flex items-center justify-center gap-2 bg-amber-400 text-amber-950 text-sm font-semibold">
-                🧪 체험용 데모 · 저장되지 않음
+                🧪 체험용 데모 · 일부 화면만 공개 · 저장되지 않음
                 <span className="hidden sm:inline font-normal text-amber-900">— 회원·결제 정보는 모두 가짜 예시예요</span>
             </div>
             <div className="h-8" aria-hidden />

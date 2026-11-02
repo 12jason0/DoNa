@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
+import { AdminDemoContext } from "@/components/AdminAuthGuard";
 import {
     BarChart,
     Bar,
@@ -91,6 +92,7 @@ interface DemographicData {
 }
 
 export default function AdminDashboard() {
+    const demo = useContext(AdminDemoContext);
     const [statsData, setStatsData] = useState<StatsData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -522,6 +524,7 @@ export default function AdminDashboard() {
                         </div>
                     </Link>
 
+                    {!demo && (<>
                     {/* 2. 장소 관리 */}
                     <Link href="/admin/places" className="block group">
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:border-green-500 transition cursor-pointer h-full">
@@ -583,6 +586,8 @@ export default function AdminDashboard() {
                         </div>
                     </Link>
 
+                    </>)}
+
                     {/* 7. 카드뉴스 생성 */}
                     <Link href="/admin/card-news" className="block group">
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:border-green-500 transition cursor-pointer h-full">
@@ -594,6 +599,7 @@ export default function AdminDashboard() {
                         </div>
                     </Link>
 
+                    {!demo && <>
                     {/* 8. 지역 관리 */}
                     <Link href="/admin/regions" className="block group">
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:border-green-500 transition cursor-pointer h-full">
@@ -604,6 +610,7 @@ export default function AdminDashboard() {
                             <p className="text-gray-500 mt-2 text-sm">코스 지역 목록을 추가·삭제·순서 변경합니다.</p>
                         </div>
                     </Link>
+                    </>}
                 </div>
             </section>
         </div>

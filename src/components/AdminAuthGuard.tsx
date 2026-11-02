@@ -1,7 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { createContext, useState, useEffect } from "react";
 import { checkAdminPassword } from "@/app/actions/adminAuth";
+
+/** 클라이언트 화면이 데모 여부를 아는 통로 (DEMO_MODE는 서버 환경변수라 브라우저에서 못 읽음) */
+export const AdminDemoContext = createContext(false);
 
 /** demo: 체험 데모(DEMO_MODE)면 비밀번호 없이 바로 보여줌 */
 export default function AdminAuthGuard({ children, demo = false }: { children: React.ReactNode; demo?: boolean }) {
@@ -97,5 +100,5 @@ export default function AdminAuthGuard({ children, demo = false }: { children: R
     }
 
     // 인증되면 원래 내용 표시
-    return <>{children}</>;
+    return <AdminDemoContext.Provider value={demo}>{children}</AdminDemoContext.Provider>;
 }

@@ -8,7 +8,8 @@
 | | 어디서 | 내용 |
 |---|---|---|
 | 로그인 없이 `/admin` | `src/lib/auth.ts` `verifyAdminJwt`, `AdminAuthGuard` | 데모면 관리자 인증 통과 |
-| 위쪽 띠 "체험용 데모 · 저장되지 않음" | `src/components/DemoBanner.tsx` (루트 레이아웃) | 저장이 막히면 "데모에서는 저장되지 않아요" 토스트 |
+| 공개 화면 5개만 | 사이드바 `src/app/(admin)/layout.tsx`, 주소 `src/lib/demoMiddleware.ts` `PUBLIC_ADMIN_PREFIXES` | 대시보드·팁 검수(통계 포함)·코스 관리·카드뉴스·텔레그램 예시. 그 밖의 `/admin/*`는 `/admin`으로 보냄 |
+| 위쪽 띠 "체험용 데모 · 일부 화면만 공개 · 저장되지 않음" | `src/components/DemoBanner.tsx` (루트 레이아웃) | 저장이 막히면 "데모에서는 저장되지 않아요" 토스트 |
 | 저장·수정·삭제 차단 ① | 데모 빌드 미들웨어 `src/lib/demoMiddleware.ts` | `/api` 포함 모든 POST/PUT/PATCH/DELETE(서버 액션 포함) → 403. 크론·웹훅·결제·푸시·텔레그램·인스타·번역 경로는 GET도 403 |
 | 저장·수정·삭제 차단 ② | `src/lib/demoDb.ts` | Prisma 쓰기 쿼리를 DB에 보내기 전에 거부 |
 | 저장·수정·삭제 차단 ③ | Neon 읽기 전용 역할 `dona_demo_reader` | DB가 직접 거부 (`default_transaction_read_only`, SELECT 권한만) |
@@ -67,6 +68,7 @@ postgresql://dona_demo_reader:<DEMO_READER_PASSWORD>@ep-xxxx-pooler.ap-southeast
 ### 5. 배포 확인
 - `https://<데모 도메인>/admin` → 로그인 없이 대시보드, 위쪽 노란 띠
 - 아무 저장 버튼 → "데모에서는 저장되지 않아요"
+- `https://<데모 도메인>/admin/refunds` → `/admin`으로 이동
 - `curl -X POST https://<데모 도메인>/api/admin/regions` → 403, 헤더 `x-dona-demo-blocked: 1`
 - `curl https://<데모 도메인>/api/cron/send-daily-recommendation` → 403
 
