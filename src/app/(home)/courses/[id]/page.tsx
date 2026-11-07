@@ -11,6 +11,8 @@ import { unstable_cache } from "next/cache";
 import { COURSE_DETAIL_SENTINELS } from "@/lib/courseDetailSentinels";
 import type { Metadata } from "next";
 import { paidCourseShareDescription, resolveCourseImageAbsoluteForOg } from "@/lib/courseOpenGraph";
+import Link from "next/link";
+import { areaPath, areasOf, regionLabel } from "@/lib/regionIntro";
 
 // 🟢 [Fix]: 데이터베이스 연결 재시도 헬퍼 (아이패드 연결 풀 타임아웃 문제 해결)
 async function retryDatabaseOperation<T>(
@@ -245,7 +247,10 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     const course = (await getCourse(cleanId)) ?? (await fetchCourseFromDb(cleanId));
     if (!course) return { title: "코스를 찾을 수 없어요", robots: { index: false } };
 
-    const title = course.region ? `${course.title} - ${course.region} 데이트 코스` : course.title;
+    // "[동네] 데이트 코스 — [코스 특징] | 두나" (absolute로 레이아웃 템플릿 접미사 안 붙게)
+    const title = course.region
+        ? `${regionLabel(course.region)} 데이트 코스 — ${course.title} | 두나`
+        : `${course.title} — 데이트 코스 | 두나`;
     const description = courseSeoDescription(course);
     // 공유 카드(og·twitter): 유료 코스는 장소 이름을 빼고 "지역 · 시간 · 장소 N곳"만
     const isPaid = course.grade === "BASIC" || course.grade === "PREMIUM";
@@ -258,7 +263,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
         ? paidCourseShareDescription({ ...course, placeCount: (course.coursePlaces || []).length }) || "두나 데이트 코스"
         : description;
     return {
-        title,
+        title: { absolute: title },
         description,
         alternates: { canonical: `/courses/${cleanId}` },
         openGraph: { title: course.title, description: shareDescription, url: `/courses/${cleanId}`, images: [image] },
@@ -390,6 +395,13 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
               };
     })();
 
+    const [visibility, regionRows] = await Promise.all([
+        prisma.course.findUnique({ where: { id: courseId }, select: { isPublic: true } }),
+        prisma.region.findMany({ select: { name: true } }),
+    ]);
+    const isPublic = !!visibility?.isPublic;
+    const courseAreas = isPublic ? areasOf(courseData.region, regionRows.map((r) => r.name)) : [];
+
     // 구조화 데이터: secureCourseData 기준이라 잠금 코스는 주소가 빠짐 (화면에 보이는 내용만)
     const courseLd = {
         "@context": "https://schema.org",
@@ -414,12 +426,43 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
                           item: {
                               "@type": "Place",
                               name: cp.place.name,
+                              ...(isPublic && cp.place.status === "published" && { url: `${SITE_URL}/places/${cp.place.id}` }),
                               ...(cp.place.address && { address: cp.place.address }),
                           },
                       })),
               },
         provider: { "@type": "Organization", name: "두나 DoNa", url: SITE_URL },
     };
+
+    // 동네·장소 페이지 내부 링크 (장소는 잠금 해제 + 공개 코스일 때만, 화면에 이미 보이는 장소만)
+    const linkPlaces = isPublic && !isLocked
+        ? secureCourseData.coursePlaces
+              .map((cp: any) => cp.place)
+              .filter((p: any) => p && p.status === "published")
+        : [];
+    const relatedLinks = (courseAreas.length > 0 || linkPlaces.length > 0) && (
+        <nav aria-label="관련 페이지" className="mx-auto max-w-[900px] px-5 pt-6 text-sm">
+            {linkPlaces.length > 0 && (
+                <>
+                    <h2 className="mb-2 font-bold">이 코스의 장소</h2>
+                    <ul className="mb-4 flex flex-wrap gap-2">
+                        {linkPlaces.map((p: any) => (
+                            <li key={p.id}>
+                                <Link href={`/places/${p.id}`} className="inline-block rounded-full bg-gray-100 dark:bg-white/10 px-3 py-1 text-xs">
+                                    {p.name}
+                                </Link>
+                            </li>
+                        ))}
+                    </ul>
+                </>
+            )}
+            {courseAreas.map((a) => (
+                <Link key={a} href={areaPath(a)} className="mb-2 block rounded-xl bg-gray-100 dark:bg-white/10 px-4 py-3 font-semibold">
+                    {a} 데이트 코스 더 보기 →
+                </Link>
+            ))}
+        </nav>
+    );
 
     // 🟢 최적화: 리뷰는 클라이언트에서 필요할 때만 로드
     return (
@@ -433,6 +476,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
             initialReviews={[]}
             courseId={cleanId}
             userTier={currentUserTier}
+            relatedLinks={relatedLinks}
         />
         </>
     );

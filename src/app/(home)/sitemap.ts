@@ -2,7 +2,7 @@
 import { MetadataRoute } from "next";
 // 요청마다 새 PrismaClient를 만들면 커넥션이 누수되므로 프로젝트 공용 싱글톤을 사용
 import prisma from "@/lib/db";
-import { courseInRegion } from "@/lib/regionIntro";
+import { areaPath, areasByCourseCount, courseInRegion } from "@/lib/regionIntro";
 
 // 빌드 때 한 번만 만들지 않고 1시간마다 다시 생성 → 새 코스·지역·장소가 배포 없이 반영
 export const revalidate = 3600;
@@ -80,7 +80,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
             priority: 0.8,
         }));
 
-        // 지역 페이지: regions 테이블 지역 중 공개 코스가 있는 곳 (/regions/[region]과 같은 조건)
+        // 동네 페이지: regions 테이블 동네 중 공개 코스가 있는 곳, 코스 많은 순 (/area/[area]와 같은 조건)
         const [regions, publicCourses, places] = await Promise.all([
             prisma.region.findMany({ select: { name: true } }),
             prisma.course.findMany({ where: { isPublic: true }, select: { region: true, updatedAt: true } }),
@@ -94,18 +94,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
                 select: { id: true, updated_at: true },
             }),
         ]);
-        const regionPages: MetadataRoute.Sitemap = regions.flatMap(({ name }) => {
+        const regionPages: MetadataRoute.Sitemap = areasByCourseCount(
+            regions.map((r) => r.name),
+            publicCourses.map((c) => c.region),
+        ).map(({ name }) => {
             const inRegion = publicCourses.filter((c) => courseInRegion(c.region, name));
-            if (inRegion.length === 0) return [];
-            const lastModified = new Date(Math.max(...inRegion.map((c) => c.updatedAt.getTime())));
-            return [
-                {
-                    url: `${baseUrl}/regions/${encodeURIComponent(name)}`,
-                    lastModified,
-                    changeFrequency: "weekly" as const,
-                    priority: 0.8,
-                },
-            ];
+            return {
+                url: `${baseUrl}${areaPath(name)}`,
+                lastModified: new Date(Math.max(...inRegion.map((c) => c.updatedAt.getTime()))),
+                changeFrequency: "weekly" as const,
+                priority: 0.8,
+            };
         });
         const placePages: MetadataRoute.Sitemap = places.map((p) => ({
             url: `${baseUrl}/places/${p.id}`,

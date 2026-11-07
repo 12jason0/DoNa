@@ -51,3 +51,42 @@ export function courseInRegion(courseRegion: string | null | undefined, region: 
         .map((s) => s.trim())
         .includes(region);
 }
+
+/** 동네 페이지 주소 */
+export const areaPath = (area: string) => `/area/${encodeURIComponent(area)}`;
+
+/** 코스 region 문자열("북촌/안국")을 제목용으로: "북촌·안국" */
+export const regionLabel = (courseRegion: string) =>
+    courseRegion
+        .split(/[\/,·]/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .join("·");
+
+/** 코스 region 문자열에 들어 있는 동네 중 regions 테이블에 있는 것들 */
+export function areasOf(courseRegion: string | null | undefined, areaNames: string[]): string[] {
+    return areaNames.filter((name) => courseInRegion(courseRegion, name));
+}
+
+/** 공개 코스가 있는 동네를 코스 많은 순으로: [{ name, count }] */
+export function areasByCourseCount(areaNames: string[], courseRegions: (string | null)[]) {
+    return areaNames
+        .map((name) => ({ name, count: courseRegions.filter((r) => courseInRegion(r, name)).length }))
+        .filter((a) => a.count > 0)
+        .sort((a, b) => b.count - a.count);
+}
+
+/** 두 좌표 사이 거리(m) */
+export function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const rad = Math.PI / 180;
+    const a =
+        Math.sin(((lat2 - lat1) * rad) / 2) ** 2 +
+        Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(((lng2 - lng1) * rad) / 2) ** 2;
+    return 2 * 6371000 * Math.asin(Math.sqrt(a));
+}
+
+/** 장소 설명에서 첫 문장만 (검색 결과 설명용) */
+export function firstSentence(text: string | null | undefined, max = 70): string {
+    const s = (text ?? "").trim().split(/(?<=[.!?。])\s|\n/)[0]?.trim() ?? "";
+    return s.length > max ? `${s.slice(0, max - 1)}…` : s;
+}

@@ -7,6 +7,7 @@ import { notFound } from "next/navigation";
 import prisma from "@/lib/db";
 import { parseTipsFromDb, type TipItem } from "@/types/tip";
 import ko from "@/i18n/messages/ko/translation.json";
+import { areaPath, areasOf, distanceMeters, firstSentence } from "@/lib/regionIntro";
 
 export const revalidate = 3600;
 
@@ -14,6 +15,8 @@ const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://dona.io.kr").repl
 const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
 const SCHEMA_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const TIP_SUMMARY_MAX = 4;
+const NEARBY_MAX = 6;
+const NEARBY_RADIUS_M = 1500;
 
 async function getPlaceData(id: number) {
     if (!Number.isInteger(id) || id <= 0) return null;
@@ -35,7 +38,7 @@ async function getPlaceData(id: number) {
             coursePlaces: {
                 select: {
                     tips: true,
-                    course: { select: { id: true, title: true, grade: true, isPublic: true } },
+                    course: { select: { id: true, title: true, grade: true, isPublic: true, region: true } },
                 },
             },
         },
@@ -61,8 +64,38 @@ async function getPlaceData(id: number) {
         }
     }
 
+    // 동네: 이 장소가 쓰인 공개 코스의 지역 중 regions 테이블에 있는 것 (근거 있는 값만)
+    const areaNames = (await prisma.region.findMany({ select: { name: true } })).map((r) => r.name);
+    const area = publicUses.flatMap((cp) => areasOf(cp.course.region, areaNames))[0] ?? null;
+
+    // 근처 장소: FREE 공개 코스에 쓰인 장소 중 1.5km 안, 가까운 순 (유료 코스 장소 구성은 드러내지 않음)
+    let nearby: { id: number; name: string; category: string | null; meters: number }[] = [];
+    if (place.latitude != null && place.longitude != null) {
+        const candidates = await prisma.place.findMany({
+            where: {
+                id: { not: place.id },
+                status: "published",
+                NOT: { place_status: "CLOSED_PERMANENTLY" },
+                latitude: { not: null },
+                longitude: { not: null },
+                coursePlaces: { some: { course: { isPublic: true, grade: "FREE" } } },
+            },
+            select: { id: true, name: true, category: true, latitude: true, longitude: true },
+        });
+        nearby = candidates
+            .map((c) => ({
+                id: c.id,
+                name: c.name,
+                category: c.category,
+                meters: distanceMeters(place.latitude!, place.longitude!, c.latitude!, c.longitude!),
+            }))
+            .filter((c) => c.meters <= NEARBY_RADIUS_M)
+            .sort((a, b) => a.meters - b.meters)
+            .slice(0, NEARBY_MAX);
+    }
+
     const { coursePlaces: _drop, ...basic } = place;
-    return { place: basic, freeCourses, tips };
+    return { place: basic, freeCourses, tips, area, nearby };
 }
 
 type PlaceData = NonNullable<Awaited<ReturnType<typeof getPlaceData>>>;
@@ -130,9 +163,15 @@ function buildJsonLd({ place }: PlaceData, url: string) {
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
     const data = await getPlaceData(Number((await params).id));
     if (!data) return { title: "장소를 찾을 수 없어요", robots: { index: false } };
-    const { place } = data;
-    const title = `${place.name}${place.category ? ` - ${place.category}` : ""} | 두나`;
-    const description = [place.address, place.opening_hours && `영업 ${place.opening_hours}`, place.description]
+    const { place, area, nearby } = data;
+    // 이름에 동네가 이미 들어 있으면(예: "카르마커피 광명") 다시 붙이지 않음
+    const nameWithArea = area && !place.name.includes(area) ? `${place.name} ${area}` : place.name;
+    const title = `${nameWithArea} — 근처 데이트 코스 | 두나`;
+    const description = [
+        firstSentence(place.description) || [area, place.category].filter(Boolean).join(" "),
+        nearby.length > 0 && `근처에서 같이 가기 좋은 곳 ${nearby.length}곳`,
+        place.address,
+    ]
         .filter(Boolean)
         .join(" · ")
         .slice(0, 150);
@@ -157,7 +196,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 export default async function PlacePage({ params }: { params: Promise<{ id: string }> }) {
     const data = await getPlaceData(Number((await params).id));
     if (!data) notFound();
-    const { place, freeCourses, tips } = data;
+    const { place, freeCourses, tips, area, nearby } = data;
     const url = `${SITE_URL}/places/${place.id}`;
     const price = formatPriceRange(place.avg_cost_range);
     const closedLines = closedDayLines(place.closed_days);
@@ -231,6 +270,32 @@ export default async function PlacePage({ params }: { params: Promise<{ id: stri
                     </section>
                 )}
 
+                {nearby.length > 0 && (
+                    <section className="mb-8">
+                        <h2 className="text-lg font-bold mb-3">근처에서 같이 가기 좋은 곳</h2>
+                        <ul className="space-y-2">
+                            {nearby.map((n) => (
+                                <li key={n.id}>
+                                    <Link
+                                        href={`/places/${n.id}`}
+                                        className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 dark:border-gray-800 px-4 py-3 text-sm"
+                                    >
+                                        <span className="min-w-0">
+                                            <span className="font-medium">{n.name}</span>
+                                            {n.category && (
+                                                <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">{n.category}</span>
+                                            )}
+                                        </span>
+                                        <span className="shrink-0 text-xs text-gray-500 dark:text-gray-400">
+                                            {n.meters < 1000 ? `${Math.round(n.meters / 10) * 10}m` : `${(n.meters / 1000).toFixed(1)}km`}
+                                        </span>
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
+                    </section>
+                )}
+
                 {freeCourses.length > 0 && (
                     <section className="mb-8">
                         <h2 className="text-lg font-bold mb-3">이 장소가 들어간 코스</h2>
@@ -247,6 +312,15 @@ export default async function PlacePage({ params }: { params: Promise<{ id: stri
                             ))}
                         </ul>
                     </section>
+                )}
+
+                {area && (
+                    <Link
+                        href={areaPath(area)}
+                        className="block rounded-xl bg-gray-100 dark:bg-white/10 px-4 py-3 text-sm font-semibold"
+                    >
+                        {area} 데이트 코스 더 보기 →
+                    </Link>
                 )}
             </article>
         </div>

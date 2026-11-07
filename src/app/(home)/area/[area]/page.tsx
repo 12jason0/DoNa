@@ -1,0 +1,270 @@
+// 동네별 데이트 코스 페이지 /area/[area] (SEO). 로그인 없이 서버에서 HTML로 렌더, 봇·사람 동일 내용.
+// 공개 범위: FREE 코스는 장소 이름까지, 유료(BASIC·PREMIUM) 코스는 제목·서브타이틀·등급만.
+// 장소 목록도 FREE 코스 장소만 (유료 코스 장소 구성이 드러나지 않게).
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { notExpiredCourseWhere } from "@/lib/placePeriod";
+import prisma from "@/lib/db";
+import { areaPath, areasByCourseCount, courseInRegion, regionIntro } from "@/lib/regionIntro";
+
+export const revalidate = 3600;
+
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://dona.io.kr").replace(/\/$/, "");
+
+const GRADE_LABEL: Record<string, string> = { FREE: "무료", BASIC: "베이직", PREMIUM: "프리미엄" };
+
+type RegionCourse = {
+    id: number;
+    title: string;
+    sub_title: string | null;
+    grade: string;
+    imageUrl: string | null;
+    duration: string | null;
+    /** FREE 코스만 채움 */
+    placeNames: string[];
+};
+
+function decodeRegion(raw: string): string {
+    try {
+        return decodeURIComponent(raw).trim();
+    } catch {
+        return raw.trim();
+    }
+}
+
+async function getRegionData(region: string) {
+    const known = await prisma.region.findUnique({ where: { name: region }, select: { name: true } });
+    if (!known) return null;
+
+    const rows = await prisma.course.findMany({
+        where: { isPublic: true, region: { contains: region }, ...notExpiredCourseWhere() },
+        orderBy: [{ isPopular: "desc" }, { createdAt: "desc" }],
+        select: {
+            id: true,
+            title: true,
+            sub_title: true,
+            grade: true,
+            imageUrl: true,
+            duration: true,
+            region: true,
+            coursePlaces: {
+                orderBy: { order_index: "asc" },
+                select: { place: { select: { id: true, name: true, category: true, status: true, place_status: true } } },
+            },
+        },
+    });
+    const inArea = rows.filter((c) => courseInRegion(c.region, region));
+    // 장소 페이지가 있는 FREE 코스 장소 (폐업 제외, 중복 제거)
+    const places = [
+        ...new Map(
+            inArea
+                .filter((c) => c.grade === "FREE")
+                .flatMap((c) => c.coursePlaces.map((cp) => cp.place))
+                .filter(
+                    (p): p is NonNullable<typeof p> =>
+                        !!p && p.status === "published" && p.place_status !== "CLOSED_PERMANENTLY",
+                )
+                .map((p) => [p.id, { id: p.id, name: p.name, category: p.category }]),
+        ).values(),
+    ];
+    const courses: RegionCourse[] = inArea
+        .map((c) => {
+            const isFree = c.grade === "FREE";
+            return {
+                id: c.id,
+                title: c.title,
+                sub_title: c.sub_title,
+                grade: c.grade,
+                // 유료 코스는 장소가 드러날 수 있는 정보(사진·소요시간 포함)를 빼고 제목·서브타이틀·등급만
+                imageUrl: isFree ? c.imageUrl : null,
+                duration: isFree ? c.duration : null,
+                placeNames: isFree ? c.coursePlaces.map((cp) => cp.place?.name).filter((n): n is string => !!n) : [],
+            };
+        });
+    if (courses.length === 0) return null;
+
+    // 다른 동네 내부 링크: 공개 코스가 있는 동네만, 코스 많은 순
+    const [regions, publicRegions] = await Promise.all([
+        prisma.region.findMany({ orderBy: { display_order: "asc" }, select: { name: true } }),
+        prisma.course.findMany({ where: { isPublic: true }, select: { region: true } }),
+    ]);
+    const otherRegions = areasByCourseCount(
+        regions.map((r) => r.name),
+        publicRegions.map((c) => c.region),
+    )
+        .map((a) => a.name)
+        .filter((name) => name !== region);
+
+    return { courses, places, otherRegions };
+}
+
+const regionPath = areaPath;
+
+export async function generateMetadata({ params }: { params: Promise<{ area: string }> }): Promise<Metadata> {
+    const region = decodeRegion((await params).area);
+    const data = await getRegionData(region);
+    if (!data) return { title: "지역을 찾을 수 없어요", robots: { index: false } };
+    const title = `${region} 데이트 코스 추천 ${data.courses.length}곳 | 두나`;
+    const description = regionIntro(region, data.courses.length).join(" ").slice(0, 150);
+    return {
+        title: { absolute: title },
+        description,
+        alternates: { canonical: regionPath(region) },
+        openGraph: { title, description, url: regionPath(region), type: "website", siteName: "DoNa" },
+    };
+}
+
+export default async function AreaPage({ params }: { params: Promise<{ area: string }> }) {
+    const region = decodeRegion((await params).area);
+    const data = await getRegionData(region);
+    if (!data) notFound();
+    const { courses, places, otherRegions } = data;
+    const intro = regionIntro(region, courses.length);
+
+    // 화면과 같은 범위만: 코스 이름·URL (유료 코스도 이름만)
+    const jsonLd = [
+        {
+            "@context": "https://schema.org",
+            "@type": "CollectionPage",
+            name: `${region} 데이트 코스 추천`,
+            description: intro.join(" "),
+            url: `${SITE_URL}${regionPath(region)}`,
+            mainEntity: {
+                "@type": "ItemList",
+                itemListElement: courses.map((c, i) => ({
+                    "@type": "ListItem",
+                    position: i + 1,
+                    url: `${SITE_URL}/courses/${c.id}`,
+                    name: c.title,
+                })),
+            },
+        },
+        ...(places.length > 0
+            ? [
+                  {
+                      "@context": "https://schema.org",
+                      "@type": "ItemList",
+                      name: `${region} 데이트 장소`,
+                      itemListElement: places.map((p, i) => ({
+                          "@type": "ListItem",
+                          position: i + 1,
+                          url: `${SITE_URL}/places/${p.id}`,
+                          name: p.name,
+                      })),
+                  },
+              ]
+            : []),
+        {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+                { "@type": "ListItem", position: 1, name: "두나", item: SITE_URL },
+                { "@type": "ListItem", position: 2, name: `${region} 데이트 코스`, item: `${SITE_URL}${regionPath(region)}` },
+            ],
+        },
+    ];
+
+    return (
+        <div className="bg-white dark:bg-[#0f1710] text-gray-900 dark:text-white leading-relaxed min-h-screen">
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
+            />
+            <article className="mx-auto max-w-[500px] px-4 py-8">
+                <header className="mb-8">
+                    <h1 className="text-2xl font-bold mb-3">{region} 데이트 코스 추천</h1>
+                    {intro.map((line) => (
+                        <p key={line} className="text-sm text-gray-600 dark:text-gray-300">
+                            {line}
+                        </p>
+                    ))}
+                </header>
+
+                <section className="mb-10">
+                    <h2 className="text-lg font-bold mb-4">{region} 코스 {courses.length}개</h2>
+                    <ul className="space-y-3">
+                        {courses.map((c) => (
+                            <li key={c.id}>
+                                <Link
+                                    href={`/courses/${c.id}`}
+                                    className="flex gap-3 rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-[#1a241b] p-3 shadow-sm"
+                                >
+                                    {c.imageUrl && (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img
+                                            src={c.imageUrl}
+                                            alt={`${c.title} 대표 사진`}
+                                            loading="lazy"
+                                            className="h-20 w-20 shrink-0 rounded-xl object-cover bg-gray-100"
+                                        />
+                                    )}
+                                    <div className="min-w-0 flex-1">
+                                        <span
+                                            className={`inline-block mb-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
+                                                c.grade === "FREE"
+                                                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                                                    : "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                                            }`}
+                                        >
+                                            {GRADE_LABEL[c.grade] ?? c.grade}
+                                        </span>
+                                        <h3 className="text-sm font-semibold leading-snug">{c.title}</h3>
+                                        {c.sub_title && (
+                                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{c.sub_title}</p>
+                                        )}
+                                        {c.placeNames.length > 0 && (
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                {c.placeNames.join(" → ")}
+                                                {c.duration && ` · ${c.duration}`}
+                                            </p>
+                                        )}
+                                    </div>
+                                </Link>
+                            </li>
+                        ))}
+                    </ul>
+                </section>
+
+                {places.length > 0 && (
+                    <section className="mb-10">
+                        <h2 className="text-lg font-bold mb-4">{region} 데이트 장소 {places.length}곳</h2>
+                        <ul className="grid grid-cols-2 gap-2">
+                            {places.map((p) => (
+                                <li key={p.id}>
+                                    <Link
+                                        href={`/places/${p.id}`}
+                                        className="block rounded-xl border border-gray-100 dark:border-gray-800 px-3 py-2 text-sm"
+                                    >
+                                        <span className="font-medium">{p.name}</span>
+                                        {p.category && (
+                                            <span className="block text-xs text-gray-500 dark:text-gray-400">{p.category}</span>
+                                        )}
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
+                    </section>
+                )}
+
+                {otherRegions.length > 0 && (
+                    <nav aria-label="다른 지역 데이트 코스" className="mb-6">
+                        <h2 className="text-lg font-bold mb-3">다른 지역 데이트 코스</h2>
+                        <ul className="flex flex-wrap gap-2">
+                            {otherRegions.map((name) => (
+                                <li key={name}>
+                                    <Link
+                                        href={regionPath(name)}
+                                        className="inline-block rounded-full bg-gray-100 dark:bg-white/10 px-3 py-1 text-xs font-medium text-gray-700 dark:text-gray-200"
+                                    >
+                                        {name}
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
+                    </nav>
+                )}
+            </article>
+        </div>
+    );
+}

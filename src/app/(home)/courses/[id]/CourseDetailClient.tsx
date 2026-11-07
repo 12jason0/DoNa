@@ -395,6 +395,8 @@ interface CourseDetailClientProps {
     initialReviews: Review[];
     courseId: string;
     userTier?: string;
+    /** 서버에서 만든 동네·장소 페이지 링크 (검색 내부 링크용) */
+    relatedLinks?: React.ReactNode;
 }
 
 export default function CourseDetailClient({
@@ -402,6 +404,7 @@ export default function CourseDetailClient({
     initialReviews,
     courseId,
     userTier = "FREE",
+    relatedLinks,
 }: CourseDetailClientProps) {
     const router = useRouter();
     const { t, locale } = useLocale();
@@ -2421,6 +2424,7 @@ export default function CourseDetailClient({
                         </section>
 
                         <CourseInfoDetails course={courseData} locale={locale} t={t} />
+                        {relatedLinks}
                     </main>
 
                     {/* 찜하기·공유 하단바: 폰 프레임에 transform 있으면 fixed가 폰 안에만 적용됨 */}
