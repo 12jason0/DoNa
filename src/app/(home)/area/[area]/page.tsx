@@ -6,7 +6,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { notExpiredCourseWhere } from "@/lib/placePeriod";
 import prisma from "@/lib/db";
-import { areaPath, areasByCourseCount, courseInRegion, regionIntro } from "@/lib/regionIntro";
+import { areaLabel, areaPath, areasByCourseCount, courseInRegion, regionIntro } from "@/lib/regionIntro";
 
 export const revalidate = 3600;
 
@@ -103,9 +103,10 @@ const regionPath = areaPath;
 
 export async function generateMetadata({ params }: { params: Promise<{ area: string }> }): Promise<Metadata> {
     const region = decodeRegion((await params).area);
+    const label = areaLabel(region);
     const data = await getRegionData(region);
     if (!data) return { title: "지역을 찾을 수 없어요", robots: { index: false } };
-    const title = `${region} 데이트 코스 추천 ${data.courses.length}곳 | 두나`;
+    const title = `${label} 데이트 코스 추천 ${data.courses.length}곳 | 두나`;
     const description = regionIntro(region, data.courses.length).join(" ").slice(0, 150);
     return {
         title: { absolute: title },
@@ -119,6 +120,7 @@ export default async function AreaPage({ params }: { params: Promise<{ area: str
     const region = decodeRegion((await params).area);
     const data = await getRegionData(region);
     if (!data) notFound();
+    const label = areaLabel(region);
     const { courses, places, otherRegions } = data;
     const intro = regionIntro(region, courses.length);
 
@@ -127,7 +129,7 @@ export default async function AreaPage({ params }: { params: Promise<{ area: str
         {
             "@context": "https://schema.org",
             "@type": "CollectionPage",
-            name: `${region} 데이트 코스 추천`,
+            name: `${label} 데이트 코스 추천`,
             description: intro.join(" "),
             url: `${SITE_URL}${regionPath(region)}`,
             mainEntity: {
@@ -145,7 +147,7 @@ export default async function AreaPage({ params }: { params: Promise<{ area: str
                   {
                       "@context": "https://schema.org",
                       "@type": "ItemList",
-                      name: `${region} 데이트 장소`,
+                      name: `${label} 데이트 장소`,
                       itemListElement: places.map((p, i) => ({
                           "@type": "ListItem",
                           position: i + 1,
@@ -160,7 +162,7 @@ export default async function AreaPage({ params }: { params: Promise<{ area: str
             "@type": "BreadcrumbList",
             itemListElement: [
                 { "@type": "ListItem", position: 1, name: "두나", item: SITE_URL },
-                { "@type": "ListItem", position: 2, name: `${region} 데이트 코스`, item: `${SITE_URL}${regionPath(region)}` },
+                { "@type": "ListItem", position: 2, name: `${label} 데이트 코스`, item: `${SITE_URL}${regionPath(region)}` },
             ],
         },
     ];
@@ -173,7 +175,7 @@ export default async function AreaPage({ params }: { params: Promise<{ area: str
             />
             <article className="mx-auto max-w-[500px] px-4 py-8">
                 <header className="mb-8">
-                    <h1 className="text-2xl font-bold mb-3">{region} 데이트 코스 추천</h1>
+                    <h1 className="text-2xl font-bold mb-3">{label} 데이트 코스 추천</h1>
                     {intro.map((line) => (
                         <p key={line} className="text-sm text-gray-600 dark:text-gray-300">
                             {line}
@@ -182,7 +184,7 @@ export default async function AreaPage({ params }: { params: Promise<{ area: str
                 </header>
 
                 <section className="mb-10">
-                    <h2 className="text-lg font-bold mb-4">{region} 코스 {courses.length}개</h2>
+                    <h2 className="text-lg font-bold mb-4">{label} 코스 {courses.length}개</h2>
                     <ul className="space-y-3">
                         {courses.map((c) => (
                             <li key={c.id}>
@@ -228,7 +230,7 @@ export default async function AreaPage({ params }: { params: Promise<{ area: str
 
                 {places.length > 0 && (
                     <section className="mb-10">
-                        <h2 className="text-lg font-bold mb-4">{region} 데이트 장소 {places.length}곳</h2>
+                        <h2 className="text-lg font-bold mb-4">{label} 데이트 장소 {places.length}곳</h2>
                         <ul className="grid grid-cols-2 gap-2">
                             {places.map((p) => (
                                 <li key={p.id}>
@@ -257,7 +259,7 @@ export default async function AreaPage({ params }: { params: Promise<{ area: str
                                         href={regionPath(name)}
                                         className="inline-block rounded-full bg-gray-100 dark:bg-white/10 px-3 py-1 text-xs font-medium text-gray-700 dark:text-gray-200"
                                     >
-                                        {name}
+                                        {areaLabel(name)}
                                     </Link>
                                 </li>
                             ))}

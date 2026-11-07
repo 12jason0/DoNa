@@ -12,7 +12,7 @@ import { COURSE_DETAIL_SENTINELS } from "@/lib/courseDetailSentinels";
 import type { Metadata } from "next";
 import { paidCourseShareDescription, resolveCourseImageAbsoluteForOg } from "@/lib/courseOpenGraph";
 import Link from "next/link";
-import { areaPath, areasOf, regionLabel } from "@/lib/regionIntro";
+import { areaLabel, areaPath, areasOf, regionLabel } from "@/lib/regionIntro";
 
 // 🟢 [Fix]: 데이터베이스 연결 재시도 헬퍼 (아이패드 연결 풀 타임아웃 문제 해결)
 async function retryDatabaseOperation<T>(
@@ -458,7 +458,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
             )}
             {courseAreas.map((a) => (
                 <Link key={a} href={areaPath(a)} className="mb-2 block rounded-xl bg-gray-100 dark:bg-white/10 px-4 py-3 font-semibold">
-                    {a} 데이트 코스 더 보기 →
+                    {areaLabel(a)} 데이트 코스 더 보기 →
                 </Link>
             ))}
         </nav>

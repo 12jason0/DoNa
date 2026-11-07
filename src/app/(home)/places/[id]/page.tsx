@@ -7,7 +7,7 @@ import { notFound } from "next/navigation";
 import prisma from "@/lib/db";
 import { parseTipsFromDb, type TipItem } from "@/types/tip";
 import ko from "@/i18n/messages/ko/translation.json";
-import { areaPath, areasOf, distanceMeters, firstSentence } from "@/lib/regionIntro";
+import { areaLabel, areaPath, areasOf, distanceMeters, firstSentence } from "@/lib/regionIntro";
 
 export const revalidate = 3600;
 
@@ -164,11 +164,18 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     const data = await getPlaceData(Number((await params).id));
     if (!data) return { title: "장소를 찾을 수 없어요", robots: { index: false } };
     const { place, area, nearby } = data;
-    // 이름에 동네가 이미 들어 있으면(예: "카르마커피 광명") 다시 붙이지 않음
-    const nameWithArea = area && !place.name.includes(area) ? `${place.name} ${area}` : place.name;
-    const title = `${nameWithArea} — 근처 데이트 코스 | 두나`;
+    // "[장소명] [동네] [카테고리]" — 이름에 이미 들어 있는 동네·카테고리는 다시 붙이지 않음
+    const category = place.category?.trim();
+    const titleName = [
+        place.name,
+        area && !place.name.includes(area) && areaLabel(area),
+        category && !place.name.includes(category) && category,
+    ]
+        .filter(Boolean)
+        .join(" ");
+    const title = `${titleName} — 근처 데이트 코스 | 두나`;
     const description = [
-        firstSentence(place.description) || [area, place.category].filter(Boolean).join(" "),
+        firstSentence(place.description) || [area && areaLabel(area), place.category].filter(Boolean).join(" "),
         nearby.length > 0 && `근처에서 같이 가기 좋은 곳 ${nearby.length}곳`,
         place.address,
     ]
@@ -319,7 +326,7 @@ export default async function PlacePage({ params }: { params: Promise<{ id: stri
                         href={areaPath(area)}
                         className="block rounded-xl bg-gray-100 dark:bg-white/10 px-4 py-3 text-sm font-semibold"
                     >
-                        {area} 데이트 코스 더 보기 →
+                        {areaLabel(area)} 데이트 코스 더 보기 →
                     </Link>
                 )}
             </article>

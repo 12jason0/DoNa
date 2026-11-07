@@ -35,11 +35,16 @@ const REGION_INTROS: Record<string, string> = {
     해방촌: "남산 아래 언덕 동네로 루프탑과 이국적인 가게가 있어요.",
 };
 
+/** 화면·제목에 보일 동네 이름 (URL·DB는 regions.name 그대로) */
+const AREA_DISPLAY: Record<string, string> = { 익선: "익선동" };
+export const areaLabel = (area: string) => AREA_DISPLAY[area] ?? area;
+
 /** 지역 소개 2~3줄: 손으로 쓴 소개 + 코스 수 */
 export function regionIntro(region: string, courseCount: number): string[] {
+    const label = areaLabel(region);
     return [
-        REGION_INTROS[region] ?? `${region}에서 즐기기 좋은 데이트 코스를 모았어요.`,
-        `두나에는 ${region} 데이트 코스가 ${courseCount}개 있어요. 코스를 누르면 장소 순서와 동선을 볼 수 있어요.`,
+        REGION_INTROS[region] ?? `${label}에서 즐기기 좋은 데이트 코스를 모았어요.`,
+        `두나에는 ${label} 데이트 코스가 ${courseCount}개 있어요. 코스를 누르면 장소 순서와 동선을 볼 수 있어요.`,
     ];
 }
 
@@ -61,6 +66,7 @@ export const regionLabel = (courseRegion: string) =>
         .split(/[\/,·]/)
         .map((s) => s.trim())
         .filter(Boolean)
+        .map(areaLabel)
         .join("·");
 
 /** 코스 region 문자열에 들어 있는 동네 중 regions 테이블에 있는 것들 */
@@ -85,8 +91,11 @@ export function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: n
     return 2 * 6371000 * Math.asin(Math.sqrt(a));
 }
 
-/** 장소 설명에서 첫 문장만 (검색 결과 설명용) */
-export function firstSentence(text: string | null | undefined, max = 70): string {
-    const s = (text ?? "").trim().split(/(?<=[.!?。])\s|\n/)[0]?.trim() ?? "";
-    return s.length > max ? `${s.slice(0, max - 1)}…` : s;
+/** 장소 설명에서 첫 문장만 (검색 결과 설명용): 끝 마침표 빼고, 길면 단어 단위로 잘라 "…" */
+export function firstSentence(text: string | null | undefined, max = 40): string {
+    const s = ((text ?? "").trim().split(/(?<=[.!?。])\s|\n/)[0] ?? "").trim().replace(/[.。]+$/, "");
+    if (s.length <= max) return s;
+    // max+1까지 보고 마지막 공백에서 자름 → 단어 중간에서 안 잘림
+    const cut = s.slice(0, max + 1).replace(/\s+\S*$/, "").replace(/[\s,.]+$/, "");
+    return `${cut || s.slice(0, max)}…`;
 }
