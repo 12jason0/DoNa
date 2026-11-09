@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { getS3StaticUrl } from "@/lib/s3Static";
 import { useLocale } from "@/context/LocaleContext";
 
@@ -295,9 +296,11 @@ export default function DonaSplashFinal({
                             zIndex: 100001,
                         }}
                     >
-                        <img
+                        <Image
                             src={getS3StaticUrl("logo/donalogo_512_glow.png")}
                             alt="DoNa"
+                            width={300}
+                            height={300}
                             style={{ width: "300px", height: "auto", margin: "0 auto", display: "block" }}
                         />
                     </div>

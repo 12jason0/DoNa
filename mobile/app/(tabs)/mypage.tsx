@@ -2315,23 +2315,30 @@ function ActivityTab() {
                                                         {p.method ? (
                                                             <Text style={[s.payMethod, { color: t.textMuted }]}>
                                                                 {i18n("mypage.activityTab.paymentMethod")}:{" "}
-                                                                {p.method === "CARD" ? i18n("mypage.activityTab.card") : p.method}
+                                                                {p.method === "CARD"
+                                                                    ? i18n("mypage.activityTab.card")
+                                                                    : p.method === "IN_APP"
+                                                                      ? i18n("mypage.activityTab.inAppPurchase")
+                                                                      : p.method}
                                                             </Text>
                                                         ) : null}
                                                     </View>
-                                                    <Text
-                                                        style={[
-                                                            s.payAmount,
-                                                            {
-                                                                color: isRefunded ? t.textMuted : t.text,
-                                                                textDecorationLine: isRefunded
-                                                                    ? "line-through"
-                                                                    : "none",
-                                                            },
-                                                        ]}
-                                                    >
-                                                        {p.amount.toLocaleString(dateLoc)} {i18n("mypage.currencyWon")}
-                                                    </Text>
+                                                    {/* 인앱 결제는 서버가 원화 정가로 저장해 실제 청구 통화와 다를 수 있어 금액 숨김 */}
+                                                    {p.method !== "IN_APP" && (
+                                                        <Text
+                                                            style={[
+                                                                s.payAmount,
+                                                                {
+                                                                    color: isRefunded ? t.textMuted : t.text,
+                                                                    textDecorationLine: isRefunded
+                                                                        ? "line-through"
+                                                                        : "none",
+                                                                },
+                                                            ]}
+                                                        >
+                                                            {p.amount.toLocaleString(dateLoc)} {i18n("mypage.currencyWon")}
+                                                        </Text>
+                                                    )}
                                                 </View>
                                                 {!isRefunded && (
                                                     <TouchableOpacity
@@ -2381,9 +2388,11 @@ function ActivityTab() {
                         <View style={[s.refundPaymentCard, { backgroundColor: t.surface, marginBottom: 16 }]}>
                             <Text style={[{ fontSize: 12, color: t.textMuted }]}>환불 대상</Text>
                             <Text style={[{ fontSize: 16, fontWeight: "500", color: t.text }]}>{refundPayment.orderName}</Text>
-                            <Text style={[{ fontSize: 18, fontWeight: "600", color: t.text }]}>
-                                {refundPayment.amount.toLocaleString()}원
-                            </Text>
+                            {refundPayment.method !== "IN_APP" && (
+                                <Text style={[{ fontSize: 18, fontWeight: "600", color: t.text }]}>
+                                    {refundPayment.amount.toLocaleString(dateLoc)} {i18n("mypage.currencyWon")}
+                                </Text>
+                            )}
                         </View>
                     )}
 

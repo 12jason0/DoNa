@@ -1,6 +1,5 @@
 // src/app/(home)/layout.tsx
 import type { Metadata } from "next";
-import Script from "next/script";
 import { headers } from "next/headers";
 import ClientBodyLayout from "./ClientBodyLayout";
 import { getS3StaticUrlForMetadata } from "@/lib/s3StaticUrl";
@@ -151,16 +150,6 @@ export default function HomeLayout({ children }: { children: React.ReactNode }) 
             <link rel="dns-prefetch" href="https://openapi.map.naver.com" />
             <link rel="preconnect" href="https://naveropenapi.apigw.ntruss.com" crossOrigin="anonymous" />
             <link rel="dns-prefetch" href="https://naveropenapi.apigw.ntruss.com" />
-
-            {/* Google Analytics Script */}
-            <Script src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_ID}`} strategy="afterInteractive" />
-            <Script
-                id="ga4-init"
-                strategy="afterInteractive"
-                dangerouslySetInnerHTML={{
-                    __html: `window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', '${process.env.NEXT_PUBLIC_GA_ID}');`,
-                }}
-            />
 
             {/* 🟢 서버 렌더 스플래시: 첫 HTML부터 초록 배경만 표시 → 로고/텍스트 없이 바로 DonaSplashFinal로 이어짐. 클라이언트에서 제거. */}
             <div

@@ -2,6 +2,7 @@
 // 공개 범위: 기본 정보(이름·카테고리·주소·영업시간·휴무·가격대·설명)는 공개 코스에 쓰인 장소면 공개.
 // 팁 요약·코스 링크는 FREE 코스에 쓰인 경우에만, 그 FREE 코스 것만. 유료 코스와의 연결은 드러내지 않음.
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import prisma from "@/lib/db";
@@ -225,10 +226,13 @@ export default async function PlacePage({ params }: { params: Promise<{ id: stri
             />
             <article className="mx-auto max-w-[500px] px-4 py-8">
                 {place.imageUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <Image
                         src={place.imageUrl}
                         alt={`${place.name}${place.category ? ` ${place.category}` : ""} 사진`}
+                        width={500}
+                        height={375}
+                        priority
+                        sizes="(max-width: 500px) 100vw, 500px"
                         className="mb-5 w-full aspect-[4/3] rounded-2xl object-cover bg-gray-100"
                     />
                 )}

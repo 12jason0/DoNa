@@ -1,10 +1,10 @@
 @import "tailwindcss";
 @source not "../../mobile";
 
-/* 레거시·컴포넌트 직접 지정용 (지도 등) — public/fonts/Cafe24DongdongRegular.woff2 */
+/* 레거시·컴포넌트 직접 지정용 (지도 등) — public/fonts/Cafe24Dongdong-subset.woff2 (KS X 1001 한글 2,350자 서브셋, OFL) */
 @font-face {
     font-family: "Cafe24Dongdong";
-    src: url("/fonts/Cafe24DongdongRegular.woff2") format("woff2");
+    src: url("/fonts/Cafe24Dongdong-subset.woff2") format("woff2");
     font-weight: 100 700;
     font-style: normal;
     font-display: swap;
@@ -40,7 +40,7 @@
 }
 @font-face {
     font-family: "RoundDisplay";
-    src: url("/fonts/Cafe24DongdongRegular.woff2") format("woff2");
+    src: url("/fonts/Cafe24Dongdong-subset.woff2") format("woff2");
     font-weight: 100 700;
     font-style: normal;
     font-display: swap;

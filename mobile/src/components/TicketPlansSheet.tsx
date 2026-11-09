@@ -10,6 +10,7 @@ import {
     Dimensions,
     Easing,
     Modal,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -30,14 +31,12 @@ import { fetchAllPackages, purchaseErrorInfo } from "../lib/purchases";
 import { androidShadow } from "../constants/theme";
 import { posthog } from "../lib/posthog";
 
-// ─── 플랜 정의 (웹 PLANS 동일) ────────────────────────────────────────────────
+// ─── 플랜 정의 (가격은 스토어 priceString만 사용 — 현지 통화) ────────────────────────────────────────────────
 
 const PLANS = [
     {
         id: "sub_basic",
         type: "sub" as const,
-        price: 4900,
-        originalPrice: 9900,
         badge: "EARLY BIRD",
         featureCount: 3,
         tier: "BASIC" as const,
@@ -45,7 +44,6 @@ const PLANS = [
     {
         id: "sub_premium",
         type: "sub" as const,
-        price: 9900,
         badge: "VIP",
         featureCount: 4,
         tier: "PREMIUM" as const,
@@ -53,13 +51,11 @@ const PLANS = [
     {
         id: "ticket_basic",
         type: "ticket" as const,
-        price: 990,
         tier: "BASIC" as const,
     },
     {
         id: "ticket_premium",
         type: "ticket" as const,
-        price: 1900,
         tier: "PREMIUM" as const,
     },
 ] as const;
@@ -446,7 +442,7 @@ export default function TicketPlansSheet() {
     // ─── 헬퍼 ────────────────────────────────────────────────────────────────
 
     const priceStr = (plan: (typeof PLANS)[number]) =>
-        rcPrices[plan.id] ?? `${plan.price.toLocaleString()}원`;
+        rcPrices[plan.id] ?? "—";
 
     // 웹과 동일 조건
     const showTickets = courseId != null && courseGrade != null && context !== "UPGRADE";
@@ -591,11 +587,6 @@ export default function TicketPlansSheet() {
                                                 <Text style={[styles.price, { color: disabled ? sectionLabelColor : t.text, fontWeight: "400" }]}>
                                                     {priceStr(plan)}
                                                 </Text>
-                                                {"originalPrice" in plan && !disabled && (
-                                                    <Text style={styles.origPrice}>
-                                                        {plan.originalPrice.toLocaleString()}원
-                                                    </Text>
-                                                )}
                                                 {!disabled && (
                                                     <Text style={[styles.perMonth, { color: sectionLabelColor }]}>
                                                         {i18n("ticketPlans.perMonth")}
@@ -712,7 +703,11 @@ export default function TicketPlansSheet() {
                                 </TouchableOpacity>
                             </View>
                             <Text style={[styles.legalText, { color: sectionLabelColor }]}>
-                                {i18n("ticketPlans.subscriptionRenewal")}
+                                {i18n(
+                                    Platform.OS === "android"
+                                        ? "ticketPlans.subscriptionRenewalAndroid"
+                                        : "ticketPlans.subscriptionRenewal"
+                                )}
                             </Text>
 
                             {/* 사업자 정보 박스 */}
@@ -857,7 +852,6 @@ const styles = StyleSheet.create({
     planDesc: { fontSize: 11, marginBottom: 8 },
     priceRow: { flexDirection: "row", alignItems: "baseline", gap: 6, flexWrap: "wrap" },
     price: { fontSize: 22 },
-    origPrice: { fontSize: 12, color: "#9ca3af", textDecorationLine: "line-through" },
     perMonth: { fontSize: 11 },
 
     // 기능 목록 우측 박스
