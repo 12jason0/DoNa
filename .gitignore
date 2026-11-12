@@ -110,3 +110,6 @@ mobile/android/**/.cxx/
 # 로컬 작업 파일 (EAS 업로드 제외)
 /dm_targets.csv
 /graphify-out
+
+# 로컬 전용 스크립트
+apple-secret.js
