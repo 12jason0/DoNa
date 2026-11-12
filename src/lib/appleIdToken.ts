@@ -41,9 +41,22 @@ export async function verifyAppleIdToken(
     };
 }
 
+/**
+ * APPLE_PRIVATE_KEY를 PEM으로 정리. 앞뒤 따옴표, "\n" 글자, 여러 줄/한 줄, 줄바꿈 없이 붙은
+ * "-----BEGIN PRIVATE KEY-----MIG...-----END PRIVATE KEY-----" 형식을 모두 받아 표준 PEM으로 다시 만듦
+ */
+export function normalizeApplePrivateKey(raw: string): string {
+    const s = raw.trim().replace(/^["']|["']$/g, "").replace(/\\n/g, "\n");
+    const body = s
+        .replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----/g, "")
+        .replace(/\s+/g, "");
+    const lines = body.match(/.{1,64}/g) ?? [];
+    return `-----BEGIN PRIVATE KEY-----\n${lines.join("\n")}\n-----END PRIVATE KEY-----\n`;
+}
+
 /** 애플 토큰 API(/auth/token, /auth/revoke)용 client_secret. clientId는 토큰을 받은/받을 client_id와 같아야 함 */
 export function appleClientSecret(clientId: string): string {
-    const privateKey = process.env.APPLE_PRIVATE_KEY!.replace(/\\n/g, "\n");
+    const privateKey = normalizeApplePrivateKey(process.env.APPLE_PRIVATE_KEY ?? "");
     return jwt.sign({}, privateKey, {
         algorithm: "ES256",
         expiresIn: "1h",
