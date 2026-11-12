@@ -6,8 +6,27 @@ import { appleClientSecret, appleWebClientId } from "@/lib/appleIdToken";
 import { getS3Client, getS3Bucket } from "@/lib/s3";
 import { DeleteObjectCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
 import { captureApiError } from "@/lib/sentry";
+import { getS3StaticUrl } from "@/lib/s3Static";
 
 export const dynamic = "force-dynamic";
+
+/** 공용 기본 프로필 이미지 키. 여러 사용자가 같이 쓰므로 탈퇴 때 절대 지우면 안 됨 */
+const SHARED_KEYS = new Set([new URL(getS3StaticUrl("profileLogo.png")).pathname.replace(/^\//, "")]);
+
+/** 탈퇴 사용자의 이미지 URL → 지워도 되는 우리 S3 키. 외부 주소(카카오 등)·공용 이미지면 null */
+function deletableS3Key(imageUrl: string): string | null {
+    let url: URL;
+    let key: string;
+    try {
+        url = new URL(imageUrl);
+        key = decodeURIComponent(url.pathname.replace(/^\//, "")); // 한글 파일명은 URL에 인코딩돼 있음
+    } catch {
+        return null;
+    }
+    const ourHost = /(^|\.)cloudfront\.net$|\.amazonaws\.com$/.test(url.hostname);
+    if (!ourHost || !key || SHARED_KEYS.has(key)) return null;
+    return key;
+}
 
 export async function DELETE(request: NextRequest) {
     try {
@@ -128,13 +147,10 @@ export async function DELETE(request: NextRequest) {
             const s3Client = getS3Client();
             const bucket = getS3Bucket();
 
-            // 프로필 이미지 삭제
-            if (user.profileImageUrl) {
+            // 프로필 이미지 삭제 (공용 기본 이미지·외부 주소는 건너뜀)
+            const key = user.profileImageUrl ? deletableS3Key(user.profileImageUrl) : null;
+            if (key) {
                 try {
-                    // S3 URL에서 키 추출
-                    const url = new URL(user.profileImageUrl);
-                    const key = url.pathname.startsWith("/") ? url.pathname.slice(1) : url.pathname;
-
                     await s3Client.send(
                         new DeleteObjectCommand({
                             Bucket: bucket,
@@ -159,10 +175,9 @@ export async function DELETE(request: NextRequest) {
                 for (const review of reviews) {
                     if (review.imageUrls && Array.isArray(review.imageUrls)) {
                         for (const imageUrl of review.imageUrls) {
+                            const key = deletableS3Key(imageUrl);
+                            if (!key) continue;
                             try {
-                                const url = new URL(imageUrl);
-                                const key = url.pathname.startsWith("/") ? url.pathname.slice(1) : url.pathname;
-
                                 await s3Client.send(
                                     new DeleteObjectCommand({
                                         Bucket: bucket,
@@ -185,28 +200,30 @@ export async function DELETE(request: NextRequest) {
 
             // 사용자가 만든 코스의 이미지 삭제
             try {
+                // 공개 코스 이미지는 다른 사용자도 보는 콘텐츠라 지우지 않음
                 const courses = await prisma.course.findMany({
-                    where: { userId: userId },
-                    select: { imageUrl: true },
+                    where: { userId: userId, isPublic: false },
+                    select: { id: true, imageUrl: true },
                 });
 
                 for (const course of courses) {
-                    if (course.imageUrl) {
-                        try {
-                            const url = new URL(course.imageUrl);
-                            const key = url.pathname.startsWith("/") ? url.pathname.slice(1) : url.pathname;
-
-                            await s3Client.send(
-                                new DeleteObjectCommand({
-                                    Bucket: bucket,
-                                    Key: key,
-                                })
-                            );
-                        } catch (s3Error) {
-
-                                captureApiError(s3Error);
-                            console.error(`코스 이미지 삭제 실패 (무시): ${course.imageUrl}`, s3Error);
-                        }
+                    const key = course.imageUrl ? deletableS3Key(course.imageUrl) : null;
+                    if (!key) continue;
+                    // 다른 코스가 같은 이미지를 쓰면 지우지 않음
+                    const sharedBy = await prisma.course.count({
+                        where: { imageUrl: course.imageUrl, id: { not: course.id } },
+                    });
+                    if (sharedBy > 0) continue;
+                    try {
+                        await s3Client.send(
+                            new DeleteObjectCommand({
+                                Bucket: bucket,
+                                Key: key,
+                            })
+                        );
+                    } catch (s3Error) {
+                        captureApiError(s3Error);
+                        console.error(`코스 이미지 삭제 실패 (무시): ${course.imageUrl}`, s3Error);
                     }
                 }
             } catch (courseError) {
