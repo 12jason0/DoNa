@@ -40,7 +40,10 @@ export default function WithdrawalModal() {
     const deleteMutation = useMutation({
         mutationFn: (r: string) => apiFetch("/api/users/delete", { method: "DELETE", body: { withdrawalReason: r } }),
         onSuccess: async () => {
-            try { await Purchases.logOut(); } catch {}
+            handleClose(); // 전역 모달이라 닫지 않으면 로그인 화면 위에 그대로 남음
+            try {
+                if (!(await Purchases.isAnonymous())) await Purchases.logOut();
+            } catch {}
             await logout(queryClient);
             router.replace("/(auth)/login");
         },
