@@ -182,7 +182,9 @@
         "projectId": "78b14f63-823b-4fb6-ba4a-8c5a8528a204"
       }
     },
-    "runtimeVersion": "1.2.3",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
     "updates": {
       "url": "https://u.expo.dev/78b14f63-823b-4fb6-ba4a-8c5a8528a204"
     }
