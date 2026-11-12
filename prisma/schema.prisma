@@ -57,6 +57,8 @@ model User {
   billingKey                 String?                  @map("billing_key") @db.VarChar(255)
   deletedAt                  DateTime?                @map("deleted_at")
   appleRefreshToken          String?                  @map("apple_refresh_token")
+  /// appleRefreshToken을 받은 client_id (앱: 번들 ID, 웹: Services ID). 연동 해제 때 같은 값을 써야 함
+  appleTokenClientId         String?                  @map("apple_token_client_id") @db.VarChar(100)
   isSearchHistoryEnabled     Boolean                  @default(true) @map("is_search_history_enabled")
   lastAiRecommendationUsedAt DateTime?                @map("last_ai_recommendation_used_at")
   tokenVersion               Int                      @default(0) @map("token_version")

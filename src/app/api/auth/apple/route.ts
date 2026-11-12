@@ -5,23 +5,9 @@ import { setAuthCookie, signAuthToken } from "@/lib/auth";
 import { getSafeRedirectPath } from "@/lib/redirect";
 import { getS3StaticUrl } from "@/lib/s3Static";
 import { captureApiError } from "@/lib/sentry";
-import { verifyAppleIdToken } from "@/lib/appleIdToken";
+import { verifyAppleIdToken, saveAppleRefreshToken, getAppleRedirectUri } from "@/lib/appleIdToken";
 
 export const dynamic = "force-dynamic";
-
-/**
- * 💡 Redirect URI 생성 (애플 설정과 100% 일치)
- * image_e89e4a에서 설정하신 주소와 토씨 하나 안 틀리고 똑같이 맞춰줍니다.
- */
-const getAppleRedirectUri = (origin: string) => {
-    // 🟢 [Fix]: 환경변수로 Redirect URI 직접 설정 (애플 개발자 포털과 정확히 일치)
-    if (process.env.NEXT_PUBLIC_APPLE_REDIRECT_URI) {
-        return process.env.NEXT_PUBLIC_APPLE_REDIRECT_URI;
-    }
-    // 🟢 Fallback: 프로덕션은 고정 도메인, 개발은 동적 origin
-    const base = process.env.NODE_ENV === "production" ? "https://dona.io.kr" : origin;
-    return `${base}/api/auth/apple/callback`;
-};
 
 /**
  * 1. Apple 인증 시작 (GET)
@@ -421,6 +407,8 @@ async function handleAppAppleAuthLogic(
 
         const user = result.user;
         if (result.isNew) await saveSignupAttribution(request, user.id);
+        // 탈퇴 시 연동 해제용. 앱 code는 번들 ID(= identity token의 aud)로만 교환됨
+        await saveAppleRefreshToken(user.id, authorizationCode, apple.aud);
 
         const token = signAuthToken(user);
 

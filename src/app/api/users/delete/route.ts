@@ -2,31 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
 import axios from "axios";
-import jwt from "jsonwebtoken";
+import { appleClientSecret, appleWebClientId } from "@/lib/appleIdToken";
 import { getS3Client, getS3Bucket } from "@/lib/s3";
 import { DeleteObjectCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
 import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
-
-/**
- * 애플 Client Secret 생성 함수 (Apple Revoke API 호출용)
- */
-function getAppleClientSecret() {
-    const teamId = process.env.APPLE_TEAM_ID!;
-    const keyId = process.env.APPLE_KEY_ID!;
-    const clientId = process.env.APPLE_CLIENT_ID!; // kr.io.dona.dona.sid
-    const privateKey = process.env.APPLE_PRIVATE_KEY!.replace(/\\n/g, "\n");
-
-    return jwt.sign({}, privateKey, {
-        algorithm: "ES256",
-        expiresIn: "1h",
-        audience: "https://appleid.apple.com",
-        issuer: teamId,
-        subject: clientId,
-        keyid: keyId,
-    });
-}
 
 export async function DELETE(request: NextRequest) {
     try {
@@ -62,6 +43,7 @@ export async function DELETE(request: NextRequest) {
                 subscriptionExpiresAt: true,
                 profileImageUrl: true,
                 appleRefreshToken: true,
+                appleTokenClientId: true,
             },
         });
 
@@ -106,13 +88,11 @@ export async function DELETE(request: NextRequest) {
                 try {
                     // appleRefreshToken이 DB에 저장되어 있는지 확인
                     if ((user as any).appleRefreshToken) {
-                        const clientSecret = getAppleClientSecret();
+                        // 토큰을 받은 client_id로 해제해야 함. 값이 없는 옛 토큰은 2025-12 웹(Services ID)에서 받은 것
+                        const clientId = (user as any).appleTokenClientId || appleWebClientId() || "";
                         const params = new URLSearchParams();
-                        params.append(
-                            "client_id",
-                            process.env.APPLE_CLIENT_ID || process.env.NEXT_PUBLIC_APPLE_CLIENT_ID || ""
-                        );
-                        params.append("client_secret", clientSecret);
+                        params.append("client_id", clientId);
+                        params.append("client_secret", appleClientSecret(clientId));
                         params.append("token", (user as any).appleRefreshToken);
                         params.append("token_type_hint", "refresh_token");
 
@@ -303,6 +283,8 @@ export async function DELETE(request: NextRequest) {
                     location: null, // 위치 정보 삭제
                     preferredTags: [], // 선호 태그 삭제
                     billingKey: null, // 결제 키 삭제
+                    appleRefreshToken: null, // 애플 토큰 삭제 (연동 해제는 위에서 이미 시도함)
+                    appleTokenClientId: null,
                     // 탈퇴일 기록
                     deletedAt: new Date(),
                     // 구독 정보 초기화

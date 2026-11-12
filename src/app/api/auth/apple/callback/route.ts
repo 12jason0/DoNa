@@ -5,7 +5,7 @@ import { setAuthCookie, signAuthToken } from "@/lib/auth";
 import { getSafeRedirectPath } from "@/lib/redirect";
 import { getS3StaticUrl } from "@/lib/s3Static";
 import { captureApiError } from "@/lib/sentry";
-import { verifyAppleIdToken } from "@/lib/appleIdToken";
+import { verifyAppleIdToken, saveAppleRefreshToken, getAppleRedirectUri } from "@/lib/appleIdToken";
 
 export const dynamic = "force-dynamic";
 
@@ -78,6 +78,9 @@ export async function POST(request: NextRequest) {
 
         const user = result.user;
         if (result.isNew) await saveSignupAttribution(request, user.id);
+        // 탈퇴 시 연동 해제용. 웹 code는 Services ID(= aud)와 authorize 때와 같은 redirect_uri로 교환
+        const redirectOrigin = origin.includes("0.0.0.0") ? "http://localhost:3000" : origin;
+        await saveAppleRefreshToken(user.id, params.get("code"), apple.aud, getAppleRedirectUri(redirectOrigin));
         const serviceToken = signAuthToken(user);
         // 🟢 [Fix]: next가 없거나 로그인 페이지면 메인으로, 있으면 그곳으로
         const decodedNext =
